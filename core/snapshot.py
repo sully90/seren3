@@ -37,8 +37,33 @@ class Snapshot(object):
         return
 
     @abc.abstractmethod
+    def g(self):
+        return
+
+    @abc.abstractmethod
+    def d(self):
+        return
+
+    @abc.abstractmethod
+    def s(self):
+        return
+
+    @abc.abstractmethod
     def get_source(self, family):
         return
+
+    @abc.abstractmethod
+    def get_sphere(self, pos, r):
+        return
+
+    def halos(self, finder='ahf', **kwargs):
+        if finder.lower() == 'ahf':
+            from seren3.halos.halos import AHFCatalogue
+            return AHFCatalogue(self, **kwargs)
+
+    @property
+    def h(self):
+        return self.halos()
 
     @abc.abstractmethod
     def camera(self, **kwargs):
@@ -241,4 +266,10 @@ class Family(object):
             from pymses.filters import CellsToPoints
             source = CellsToPoints(source)
 
-        return SerenSource(self, source, required_fields, fields)
+        cpu_list = None
+        if hasattr(self.base, "region"):
+            from pymses.filters import RegionFilter
+            source = RegionFilter(self.base.region, source)
+            cpu_list = self.base.cpu_list(self.base.region.get_bounding_box())
+
+        return SerenSource(self, source, required_fields, fields, cpu_list=cpu_list)

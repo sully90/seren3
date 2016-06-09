@@ -100,7 +100,6 @@ class SerenSource(sources.DataSource):
         for f in self.requested_fields:
             if f in dset.fields:
                 derived_dset[f] = dset[f]
-
             elif f not in derived_dset and seren3.is_derived(family, f):
                 temp = {}
                 for r in self.required_fields:
@@ -115,6 +114,8 @@ class SerenSource(sources.DataSource):
 
                 _get_derived(f, temp)
                 derived_dset[f] = temp[f]
+            else:
+                raise Exception("Don't know what to do with non-tracked and non-derived field: %s", f)
 
         print 'Done'
         return derived_dset

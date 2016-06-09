@@ -4,11 +4,12 @@ Location of the derived field registry
 
 _derived_field_registry = {}
 
-def derived_quantity(requires, latex):
+# def derived_quantity(requires, latex):
+def derived_quantity(requires):
     def wrap(fn):
         _derived_field_registry[fn.__name__] = fn
         _derived_field_registry["%s_required" % fn.__name__] = requires
-        _derived_field_registry["%s_latex" % fn.__name__] = latex
+        # _derived_field_registry["%s_latex" % fn.__name__] = latex
         return fn
     return wrap
 
@@ -27,3 +28,21 @@ def get_derived_field(family, field):
 
 def get_derived_field_latex(family, field):
     return _derived_field_registry["%s_%s_latex" % (family, field)]
+
+def LambdaOperator(family, field, power=1., vol_weighted=False):
+    '''
+    Return a lambda function for this field
+    '''
+    # If this is a derived field then grab the approp. function
+    if is_derived(family.family, field):
+        fn = get_derived_field(family.family, field)
+        if vol_weighted:
+            op = lambda dset: fn(family.base, dset)**power * dset.get_sizes()**3
+        else:
+            op = lambda dset: fn(family.base, dset)**power
+    else:
+        if vol_weighted:
+            op = lambda dset: dset[field]**power * dset.get_sizes()**3
+        else:
+            op = lambda dset: dset[field]**power
+    return op

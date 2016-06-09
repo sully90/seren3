@@ -5,9 +5,18 @@ class PymsesSnapshot(Snapshot):
     """
     Class for handling pymses snapshots
     """
-    def __init__(self, path, ioutput, **kwargs):
+    def __init__(self, path, ioutput, ro=None, **kwargs):
         super(PymsesSnapshot, self).__init__(path, ioutput, **kwargs)
-        self._ro = RamsesOutput(path, ioutput, metals=self.metals, **kwargs)
+        if ro is None:
+            self._ro = RamsesOutput(path, ioutput, metals=self.metals, **kwargs)
+        else:
+            self._ro = ro
+
+    def __getitem__(self, item):
+        if hasattr(item, '__module__') and (item.__module__ == 'pymses.utils.regions'):
+            return PymsesSubSnapshot(self, item)
+        else:
+            raise ValueError("Unknown item: ", item)
 
     @property
     def ro(self):
@@ -16,6 +25,10 @@ class PymsesSnapshot(Snapshot):
     def get_source(self, family, fields):
         source = getattr(self, "%s_source" % family)
         return source(fields)
+
+    def get_sphere(self, pos, r):
+        from pymses.utils.regions import Sphere
+        return Sphere(pos, r)
 
     def amr_source(self, fields):
         if not hasattr(fields, "__iter__"):
@@ -48,8 +61,8 @@ class PymsesSnapshot(Snapshot):
         return Family(self, "amr")
 
     @property
-    def p(self):
-        return Family(self, "part")
+    def d(self):
+        return Family(self, "dm")
 
     @property
     def s(self):
@@ -58,3 +71,8 @@ class PymsesSnapshot(Snapshot):
     def camera(self, **kwargs):
         from pymses.analysis import Camera
         return Camera(**kwargs)
+
+class PymsesSubSnapshot(PymsesSnapshot):
+    def __init__(self, pymses_snapshot, region):
+        super(PymsesSubSnapshot, self).__init__(pymses_snapshot.path, pymses_snapshot.ioutput, ro=pymses_snapshot.ro)
+        self.region = region
