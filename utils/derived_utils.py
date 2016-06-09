@@ -4,12 +4,10 @@ Location of the derived field registry
 
 _derived_field_registry = {}
 
-# def derived_quantity(requires, latex):
 def derived_quantity(requires):
     def wrap(fn):
         _derived_field_registry[fn.__name__] = fn
         _derived_field_registry["%s_required" % fn.__name__] = requires
-        # _derived_field_registry["%s_latex" % fn.__name__] = latex
         return fn
     return wrap
 

@@ -28,7 +28,11 @@ class SimArray(array.SimArray):
         return self._field_name
 
     def field_latex(self):
-        return r"%s [%s]" % (self.get_field_name(), self.units.latex())
+        unit = self.units.latex()
+        if unit == '':
+            return r"%s" % (self.get_field_name())
+        else:
+            return r"%s [%s]" % (self.get_field_name(), unit)
 
     def in_units(self, units):
         copy = self.copy()
