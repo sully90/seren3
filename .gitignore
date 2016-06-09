@@ -1,0 +1,10 @@
+*.pyc
+**/*.pyc
+**/*.so
+**/**/*.so
+analysis/*.c
+analysis/*.html
+cosmology/*.c
+cosmology/*.html
+utils/cython/*.c
+utils/cython/*.html
