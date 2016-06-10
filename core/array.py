@@ -12,6 +12,8 @@ class SimArray(array.SimArray):
         '''
         unit = 1.
         compontents = str(self.units).split(' ')
+        if compontents[0] == 'NoUnit()':
+            return C.none
         for c in compontents:
             if '**' in c:
                 dims = c.split('**')

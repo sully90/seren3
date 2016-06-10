@@ -14,14 +14,24 @@ def amr_nH(context, dset):
     result.set_field_name(r'n$_{\mathrm{H}}$')
     return result
 
+@seren3.derived_quantity(requires=["rho"])
+def amr_nHe(context, dset):
+    '''
+    Return Helium number density
+    '''
+    X_frac, Y_frac = (context.info['X_fraction'], context.info['Y_fraction'])
+    nHe = 0.25 * amr_nH(context, dset) * (Y_frac/X_frac)
+    result = SimArray(nHe, 'cm**-3')
+    result.set_field_name(r'n$_{\mathrm{He}}$')
+    return result
+
 @seren3.derived_quantity(requires=["xHII"])
 def amr_xHI(context, dset):
     '''
     Hydrogen neutral fraction
     '''
     val = 1. - dset['xHII']
-    unit = C.none
-    result = SimArray(val * unit)
+    result = SimArray(val)
     result.set_field_name(r"x$_{\mathrm{HI}}$")
     return result
 
@@ -36,3 +46,4 @@ def amr_cs(context, dset):
         , 'm s**-1')
     result.set_field_name("cs")
     return result
+

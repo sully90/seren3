@@ -1,6 +1,29 @@
 import seren3
+from seren3.core.array import SimArray
+import numpy as np
 from pymses.sources.ramses.sources import RamsesAmrSource, RamsesParticleSource
 from pymses.core import sources
+
+_tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density", "unit" : "kg m**-3"}, \
+                                "vel" : {"info_key" : "unit_velocity", "unit" : "m s**-1"}, \
+                                "P" : {"info_key" : "unit_pressure", "unit" : "kg m**-1 s**-2"}}
+
+
+def _pymses_units(unit_string):
+    '''
+    Returns pymses compatible units from a string
+    '''
+    from pymses.utils import constants as C
+    unit = 1.
+    compontents = str(unit_string).split(' ')
+    for c in compontents:
+        if '**' in c:
+            dims = c.split('**')
+            pymses_unit = np.power(C.Unit(dims[0]), float(dims[1]))
+            unit *= pymses_unit
+        else:
+            unit *= C.Unit(c)
+    return unit
 
 class SerenSource(sources.DataSource):
     """
@@ -99,7 +122,17 @@ class SerenSource(sources.DataSource):
 
         for f in self.requested_fields:
             if f in dset.fields:
-                derived_dset[f] = dset[f]
+                # derived_dset[f] = dset[f]
+                if f in _tracked_field_unit_registry:
+                    unit_key = _tracked_field_unit_registry[f]["info_key"]
+                    unit_string = _tracked_field_unit_registry[f]["unit"]
+                    pymses_unit = _pymses_units(unit_string)
+
+                    val = dset[f] * self._family.info[unit_key].express(pymses_unit)
+                    val = SimArray(val, unit_string)
+                    derived_dset[f] = val
+                else:
+                    derived_dset[f] = SimArray(dset[f])
             elif f not in derived_dset and seren3.is_derived(family, f):
                 temp = {}
                 for r in self.required_fields:
