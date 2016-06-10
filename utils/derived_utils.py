@@ -4,10 +4,41 @@ Location of the derived field registry
 
 _derived_field_registry = {}
 
-def derived_quantity(requires):
+_tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density", "unit" : "kg m**-3"}, \
+                                "vel" : {"info_key" : "unit_velocity", "unit" : "m s**-1"}, \
+                                "P" : {"info_key" : "unit_pressure", "unit" : "kg m**-1 s**-2"}}
+
+def pymses_units(unit_string):
+    '''
+    Returns pymses compatible units from a string
+    '''
+    import numpy as np
+    from pymses.utils import constants as C
+    unit = 1.
+    compontents = str(unit_string).split(' ')
+    for c in compontents:
+        if '**' in c:
+            dims = c.split('**')
+            pymses_unit = np.power(C.Unit(dims[0]), float(dims[1]))
+            unit *= pymses_unit
+        else:
+            unit *= C.Unit(c)
+    return unit
+
+def in_tracked_field_registry(field):
+    return field in _tracked_field_unit_registry
+
+def get_tracked_field_info_key(field):
+    return _tracked_field_unit_registry[field]["info_key"]
+
+def get_tracked_field_unit(field):
+    return _tracked_field_unit_registry[field]["unit"]
+
+def derived_quantity(requires, unit):
     def wrap(fn):
         _derived_field_registry[fn.__name__] = fn
         _derived_field_registry["%s_required" % fn.__name__] = requires
+        _derived_field_registry["%s_unit" % fn.__name__] = unit
         return fn
     return wrap
 
@@ -24,8 +55,8 @@ def is_derived(family, field):
 def get_derived_field(family, field):
     return _derived_field_registry["%s_%s" % (family, field)]
 
-def get_derived_field_latex(family, field):
-    return _derived_field_registry["%s_%s_latex" % (family, field)]
+def get_derived_field_unit(family, field):
+    return _derived_field_registry["%s_%s_unit" % (family, field)]
 
 def LambdaOperator(family, field, power=1., vol_weighted=False):
     '''

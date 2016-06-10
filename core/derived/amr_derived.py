@@ -3,7 +3,7 @@ from seren3.core.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 
-@seren3.derived_quantity(requires=["rho"])
+@seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nH(context, dset):
     '''
     Return hydrogen number density
@@ -14,7 +14,7 @@ def amr_nH(context, dset):
     result.set_field_name(r'n$_{\mathrm{H}}$')
     return result
 
-@seren3.derived_quantity(requires=["rho"])
+@seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nHe(context, dset):
     '''
     Return Helium number density
@@ -25,7 +25,7 @@ def amr_nHe(context, dset):
     result.set_field_name(r'n$_{\mathrm{He}}$')
     return result
 
-@seren3.derived_quantity(requires=["xHII"])
+@seren3.derived_quantity(requires=["xHII"], unit=C.none)
 def amr_xHI(context, dset):
     '''
     Hydrogen neutral fraction
@@ -35,7 +35,7 @@ def amr_xHI(context, dset):
     result.set_field_name(r"x$_{\mathrm{HI}}$")
     return result
 
-@seren3.derived_quantity(requires=["P", "rho"])
+@seren3.derived_quantity(requires=["P", "rho"], unit=C.m/C.s)
 def amr_cs(context, dset):
     '''
     Gas sound speed in m/s (units are convertabke)
