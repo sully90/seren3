@@ -70,10 +70,10 @@ class Snapshot(object):
         return
 
     @property
-    def friendmann(self):
-        if self._friendmann is None:
-            self._friendmann = self.integrate_friendmann()
-        return self._friendmann
+    def friedmann(self):
+        if self._friedmann is None:
+            self._friedmann = self.integrate_friedmann()
+        return self._friedmann
     
 
     @property
@@ -148,7 +148,7 @@ class Snapshot(object):
     def z(self):
         return (1. / self.info['aexp']) - 1.
 
-    def integrate_friendmann(self, aexp=None):
+    def integrate_friedmann(self, aexp=None):
         from seren3.utils.f90 import friedmann as fm
 
         cosmology = self.cosmo
@@ -207,6 +207,10 @@ class Family(object):
     @property
     def info(self):
         return self.base.info
+
+    @property
+    def nml(self):
+        return self.base.nml
 
     def compute_required_fields(self, fields):
         """

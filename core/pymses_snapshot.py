@@ -72,6 +72,13 @@ class PymsesSnapshot(Snapshot):
         from pymses.analysis import Camera
         return Camera(**kwargs)
 
+    def get_nproc(self):
+        return pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT
+
+    def set_nproc(self, nproc):
+        pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT = nproc
+        return self.get_num_processors()
+
 class PymsesSubSnapshot(PymsesSnapshot):
     def __init__(self, pymses_snapshot, region):
         super(PymsesSubSnapshot, self).__init__(pymses_snapshot.path, pymses_snapshot.ioutput, ro=pymses_snapshot.ro)
