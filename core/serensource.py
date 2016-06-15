@@ -1,5 +1,5 @@
 import seren3
-from seren3.core.array import SimArray
+from pynbody.array import SimArray
 from pymses.sources.ramses.sources import RamsesAmrSource, RamsesParticleSource
 from pymses.core import sources
 
@@ -69,7 +69,7 @@ class SerenSource(sources.DataSource):
         return self._derived_dset(**kwargs)
 
     def _derived_dset(self, **kwargs):
-        print 'Deriving dataset...'
+        print "Deriving dataset..."
 
         if self._dset is None:
             return {}
@@ -82,6 +82,21 @@ class SerenSource(sources.DataSource):
         if "dx" in self.requested_fields:
             derived_dset["dx"] = dset.get_sizes()
 
+        # Deal with tracked fields / units
+        tracked_fields = {}
+        for f in self.required_fields:
+            if seren3.in_tracked_field_registry(f):
+                unit_key = seren3.get_tracked_field_info_key(f)
+                unit_string = seren3.get_tracked_field_unit(f)
+                pymses_unit = seren3.pymses_units(unit_string)
+
+                val = dset[f] * self._family.info[unit_key].express(pymses_unit)
+                val = SimArray(val, unit_string)
+                tracked_fields[f] = val
+            else:
+                tracked_fields[f] = SimArray(dset[f])
+
+        # Derive fields
         def _get_derived(field, temp):
             '''
             Recursively derive all the fields we need
@@ -92,25 +107,15 @@ class SerenSource(sources.DataSource):
                     # Recursively derive required field
                     _get_derived(r, temp)
 
-                elif r in dset.fields:
-                    temp[r] = dset[r]
+                elif r in tracked_fields:
+                    temp[r] = tracked_fields[r]
 
             fn = seren3.get_derived_field(family, field)
             temp[field] = fn(self._family.base, temp, **kwargs)
 
         for f in self.requested_fields:
-            if f in dset.fields:
-                # derived_dset[f] = dset[f]
-                if seren3.in_tracked_field_registry(f):
-                    unit_key = seren3.get_tracked_field_info_key(f)
-                    unit_string = seren3.get_tracked_field_unit(f)
-                    pymses_unit = seren3.pymses_units(unit_string)
-
-                    val = dset[f] * self._family.info[unit_key].express(pymses_unit)
-                    val = SimArray(val, unit_string)
-                    derived_dset[f] = val
-                else:
-                    derived_dset[f] = SimArray(dset[f])
+            if f in dset.fields:  # tracked field
+                derived_dset[f] = tracked_fields[f]
             elif f not in derived_dset and seren3.is_derived(family, f):
                 temp = {}
                 for r in self.required_fields:
@@ -128,5 +133,5 @@ class SerenSource(sources.DataSource):
             else:
                 raise Exception("Don't know what to do with non-tracked and non-derived field: %s", f)
 
-        print 'Done'
+        print "Done"
         return derived_dset

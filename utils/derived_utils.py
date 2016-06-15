@@ -2,11 +2,14 @@
 Location of the derived field registry
 """
 
-_derived_field_registry = {}
+_derived_field_registry = {}  # Automatically filled by annotations
+
+_pynbody_to_pymses_registry = {"Msol" : "Msun"}  # translate pynbody units to pymses
 
 _tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density", "unit" : "kg m**-3"}, \
                                 "vel" : {"info_key" : "unit_velocity", "unit" : "m s**-1"}, \
-                                "P" : {"info_key" : "unit_pressure", "unit" : "kg m**-1 s**-2"}}
+                                "P" : {"info_key" : "unit_pressure", "unit" : "kg m**-1 s**-2"}, \
+                                "mass" : {"info_key" : "unit_mass", "unit" : "Msol"}}
 
 def pymses_units(unit_string):
     '''
@@ -22,6 +25,8 @@ def pymses_units(unit_string):
             pymses_unit = np.power(C.Unit(dims[0]), float(dims[1]))
             unit *= pymses_unit
         else:
+            if c in _pynbody_to_pymses_registry:
+                c = _pynbody_to_pymses_registry[c]
             unit *= C.Unit(c)
     return unit
 

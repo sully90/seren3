@@ -1,5 +1,5 @@
 import seren3
-from seren3.core.array import SimArray
+from pynbody.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 
@@ -60,5 +60,4 @@ def part_age(context, dset, **kwargs):
                 # output[j] = (time_simu - time)*unit_t/(365 * 24 * 3600 * 1e9)
 
     result = SimArray(output, "Gyr")
-    result.set_field_name(r"Age")
     return result
