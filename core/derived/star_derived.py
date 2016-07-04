@@ -34,9 +34,6 @@ def star_sSFR(context, dset, nbins=100, **kwargs):
         return SimArray(sfrhist, "Msol Gyr**-1"), SimArray(binmps, "Gyr"), SimArray(binsize, "Gyr")
 
     sfrhist, binmps, binsize = sfr(age, mass, **kwargs)
-    sfrhist.set_field_name("sSFR")
-    binmps.set_field_name("Lookback-time")
-    binsize.set_field_name("binsize")
     M_star = mass.sum()
     sSFR = (sfrhist * 1e9) / M_star  # Msun/yr -> Msun/Gyr
     return {'sSFR' : sSFR, 'lookback-time' : binmps, 'binsize' : binsize}  # sSFR [Gyr^-1], Lookback Time [Gyr], binsize [Gyr]

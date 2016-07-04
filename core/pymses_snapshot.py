@@ -1,4 +1,5 @@
-from pymses import RamsesOutput
+import seren3
+import pymses
 from snapshot import Snapshot, Family
 
 class PymsesSnapshot(Snapshot):
@@ -8,13 +9,16 @@ class PymsesSnapshot(Snapshot):
     def __init__(self, path, ioutput, ro=None, **kwargs):
         super(PymsesSnapshot, self).__init__(path, ioutput, **kwargs)
         if ro is None:
-            self._ro = RamsesOutput(path, ioutput, metals=self.metals, **kwargs)
+            self._ro = pymses.RamsesOutput(path, ioutput, metals=self.metals, **kwargs)
         else:
             self._ro = ro
 
     def __getitem__(self, item):
         if hasattr(item, '__module__') and (item.__module__ == 'pymses.utils.regions'):
             return PymsesSubSnapshot(self, item)
+        elif isinstance(item, seren3.halos.Halo):
+            sphere = item.sphere
+            return PymsesSubSnapshot(self, sphere)
         else:
             raise ValueError("Unknown item: ", item)
 
@@ -61,6 +65,10 @@ class PymsesSnapshot(Snapshot):
         return Family(self, "amr")
 
     @property
+    def p(self):
+        return Family(self, "part")
+
+    @property
     def d(self):
         return Family(self, "dm")
 
@@ -77,7 +85,7 @@ class PymsesSnapshot(Snapshot):
 
     def set_nproc(self, nproc):
         pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT = nproc
-        return self.get_num_processors()
+        return self.get_nproc()
 
 class PymsesSubSnapshot(PymsesSnapshot):
     def __init__(self, pymses_snapshot, region):

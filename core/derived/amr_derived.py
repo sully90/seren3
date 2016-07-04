@@ -1,8 +1,19 @@
 import seren3
 from seren3.utils import constants
+from seren3.utils.derived_utils import _get_field
 from pynbody.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
+
+@seren3.derived_quantity(requires=["rho", "dx"], unit=C.Msun)
+def amr_mass(context, dset):
+    '''
+    Return cell mass in solar masses
+    '''
+    rho = _get_field(context, dset, "rho").in_units("Msol pc**-3")
+    dx = _get_field(context, dset, "dx").in_units("pc")
+    mass = rho * (dx**3)
+    return mass
 
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nH(context, dset):
@@ -10,7 +21,7 @@ def amr_nH(context, dset):
     Return hydrogen number density
     '''
     from pymses.utils import constants as C
-    rho = dset["rho"].in_units("kg m**-3")
+    rho = _get_field(context, dset, "rho").in_units("kg m**-3")
     mH = constants.from_pymses_constant(context.C.mH)
     H_cc = mH / 0.76  # Hydrogen mass fraction
     nH = (rho/H_cc).in_units("cm**-3")
@@ -30,7 +41,7 @@ def amr_xHI(context, dset):
     '''
     Hydrogen neutral fraction
     '''
-    val = 1. - dset['xHII']
+    val = 1. - _get_field(context, dset, "xHII")
     result = SimArray(val)
     return result
 
@@ -39,6 +50,19 @@ def amr_cs(context, dset):
     '''
     Gas sound speed in m/s (units are convertabke)
     '''
-    result = np.sqrt(1.66667 * dset['P'] / dset['rho'])
+    rho = _get_field(context, dset, "rho")
+    P = _get_field(context, dset, "P")
+    result = np.sqrt(1.66667 * P / rho)
     return result
 
+@seren3.derived_quantity(requires=["P", "rho"], unit=C.K)
+def amr_T2(context, dset):
+    '''
+    Gas Temperature in units of K/mu
+    '''
+    rho = _get_field(context, dset, "rho")
+    P = _get_field(context, dset, "P")
+    mH = constants.from_pymses_constant(context.C.mH)
+    kB = constants.from_pymses_constant(context.C.kB)
+    return P/rho * (mH / kB)
+    

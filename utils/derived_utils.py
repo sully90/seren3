@@ -1,15 +1,36 @@
 """
 Location of the derived field registry
 """
+import seren3
+from pynbody.array import SimArray
 
 _derived_field_registry = {}  # Automatically filled by annotations
 
 _pynbody_to_pymses_registry = {"Msol" : "Msun"}  # translate pynbody units to pymses
 
+# Warning, do not include epoch in here
 _tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density", "unit" : "kg m**-3"}, \
                                 "vel" : {"info_key" : "unit_velocity", "unit" : "m s**-1"}, \
                                 "P" : {"info_key" : "unit_pressure", "unit" : "kg m**-1 s**-2"}, \
+                                "dx" : {"info_key" : "unit_length", "unit" : "m"}, \
+                                "pos" : {"info_key" : "unit_length", "unit" : "m"}, \
                                 "mass" : {"info_key" : "unit_mass", "unit" : "Msol"}}
+
+def _get_field(context, dset, field):
+    if not isinstance(dset[field], SimArray):
+        if seren3.in_tracked_field_registry(field):
+                unit_key = seren3.get_tracked_field_info_key(field)
+                unit_string = seren3.get_tracked_field_unit(field)
+                pymses_unit = seren3.pymses_units(unit_string)
+
+                val = dset[field] * context.info[unit_key].express(pymses_unit)
+                val = SimArray(val, unit_string)
+                return val
+        else:
+            val = SimArray(dset[field])
+            return val
+    else:
+        return dset[field]
 
 def pymses_units(unit_string):
     '''

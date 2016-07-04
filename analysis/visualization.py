@@ -13,6 +13,7 @@ def ScalarOperator(family, field):
             info_key = seren3.get_tracked_field_info_key(field)
             unit = family.info[info_key]
     lambda_op = seren3.LambdaOperator(family, field)
+    # print "Unit: ", unit
     op = pymScalarOperator(lambda_op, unit)
     return op
 
@@ -28,6 +29,8 @@ def FractionOperator(family, field, vol_weighted=False):
             unit = family.info[info_key]
     up_func = seren3.LambdaOperator(family, field, power=2., vol_weighted=vol_weighted)
     down_func = seren3.LambdaOperator(family, field, power=1., vol_weighted=vol_weighted)
+
+    # print "Unit: ", unit
     op = pymFractionOperator(up_func, down_func, unit)
     return op
 

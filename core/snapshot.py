@@ -41,6 +41,10 @@ class Snapshot(object):
         return
 
     @abc.abstractmethod
+    def p(self):
+        return
+
+    @abc.abstractmethod
     def d(self):
         return
 
@@ -251,7 +255,11 @@ class Family(object):
         if self.family in self.base.known_particles:
             required_fields.append("level")  # required for fft projections of particle fields
 
-        source = self.base.get_source(self.family, required_fields)
+        source = None
+        if "dx" in required_fields or "pos" in required_fields:
+            source = self.base.get_source(self.family, [r for r in required_fields if r != "dx" and r != "pos"])
+        else:
+            source = self.base.get_source(self.family, required_fields)
         if return_required_fields:
             return source, required_fields
         return source

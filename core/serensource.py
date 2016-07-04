@@ -77,10 +77,10 @@ class SerenSource(sources.DataSource):
         dset = self._dset
         family = self._family.family
 
-        if "pos" in self.requested_fields:
-            derived_dset["pos"] = dset.points
-        if "dx" in self.requested_fields:
-            derived_dset["dx"] = dset.get_sizes()
+        if "dx" in self.required_fields:
+            dset.add_scalars("dx", dset.get_sizes())
+        if "pos" in self.required_fields:
+            dset.add_vectors("pos", dset.points)
 
         # Deal with tracked fields / units
         tracked_fields = {}

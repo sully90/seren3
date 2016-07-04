@@ -55,6 +55,10 @@ class Halo(object):
         return Family(self.subsnap, 'amr')
 
     @property
+    def p(self):
+        return Family(self.subsnap, "part")
+
+    @property
     def s(self):
         return Family(self.subsnap, 'star')
 
@@ -142,6 +146,13 @@ class HaloCatalogue(object):
     @abc.abstractmethod
     def load(self):
         return
+
+    def mpi_spheres(self):
+        '''
+        Returns iterable which can be scattered/gathered
+        '''
+        halo_spheres = np.array( [ {'id' : h.hid, 'reg' : h.sphere, 'mvir' : h['mvir'].v} for h in self ] )
+        return halo_spheres
 
     def _halo_generator(self):
         i = 0
