@@ -30,7 +30,8 @@ def main(path, iout, nbins=50):
         subsnap = snap[sphere]
 
         try:
-            dset = subsnap.s["sSFR"].flatten(nbins=nbins, agerange=agerange)
+            dset = {}
+            dset["sSFR"] = subsnap.s["sSFR"].flatten(nbins=nbins, agerange=agerange)
             dset["mvir"] = h["mvir"]
             sto.idx = h["id"]
             sto.result = dset

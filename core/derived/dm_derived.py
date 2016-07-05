@@ -1,5 +1,4 @@
 import seren3
-from seren3.core.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 

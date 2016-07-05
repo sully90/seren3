@@ -34,11 +34,10 @@ def main(path, iout):
         subsnap = snap[sphere]
 
         part_dset = subsnap.p[["mass", "epoch", "id"]].flatten()
-        gas_dset = subsnap.g["mass"].flatten()
+        gas_mass = subsnap.g["mass"].in_units("Msol")
 
         star_idx = stars(part_dset)
         part_mass = part_dset["mass"].in_units("Msol")
-        gas_mass = gas_dset["mass"].in_units("Msol")
 
         tot_mass = part_mass.sum() + gas_mass.sum()
         star_mass = part_mass[star_idx].sum()

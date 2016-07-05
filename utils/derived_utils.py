@@ -2,38 +2,22 @@
 Location of the derived field registry
 """
 import seren3
-from pynbody.array import SimArray
 
 _derived_field_registry = {}  # Automatically filled by annotations
 
 _pynbody_to_pymses_registry = {"Msol" : "Msun"}  # translate pynbody units to pymses
 
 # Warning, do not include epoch in here
-_tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density", "unit" : "kg m**-3"}, \
-                                "vel" : {"info_key" : "unit_velocity", "unit" : "m s**-1"}, \
-                                "P" : {"info_key" : "unit_pressure", "unit" : "kg m**-1 s**-2"}, \
-                                "dx" : {"info_key" : "unit_length", "unit" : "m"}, \
+_tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density"}, \
+                                "vel" : {"info_key" : "unit_velocity"}, \
+                                "P" : {"info_key" : "unit_pressure"}, \
+                                "dx" : {"info_key" : "unit_length"}, \
                                 # "Np" : {"info_key" : "unit_photon_number", "unit" : "m**-3"}, \
-                                "Np" : {"info_key" : "unit_photon_flux_density", "unit" : "m**-2 s**-1"}, \
-                                "Fp" : {"info_key" : "unit_photon_flux_density", "unit" : "m**-2 s**-1"}, \
-                                "pos" : {"info_key" : "unit_length", "unit" : "m"}, \
-                                "mass" : {"info_key" : "unit_mass", "unit" : "Msol"}}
+                                "Np" : {"info_key" : "unit_photon_flux_density"}, \
+                                "Fp" : {"info_key" : "unit_photon_flux_density"}, \
+                                "pos" : {"info_key" : "unit_length"}, \
+                                "mass" : {"info_key" : "unit_mass", "default_unit" : "Msol"}}
 
-def _get_field(context, dset, field):
-    if not isinstance(dset[field], SimArray):
-        if seren3.in_tracked_field_registry(field):
-                unit_key = seren3.get_tracked_field_info_key(field)
-                unit_string = seren3.get_tracked_field_unit(field)
-                pymses_unit = seren3.pymses_units(unit_string)
-
-                val = dset[field] * context.info[unit_key].express(pymses_unit)
-                val = SimArray(val, unit_string)
-                return val
-        else:
-            val = SimArray(dset[field])
-            return val
-    else:
-        return dset[field]
 
 def pymses_units(unit_string):
     '''
@@ -57,11 +41,8 @@ def pymses_units(unit_string):
 def in_tracked_field_registry(field):
     return field in _tracked_field_unit_registry
 
-def get_tracked_field_info_key(field):
-    return _tracked_field_unit_registry[field]["info_key"]
-
-def get_tracked_field_unit(field):
-    return _tracked_field_unit_registry[field]["unit"]
+def info_for_tracked_field(field):
+    return _tracked_field_unit_registry[field]
 
 def derived_quantity(requires, unit):
     def wrap(fn):

@@ -1,5 +1,5 @@
 import seren3
-from pynbody.array import SimArray
+from seren3.array import SimArray
 from pymses.sources.ramses.sources import RamsesAmrSource, RamsesParticleSource
 from pymses.core import sources
 
@@ -15,6 +15,14 @@ class SerenSource(sources.DataSource):
         self._cpu_list = cpu_list
         self.required_fields = required_fields
         self.requested_fields = requested_fields
+
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            return self.flatten()[item]
+        elif str(item).isdigit():
+            return self.get_domain_dset(item)
+        else:
+            raise Exception("Can't get item: %s" % item)
 
     def __iter__(self):
         cpu_list = None
@@ -53,6 +61,10 @@ class SerenSource(sources.DataSource):
                 src = src.source
                 if isinstance(src, RamsesAmrSource) or isinstance(src, RamsesParticleSource):
                     return src
+
+    @property
+    def f(self):
+        return self.flatten()
 
     def flatten(self, **kwargs):
         self._dset = self._source.flatten()
@@ -94,12 +106,14 @@ class SerenSource(sources.DataSource):
             if f[-1].isdigit():
                 s = f[:-1]
             if seren3.in_tracked_field_registry(s):
-                unit_key = seren3.get_tracked_field_info_key(s)
-                unit_string = seren3.get_tracked_field_unit(s)
-                pymses_unit = seren3.pymses_units(unit_string)
+                info_for_field = seren3.info_for_tracked_field(s)
+                unit_key = info_for_field["info_key"]
 
-                val = dset[f] * self._family.info[unit_key].express(pymses_unit)
-                val = SimArray(val, unit_string)
+                unit = self._family.info[unit_key]
+                val = SimArray(dset[f], unit)
+
+                if "default_unit" in info_for_field:
+                    val = val.in_units(info_for_field["default_unit"])
                 tracked_fields[f] = val
             else:
                 tracked_fields[f] = SimArray(dset[f])
@@ -142,4 +156,6 @@ class SerenSource(sources.DataSource):
                 raise Exception("Don't know what to do with non-tracked and non-derived field: %s", f)
 
         print "Done"
+        if len(self.requested_fields) == 1:
+            return derived_dset[self.requested_fields[0]]
         return derived_dset

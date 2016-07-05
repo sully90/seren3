@@ -106,3 +106,30 @@ class PymsesSubSnapshot(PymsesSnapshot):
         return Camera(center=center, region_size=region_size, \
                 distance=distance, far_cut_depth=far_cut_depth, \
                 map_max_size=map_max_size, **kwargs)
+
+    def pynbody_snapshot(self, filt=False):
+        '''
+        Load a pynbody snapshot using only the CPUs that bound this subsnapshot
+        '''
+        import pynbody
+        import numpy as np
+
+        bbox = self.region.get_bounding_box()
+        cpus = self.cpu_list(bbox)
+
+        s = pynbody.load("%s/output_%05i/" % (self.path, self.ioutput), cpus=cpus)
+
+        # Center on region center
+        s['pos'] -= self.region.center
+
+        # Alias metals field
+        if s.has_key('metal'):
+            s['metals'] = s['metal']
+        else:
+            s['metals'] = np.ones(len(s)) * 1e-6
+
+        if filt:
+            # Filter data to a sphere
+            s = s[pynbody.filt.Sphere(self.region.radius)]
+
+        return s
