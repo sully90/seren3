@@ -298,19 +298,18 @@ class Family(object):
         Spherical binning function
         '''
         from seren3.array import SimArray
-        from seren3.utils.constants import from_pymses_unit
         from seren3.utils.derived_utils import LambdaOperator, is_derived
         from seren3.analysis.profile_binners import SphericalProfileBinner
 
         if center is None:
             if hasattr(self.base, "region"):
-                center = SimArray(self.base.region.center, self.info["unit_length"])
+                center = self.base.region.center
             else:
                 raise Exception("center not specified")
 
         if r is None:
             if hasattr(self.base, "region"):
-                r = SimArray(self.base.region.radius, self.info["unit_length"])
+                r = self.base.region.radius
             else:
                 raise Exception("radius not specified")
 
@@ -320,10 +319,11 @@ class Family(object):
             else:
                 profile_func = lambda dset: dset[field]
 
-        r_bins = SimArray(np.linspace(0., r, nbins), r.units)
+        r_bins = np.linspace(0., r, nbins)
 
         source = self[[field, "pos"]]
-        binner = SphericalProfileBinner(center, profile_func, r_bins, divide_by_counts)
+        binner = SphericalProfileBinner(field, center, profile_func, r_bins, divide_by_counts)
+        prof = binner.process(source)
+        r_bins = SimArray(r_bins, self.info["unit_length"]).in_units(r_units)
 
-
-        return binner.process(source)
+        return prof, r_bins[1:]

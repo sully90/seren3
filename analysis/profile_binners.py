@@ -4,14 +4,15 @@ Routines for binning RAMSES datasets
 
 import abc
 import numpy as np
-from pynbody.array import SimArray
+from seren3.array import SimArray
 
 class ProfileBinner(object):
     '''
     Base class for all profile binners
     '''
     __metaclass__ = abc.ABCMeta # Abstract class
-    def __init__(self, profile_func, bin_bounds, divide_by_counts=True):
+    def __init__(self, field, profile_func, bin_bounds, divide_by_counts=True):
+        self.field = field
         self.profile_func = profile_func
         self.bin_bounds = bin_bounds
         self.divide_by_counts = divide_by_counts
@@ -29,7 +30,6 @@ class ProfileBinner(object):
         profile = 0.
 
         for dset in source:
-
             bin_coords = self.bin_func(dset)
 
             # Compute profile for this batch
@@ -48,7 +48,7 @@ class ProfileBinner(object):
                 counts[counts == 0] = 1
                 dprofile = dprofile / counts
 
-            profile += dprofile
+            profile += SimArray(dprofile, dset[self.field].units)
 
         return profile
 
@@ -56,9 +56,9 @@ class SphericalProfileBinner(ProfileBinner):
     '''
     Spherical profile binner class
     '''
-    def __init__(self, center, profile_func, bin_bounds, divide_by_counts=False):
+    def __init__(self, field, center, profile_func, bin_bounds, divide_by_counts=False):
         self.center = np.asarray(center)
-        super(SphericalProfileBinner, self).__init__(profile_func, bin_bounds, divide_by_counts)
+        super(SphericalProfileBinner, self).__init__(field, profile_func, bin_bounds, divide_by_counts)
 
     def bin_func(self, point_dset):
         '''
@@ -77,11 +77,11 @@ class CylindricalProfileBinner(ProfileBinner):
 
     """
 
-    def __init__(self, center, axis_vect, profile_func, bin_bounds, divide_by_counts=False):
+    def __init__(self, field, center, axis_vect, profile_func, bin_bounds, divide_by_counts=False):
         self.center = np.asarray(center)
         self.axis_vect = np.asarray(axis_vect) / np.linalg.norm(axis_vect, 2)
 
-        super(CylindricalProfileBinner, self).__init__(profile_func, bin_bounds, divide_by_counts)
+        super(CylindricalProfileBinner, self).__init__(field, profile_func, bin_bounds, divide_by_counts)
 
     def bin_func(self, point_dset):
         """Returns the array of distances from `point_dset["pos"]` to

@@ -36,7 +36,7 @@ def amr_nHe(context, dset):
     '''
     X_frac, Y_frac = (context.info['X_fraction'], context.info['Y_fraction'])
     nHe = 0.25 * amr_nH(context, dset) * (Y_frac/X_frac)
-    return result
+    return result.in_units("cm**-3")
 
 @seren3.derived_quantity(requires=["xHII"], unit=C.none)
 @check_dset
@@ -57,7 +57,7 @@ def amr_cs(context, dset):
     rho = dset["rho"]
     P = dset["P"]
     result = np.sqrt(1.66667 * P / rho).in_units("m s**-1")
-    return result
+    return result.in_units("m s**-1")
 
 @seren3.derived_quantity(requires=["P", "rho"], unit=C.K)
 @check_dset
@@ -88,4 +88,4 @@ def amr_Gamma(context, dset, iIon=0):
         csn = SimArray(context.info_rt["group%i" % i]["csn"][iIon])
         emi += Np * csn
 
-    return emi
+    return emi.in_units("s**-1")
