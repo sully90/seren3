@@ -99,6 +99,7 @@ class SerenSource(sources.DataSource):
             dset.add_vectors("pos", dset.points)
 
         # Deal with tracked fields / units
+        # TODO -> Will always be done by @check_dset annotation, remove this
         tracked_fields = {}
         for f in self.required_fields:
             # Deal with group specific fields i.e Np1

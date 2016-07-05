@@ -5,6 +5,30 @@ from seren3.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 
+def check_dset(derived_fn):
+    '''
+    Ensures tracked fields always have unit information
+    '''
+    def _check_dset(context, dset, **kwargs):
+        parsed_dset = {}
+        for field in dset:
+            print field
+            if not isinstance(dset[field], SimArray):
+                field_info = seren3.info_for_tracked_field(field)
+                unit_key = field_info["info_key"]
+
+                unit = context.info[unit_key]
+                parseddset[field] = SimArray(field, unit)
+
+                if "default_unit" in field_info:
+                    dset[field] = dset[field].in_units(field_info["default_unit"])
+            else:
+                parsed_dset[field] = dset[field]
+
+            return derived_fn(context, dset, **kwargs)
+    return _check_dset
+
+@check_dset
 @seren3.derived_quantity(requires=["rho", "dx"], unit=C.Msun)
 def amr_mass(context, dset):
     '''
@@ -15,6 +39,7 @@ def amr_mass(context, dset):
     mass = rho * (dx**3)
     return mass
 
+@check_dset
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nH(context, dset):
     '''
@@ -26,6 +51,7 @@ def amr_nH(context, dset):
     nH = (rho/H_cc).in_units("cm**-3")
     return nH
 
+@check_dset
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nHe(context, dset):
     '''
@@ -35,6 +61,7 @@ def amr_nHe(context, dset):
     nHe = 0.25 * amr_nH(context, dset) * (Y_frac/X_frac)
     return result
 
+@check_dset
 @seren3.derived_quantity(requires=["xHII"], unit=C.none)
 def amr_xHI(context, dset):
     '''
@@ -44,6 +71,7 @@ def amr_xHI(context, dset):
     result = SimArray(val)
     return result
 
+@check_dset
 @seren3.derived_quantity(requires=["P", "rho"], unit=C.m/C.s)
 def amr_cs(context, dset):
     '''
@@ -54,6 +82,7 @@ def amr_cs(context, dset):
     result = np.sqrt(1.66667 * P / rho).in_units("m s**-1")
     return result
 
+@check_dset
 @seren3.derived_quantity(requires=["P", "rho"], unit=C.K)
 def amr_T2(context, dset):
     '''
@@ -68,6 +97,7 @@ def amr_T2(context, dset):
     return (P/rho * (mH / kB)).in_units("K")
     
 ############################################### RAMSES-RT ###############################################
+@check_dset
 @seren3.derived_quantity(requires=["Np1", "Np2", "Np3"], unit=1./C.s)
 def amr_Gamma(context, dset, iIon=0):
     '''
@@ -78,7 +108,7 @@ def amr_Gamma(context, dset, iIon=0):
     emi = 0.
     for i in range(1, context.info_rt["nGroups"] + 1):
         Np = dset["Np%i" % i]
-        csn = constants.from_pymses_unit(context.info_rt["group%i" % i]["csn"][iIon])
+        csn = SimArray(context.info_rt["group%i" % i]["csn"][iIon])
         emi += Np * csn
 
     return emi

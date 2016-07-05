@@ -304,13 +304,13 @@ class Family(object):
 
         if center is None:
             if hasattr(self.base, "region"):
-                center = from_pymses_unit(self.base.region.center * self.info["unit_length"])
+                center = SimArray(self.base.region.center, self.info["unit_length"])
             else:
                 raise Exception("center not specified")
 
         if r is None:
             if hasattr(self.base, "region"):
-                r = from_pymses_unit(self.base.region.radius * self.info["unit_length"])
+                r = SimArray(self.base.region.radius, self.info["unit_length"])
             else:
                 raise Exception("radius not specified")
 
