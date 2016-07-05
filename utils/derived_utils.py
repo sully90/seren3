@@ -36,7 +36,11 @@ def check_dset(fn):
 
         for field in keys:
             if not isinstance(dset[field], SimArray):
-                field_info = info_for_tracked_field(field)
+                field_info = None
+                if field[-1].isdigit():
+                    field_info = info_for_tracked_field(field[:-1])
+                else:
+                    field_info = info_for_tracked_field(field)
                 unit_key = field_info["info_key"]
 
                 unit = context.info[unit_key]
