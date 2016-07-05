@@ -66,3 +66,18 @@ def amr_T2(context, dset):
     kB = constants.from_pymses_constant(context.C.kB)
     return P/rho * (mH / kB)
     
+############################################### RAMSES-RT ###############################################
+@seren3.derived_quantity(requires=["Np1", "Np2", "Np3"], unit=1./C.s)
+def amr_Gamma(context, dset, iIon=0):
+    '''
+    Gas photoionization rate in [s^-1]
+    '''
+    from seren3.utils import constants
+
+    emi = 0.
+    for i in range(1, context.info_rt["nGroups"] + 1):
+        Np = _get_field(context, dset, "Np%i" % i)
+        csn = constants.from_pymses_constant(context.info_rt["group%i" % i]["csn"][iIon])
+        emi += Np * csn
+
+    return emi

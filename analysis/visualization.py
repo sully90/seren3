@@ -34,8 +34,7 @@ def FractionOperator(family, field, vol_weighted=False):
     op = pymFractionOperator(up_func, down_func, unit)
     return op
 
-
-def ProjectionPlot(family, field, mode='splatting', map_unit='Mpc', vol_weighted=True, camera=None, op=None):
+def ProjectionPlot(family, field, mode='splatting', map_unit='Mpc', vol_weighted=False, camera=None, op=None, **kwargs):
     '''
     Make a projection plot of the (sub)snapshot
 
@@ -50,11 +49,18 @@ def ProjectionPlot(family, field, mode='splatting', map_unit='Mpc', vol_weighted
         vol_weighted (bool) : Make volume weighted projection (switches to fft
             mode and FractionOperator)
     '''
-    if mode != 'splatting':
-        raise NotImplementedError("splatting only projections implemented")
+    from seren3.core.snapshot import Family
+
+    if not isinstance(family, Family):
+        raise Exception("Require Family specific snapshot, got %s. Use snap.g, .d or .s" % family)
 
     if camera is None:
-        camera = family.base.camera()
+        camera = family.camera()
+
+    # Disbale volume weighting
+    if mode == 'rt' and vol_weighted:
+        print "Volume weighting not supported by ray-tracing, disabling"
+        vol_weighted = False
 
     if op is None:
         if vol_weighted:
@@ -63,9 +69,18 @@ def ProjectionPlot(family, field, mode='splatting', map_unit='Mpc', vol_weighted
             op = ScalarOperator(family, field)
 
     map_unit = seren3.pymses_units(map_unit)
+    surf_qty = kwargs.pop('surf_qty', False)
+    process = None
 
     if mode == 'splatting':
         from pymses.analysis import splatting
-        fn = splatting.SplatterProcessor(family[field].source, family.info, op)
-        proj = fn.process(camera)
-        return proj
+        sp = splatting.SplatterProcessor(family[field].source, family.info, op)
+        process = sp.process
+    elif mode == 'rt':
+        from pymses.analysis import raytracing
+        rt = raytracing.RayTracer(family[field].source, family.ro.info, op)
+        process = rt.process
+    else:
+        raise Exception("Unknown projection mode: %s" % mode)
+    proj = process(camera, surf_qty=surf_qty, **kwargs)
+    return proj

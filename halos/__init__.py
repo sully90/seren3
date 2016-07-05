@@ -15,7 +15,7 @@ import logging
 import abc
 import sys
 
-logger = logging.getLogger('seren2.halos.halos')
+logger = logging.getLogger('seren3.halos.halos')
 
 class Halo(object):
     """
@@ -31,7 +31,7 @@ class Halo(object):
         self._subhalos = None
 
     def __str__(self):
-        return "halo_" + str(self.id)
+        return "halo_" + str(self.hid)
 
     def __repr__(self):
         pos, r = self.pos_r_code_units
@@ -88,6 +88,9 @@ class Halo(object):
     @property
     def subsnap(self):
         return self.base[self.sphere]
+
+    def camera(self, **kwargs):
+        return self.subsnap.camera(**kwargs)
 
 
 class HaloCatalogue(object):

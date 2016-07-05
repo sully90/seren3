@@ -13,6 +13,9 @@ _tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density", "unit" : "
                                 "vel" : {"info_key" : "unit_velocity", "unit" : "m s**-1"}, \
                                 "P" : {"info_key" : "unit_pressure", "unit" : "kg m**-1 s**-2"}, \
                                 "dx" : {"info_key" : "unit_length", "unit" : "m"}, \
+                                # "Np" : {"info_key" : "unit_photon_number", "unit" : "m**-3"}, \
+                                "Np" : {"info_key" : "unit_photon_flux_density", "unit" : "m**-2 s**-1"}, \
+                                "Fp" : {"info_key" : "unit_photon_flux_density", "unit" : "m**-2 s**-1"}, \
                                 "pos" : {"info_key" : "unit_length", "unit" : "m"}, \
                                 "mass" : {"info_key" : "unit_mass", "unit" : "Msol"}}
 

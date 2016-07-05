@@ -37,6 +37,10 @@ class SerenSource(sources.DataSource):
         return self._dset.get_sizes()
 
     @property
+    def point_dset_source(self):
+        return self._source
+
+    @property
     def source(self):
         '''
         The base RamsesAmrSource
@@ -85,9 +89,13 @@ class SerenSource(sources.DataSource):
         # Deal with tracked fields / units
         tracked_fields = {}
         for f in self.required_fields:
-            if seren3.in_tracked_field_registry(f):
-                unit_key = seren3.get_tracked_field_info_key(f)
-                unit_string = seren3.get_tracked_field_unit(f)
+            # Deal with group specific fields i.e Np1
+            s = f
+            if f[-1].isdigit():
+                s = f[:-1]
+            if seren3.in_tracked_field_registry(s):
+                unit_key = seren3.get_tracked_field_info_key(s)
+                unit_string = seren3.get_tracked_field_unit(s)
                 pymses_unit = seren3.pymses_units(unit_string)
 
                 val = dset[f] * self._family.info[unit_key].express(pymses_unit)

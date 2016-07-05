@@ -91,3 +91,18 @@ class PymsesSubSnapshot(PymsesSnapshot):
     def __init__(self, pymses_snapshot, region):
         super(PymsesSubSnapshot, self).__init__(pymses_snapshot.path, pymses_snapshot.ioutput, ro=pymses_snapshot.ro)
         self.region = region
+
+    def camera(self, **kwargs):
+        from pymses.analysis import Camera
+
+        center = self.region.center
+        radius = self.region.radius
+
+        region_size = [radius, radius]
+        distance = radius
+        far_cut_depth = radius
+        map_max_size = kwargs.pop("map_max_size", 1024)
+
+        return Camera(center=center, region_size=region_size, \
+                distance=distance, far_cut_depth=far_cut_depth, \
+                map_max_size=map_max_size, **kwargs)

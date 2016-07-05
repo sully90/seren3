@@ -209,12 +209,19 @@ class Family(object):
         return self.__str__()
 
     @property
+    def ro(self):
+        return self.base.ro
+
+    @property
     def info(self):
         return self.base.info
 
     @property
     def nml(self):
         return self.base.nml
+
+    def camera(self, **kwargs):
+        return self.base.camera(**kwargs)
 
     def compute_required_fields(self, fields):
         """
