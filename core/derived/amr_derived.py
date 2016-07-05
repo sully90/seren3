@@ -1,32 +1,9 @@
 import seren3
 from seren3.utils import constants
-# from seren3.utils.derived_utils import _get_field
+from seren3.utils.derived_utils import check_dset
 from seren3.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
-
-def check_dset(derived_fn):
-    '''
-    Ensures tracked fields always have unit information
-    '''
-    def _check_dset(context, dset, **kwargs):
-        parsed_dset = {}
-        for field in dset:
-            print field
-            if not isinstance(dset[field], SimArray):
-                field_info = seren3.info_for_tracked_field(field)
-                unit_key = field_info["info_key"]
-
-                unit = context.info[unit_key]
-                parseddset[field] = SimArray(field, unit)
-
-                if "default_unit" in field_info:
-                    dset[field] = dset[field].in_units(field_info["default_unit"])
-            else:
-                parsed_dset[field] = dset[field]
-
-            return derived_fn(context, dset, **kwargs)
-    return _check_dset
 
 @check_dset
 @seren3.derived_quantity(requires=["rho", "dx"], unit=C.Msun)

@@ -38,6 +38,29 @@ def pymses_units(unit_string):
             unit *= C.Unit(c)
     return unit
 
+def check_dset(derived_fn):
+    '''
+    Ensures tracked fields always have unit information
+    '''
+    def _check_dset(context, dset, **kwargs):
+        parsed_dset = {}
+        for field in dset:
+            print field
+            if not isinstance(dset[field], SimArray):
+                field_info = info_for_tracked_field(field)
+                unit_key = field_info["info_key"]
+
+                unit = context.info[unit_key]
+                parseddset[field] = SimArray(field, unit)
+
+                if "default_unit" in field_info:
+                    dset[field] = dset[field].in_units(field_info["default_unit"])
+            else:
+                parsed_dset[field] = dset[field]
+
+            return derived_fn(context, dset, **kwargs)
+    return _check_dset
+
 def in_tracked_field_registry(field):
     return field in _tracked_field_unit_registry
 
