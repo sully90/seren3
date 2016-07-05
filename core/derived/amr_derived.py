@@ -5,8 +5,8 @@ from seren3.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 
-@check_dset
 @seren3.derived_quantity(requires=["rho", "dx"], unit=C.Msun)
+@check_dset
 def amr_mass(context, dset):
     '''
     Return cell mass in solar masses
@@ -16,8 +16,8 @@ def amr_mass(context, dset):
     mass = rho * (dx**3)
     return mass
 
-@check_dset
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
+@check_dset
 def amr_nH(context, dset):
     '''
     Return hydrogen number density
@@ -28,8 +28,8 @@ def amr_nH(context, dset):
     nH = (rho/H_cc).in_units("cm**-3")
     return nH
 
-@check_dset
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
+@check_dset
 def amr_nHe(context, dset):
     '''
     Return Helium number density
@@ -38,8 +38,8 @@ def amr_nHe(context, dset):
     nHe = 0.25 * amr_nH(context, dset) * (Y_frac/X_frac)
     return result
 
-@check_dset
 @seren3.derived_quantity(requires=["xHII"], unit=C.none)
+@check_dset
 def amr_xHI(context, dset):
     '''
     Hydrogen neutral fraction
@@ -48,8 +48,8 @@ def amr_xHI(context, dset):
     result = SimArray(val)
     return result
 
-@check_dset
 @seren3.derived_quantity(requires=["P", "rho"], unit=C.m/C.s)
+@check_dset
 def amr_cs(context, dset):
     '''
     Gas sound speed in m/s (units are convertabke)
@@ -59,8 +59,8 @@ def amr_cs(context, dset):
     result = np.sqrt(1.66667 * P / rho).in_units("m s**-1")
     return result
 
-@check_dset
 @seren3.derived_quantity(requires=["P", "rho"], unit=C.K)
+@check_dset
 def amr_T2(context, dset):
     '''
     Gas Temperature in units of K/mu
@@ -74,8 +74,8 @@ def amr_T2(context, dset):
     return (P/rho * (mH / kB)).in_units("K")
     
 ############################################### RAMSES-RT ###############################################
-@check_dset
 @seren3.derived_quantity(requires=["Np1", "Np2", "Np3"], unit=1./C.s)
+@check_dset
 def amr_Gamma(context, dset, iIon=0):
     '''
     Gas photoionization rate in [s^-1]

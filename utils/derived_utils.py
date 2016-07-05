@@ -12,11 +12,43 @@ _tracked_field_unit_registry = {"rho" : {"info_key" : "unit_density"}, \
                                 "vel" : {"info_key" : "unit_velocity"}, \
                                 "P" : {"info_key" : "unit_pressure"}, \
                                 "dx" : {"info_key" : "unit_length"}, \
+                                "size" : {"info_key" : "unit_length"}, \
                                 # "Np" : {"info_key" : "unit_photon_number", "unit" : "m**-3"}, \
                                 "Np" : {"info_key" : "unit_photon_flux_density"}, \
                                 "Fp" : {"info_key" : "unit_photon_flux_density"}, \
                                 "pos" : {"info_key" : "unit_length"}, \
                                 "mass" : {"info_key" : "unit_mass", "default_unit" : "Msol"}}
+
+from seren3.array import SimArray
+from functools import wraps
+
+def check_dset(fn):
+    @wraps(fn)
+    def _check_dest(context, dset, **kwargs):
+        parsed_dset = {}
+        keys = []
+        if isinstance(dset, dict):
+            keys = dset.keys()
+        elif hasattr(dset, "fields"):
+            keys = dset.fields
+        else:
+            raise Exception("Can't get keys for dset: %s" % dset)
+
+        for field in keys:
+            if not isinstance(dset[field], SimArray):
+                field_info = info_for_tracked_field(field)
+                unit_key = field_info["info_key"]
+
+                unit = context.info[unit_key]
+                parsed_dset[field] = SimArray(dset[field], unit)
+
+                if "default_unit" in field_info:
+                    parsed_dset[field] = parsed_dset[field].in_units(field_info["default_unit"])
+            else:
+                parsed_dset[field] = dset[field]
+
+        return fn(context, parsed_dset, **kwargs)
+    return _check_dest
 
 
 def pymses_units(unit_string):
@@ -37,29 +69,6 @@ def pymses_units(unit_string):
                 c = _pynbody_to_pymses_registry[c]
             unit *= C.Unit(c)
     return unit
-
-def check_dset(derived_fn):
-    '''
-    Ensures tracked fields always have unit information
-    '''
-    def _check_dset(context, dset, **kwargs):
-        parsed_dset = {}
-        for field in dset:
-            print field
-            if not isinstance(dset[field], SimArray):
-                field_info = info_for_tracked_field(field)
-                unit_key = field_info["info_key"]
-
-                unit = context.info[unit_key]
-                parseddset[field] = SimArray(field, unit)
-
-                if "default_unit" in field_info:
-                    dset[field] = dset[field].in_units(field_info["default_unit"])
-            else:
-                parsed_dset[field] = dset[field]
-
-            return derived_fn(context, dset, **kwargs)
-    return _check_dset
 
 def in_tracked_field_registry(field):
     return field in _tracked_field_unit_registry
