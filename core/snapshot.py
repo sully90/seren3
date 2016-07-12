@@ -9,6 +9,7 @@ class Snapshot(object):
     __metaclass__ = abc.ABCMeta
     def __init__(self, path, ioutput, **kwargs):
         import os
+        from snapshot_quantities import Quantity
         from pymses.utils import constants as C
 
         self.path = os.getcwd() if path.strip('/') == '.' else path
@@ -31,6 +32,9 @@ class Snapshot(object):
 
         # Init friedmann dict variable
         self._friedmann = None
+
+        # Quantities object
+        self.quantities = Quantity(self)
 
     @abc.abstractmethod
     def ro(self):
@@ -129,6 +133,10 @@ class Snapshot(object):
         - bounding box: (2, ndim) ndarray containing min/max bounding box
         '''
         return self.hilbert_dom_decomp.map_box(bounding_box)
+
+    @property
+    def z(self):
+        return self.cosmo["z"]
 
     @property
     def cosmo(self):
@@ -261,6 +269,8 @@ class Family(object):
 
         if self.family in self.base.known_particles:
             required_fields.append("level")  # required for fft projections of particle fields
+        if self.family in ["dm", "star"] and "epoch" not in required_fields:
+            required_fields.append("epoch")  # required for particle filtering
 
         source = None
         if "dx" in required_fields or "pos" in required_fields:

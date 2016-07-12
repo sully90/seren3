@@ -25,6 +25,10 @@ import config
 # # mpljson = json.load(open("%s/styles/538.json" % config.DATA_DIR))
 # matplotlib.rcParams.update(mpljson)
 
+def init(path="./"):
+    from seren3.core.simulation import Simulation
+    return Simulation(path)
+
 def load_cwd(ioutput, **kwargs):
     return load_snapshot('./', ioutput, **kwargs)
 

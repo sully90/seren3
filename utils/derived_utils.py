@@ -23,6 +23,10 @@ from seren3.array import SimArray
 from functools import wraps
 
 def check_dset(fn):
+    '''
+    Ensures the dset passed to a derived function always contains SimArrays with
+    unit information
+    '''
     @wraps(fn)
     def _check_dest(context, dset, **kwargs):
         parsed_dset = {}
@@ -37,17 +41,23 @@ def check_dset(fn):
         for field in keys:
             if not isinstance(dset[field], SimArray):
                 field_info = None
+                f = None
                 if field[-1].isdigit():
-                    field_info = info_for_tracked_field(field[:-1])
+                    # field_info = info_for_tracked_field(field[:-1])
+                    f = field[:-1]
                 else:
-                    field_info = info_for_tracked_field(field)
-                unit_key = field_info["info_key"]
+                    f = field
+                    # field_info = info_for_tracked_field(field)
+                if in_tracked_field_registry(f):
+                    field_info = info_for_tracked_field(f)
+                    unit_key = field_info["info_key"]
 
-                unit = context.info[unit_key]
-                parsed_dset[field] = SimArray(dset[field], unit)
-
-                if "default_unit" in field_info:
-                    parsed_dset[field] = parsed_dset[field].in_units(field_info["default_unit"])
+                    unit = context.info[unit_key]
+                    parsed_dset[field] = SimArray(dset[field], unit)
+                    if "default_unit" in field_info:
+                        parsed_dset[field] = parsed_dset[field].in_units(field_info["default_unit"])
+                else:
+                    parsed_dset[field] = SimArray(dset[field])
             else:
                 parsed_dset[field] = dset[field]
 

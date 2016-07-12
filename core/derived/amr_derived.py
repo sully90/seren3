@@ -69,9 +69,8 @@ def amr_T2(context, dset):
     P = dset["P"]
     mH = SimArray(context.C.mH)
     kB = SimArray(context.C.kB)
-    # mH = constants.from_pymses_unit(context.C.mH)
-    # kB = constants.from_pymses_unit(context.C.kB)
-    return (P/rho * (mH / kB)).in_units("K")
+    T2 = (P/rho * (mH / kB))
+    return T2.in_units("K")
     
 ############################################### RAMSES-RT ###############################################
 @seren3.derived_quantity(requires=["Np1", "Np2", "Np3"], unit=1./C.s)

@@ -134,8 +134,8 @@ class AHFCatalogue(HaloCatalogue):
         Run ramses2gadget then AHF
         '''
         import subprocess, os
-        from seren2.utils.sge import ncpu
-        from seren2.utils import which
+        from seren3.utils.sge import ncpu
+        from seren3.utils import which
         r2g = which("ramses2gadget")
         ahf = which("AHF-v1.0-084")
 
@@ -162,7 +162,7 @@ class AHFCatalogue(HaloCatalogue):
         tasks.append(ahf_exe)
 
         # Run the tasks
-        NSLOTS = kwargs.get("NSLOTS", int(ncpu() / 2.))
+        NSLOTS = kwargs.get("NSLOTS", int(ncpu() / 4.))
         for task in tasks:
             mpi_task = "mpirun -np {NSLOTS} {EXE}".format(NSLOTS=NSLOTS, EXE=task)
             print mpi_task

@@ -82,6 +82,13 @@ def piter(iterable, storage=None, keep_None=False, print_stats=False):
                 local_results = results[irank]
                 storage[irank] = local_results
 
+def unpack(dest):
+    result = []
+    for rank in dest:
+        for item in dest[rank]:
+            result.append(item)
+    return result
+
 def msg(message):
     print '[rank %d   ]: %s' % (rank, message)
 
