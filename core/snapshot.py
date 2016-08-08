@@ -2,6 +2,8 @@ import abc
 import numpy as np
 from namelist import load_nml, NML
 
+from seren3 import config
+
 class Snapshot(object):
     """
     Base class for loading RAMSES snapshots
@@ -18,11 +20,14 @@ class Snapshot(object):
 
         # Known particles
         self.known_particles = ["dm", "star", "gmc"]
+        self.particle_field_list = ["mass", "pos", "vel", "epoch", "id"]
 
         # Load the namelist file
         self.nml = load_nml(self)
         # Tracking metals?
         self.metals = self.nml[NML.PHYSICS_PARAMS]['metal'] == '.true.' or kwargs.pop("metal", False)
+        if self.metals:
+            self.particle_field_list.append("metal")
         # Patch?
         self.patch = None
         if os.path.isfile("%s/output_%05i/info_rt_%05i.txt" % (self.path, self.ioutput, self.ioutput)):
@@ -35,6 +40,10 @@ class Snapshot(object):
 
         # Quantities object
         self.quantities = Quantity(self)
+
+    @abc.abstractmethod
+    def get_source(self, family, fields):
+        return
 
     @abc.abstractmethod
     def ro(self):
@@ -57,6 +66,10 @@ class Snapshot(object):
         return
 
     @abc.abstractmethod
+    def gmc(self):
+        return
+
+    @abc.abstractmethod
     def get_source(self, family):
         return
 
@@ -64,10 +77,13 @@ class Snapshot(object):
     def get_sphere(self, pos, r):
         return
 
-    def halos(self, finder='ahf', **kwargs):
+    def halos(self, finder=config.DEFAULT_HALO_FINDER, **kwargs):
         if finder.lower() == 'ahf':
             from seren3.halos.halos import AHFCatalogue
             return AHFCatalogue(self, **kwargs)
+        elif finder.lower() == 'rockstar':
+            from seren3.halos.halos import RockstarCatalogue
+            return RockstarCatalogue(self, **kwargs)
 
     @property
     def h(self):
@@ -202,6 +218,9 @@ class Snapshot(object):
 
         return friedmann
 
+    def pynbody_snapshot(self, **kwargs):
+        raise NotImplementedError("Not implemented conversion for base snapshot")
+
 class Family(object):
     """
     Class to load family specific fields
@@ -215,6 +234,10 @@ class Family(object):
 
     def __repr__(self):
         return self.__str__()
+
+    def __len__(self):
+        dset = self["pos"].f
+        return len(dset)
 
     @property
     def ro(self):
@@ -234,13 +257,16 @@ class Family(object):
     def compute_required_fields(self, fields):
         """
         Computes which of the tracked scalar quantities are needed to fully derive a field
-        Parameters
-        ----------
-        fields - array/list of Field objects
         """
         from seren3.utils import derived_utils as derived
         if not hasattr(fields, "__iter__"):
             fields = [fields]
+
+        field_list = None  # Fields RAMSES knows about
+        if self.family == 'amr':
+            field_list = self.ro._amr_fields().field_name_list
+        else:
+            field_list = self.base.particle_field_list
 
         known_fields = set()
 
@@ -253,7 +279,10 @@ class Family(object):
                     else:
                         known_fields.add(r)
             else:
-                known_fields.add(field)
+                if field in field_list:
+                    known_fields.add(field)
+                else:
+                    raise Exception("Unknown %s field: %s" % (self.family, field))
 
         for f in fields:
             _get_rules(f)
@@ -269,8 +298,10 @@ class Family(object):
 
         if self.family in self.base.known_particles:
             required_fields.append("level")  # required for fft projections of particle fields
-        if self.family in ["dm", "star"] and "epoch" not in required_fields:
-            required_fields.append("epoch")  # required for particle filtering
+            if "epoch" not in required_fields:
+                required_fields.append("epoch")  # required for particle filtering
+            if "id" not in required_fields:
+                required_fields.append("id")  # required for particle filtering
 
         source = None
         if "dx" in required_fields or "pos" in required_fields:

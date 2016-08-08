@@ -1,6 +1,36 @@
 import numpy as np
 import re
 
+heaviside = lambda x: 0.5 if x == 0 else 0 if x < 0 else 1  # step function
+
+def unit_vec_r(theta, phi):
+    '''
+    Unit vector along theta and phi
+    '''
+    return np.array( [np.cos(phi)*np.sin(theta), np.sin(phi)*np.sin(theta), np.cos(theta)] )
+
+def lookahead(iterable):
+    """Pass through all values from the given iterable, augmented by the
+    information if there are more values to come after the current one
+    (True), or if it is the last value (False).
+    """
+    # Get an iterator and pull the first value.
+    it = iter(iterable)
+    last = next(it)
+    # Run the iterator to exhaustion (starting from the second value).
+    for val in it:
+        # Report the *previous* value (more to come).
+        yield last, True
+        last = val
+    # Report the last value.
+    yield last, False
+
+def first_above(value, iterable):
+    '''
+    Returns the index of the iterable which first exceedes value
+    '''
+    return next(x[0] for x in enumerate(iterable) if x[1] > value)
+
 
 def mass_sph(ilevel, ndim, **cosmo):
     '''

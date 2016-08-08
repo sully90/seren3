@@ -1,4 +1,7 @@
 class Result(object):
+    '''
+    Simple wrapper object to contain result of single iteration MPI computation
+    '''
     def __init__(self, rank, idx):
         self.rank = rank
         self.idx = idx
@@ -14,4 +17,4 @@ class Result(object):
         return self.result != other.result
 
     def __hash__(self):
-        return hash(self.__repr__())
+        return hash(self.result)

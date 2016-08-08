@@ -57,7 +57,7 @@ class PymsesSnapshot(Snapshot):
     def gmc_source(self, fields):
         if not hasattr(fields, "__iter__"):
             fields = [fields]
-        raise NotImplementedError("gmc particle selection not implemented for pymses_4.1.3")
+        return self.ro.particle_source(fields, select_stars=False, select_dark_matter=False, select_gmc=True)
 
 
     @property
@@ -75,6 +75,10 @@ class PymsesSnapshot(Snapshot):
     @property
     def s(self):
         return Family(self, "star")
+
+    @property
+    def gmc(self):
+        return Family(self, "gmc")
 
     def camera(self, **kwargs):
         from pymses.analysis import Camera
@@ -107,7 +111,7 @@ class PymsesSubSnapshot(PymsesSnapshot):
                 distance=distance, far_cut_depth=far_cut_depth, \
                 map_max_size=map_max_size, **kwargs)
 
-    def pynbody_snapshot(self, filt=False):
+    def pynbody_snapshot(self, filt=False, remove_gmc=True):
         '''
         Load a pynbody snapshot using only the CPUs that bound this subsnapshot
         '''
@@ -131,5 +135,23 @@ class PymsesSubSnapshot(PymsesSnapshot):
         if filt:
             # Filter data to a sphere
             s = s[pynbody.filt.Sphere(self.region.radius)]
+
+        # Deal with GMC particles and stellar age
+        if all(i > 0 for i in s.s['iord']) and remove_gmc:
+            # We have GMC particles -> setup new family
+            # gmc = pynbody.family.Family("gmc")  # not working
+            # s.gmc = s.s[np.where(s.s['iord'] < 0)]
+
+            # Just remove GMC for now, until a better solution is found
+            s.s = s.s[s.s['iord'] > 0]
+
+        # Create age field for star particles
+        if len(s.s) > 0:
+            from pynbody.array import SimArray
+            from seren3.core.derived.part_derived import part_age
+            tform = s.s['tform']
+            age = part_age(self, {'epoch':tform})
+            age = SimArray(age, 'Gyr')
+            s.s['age'] = age
 
         return s

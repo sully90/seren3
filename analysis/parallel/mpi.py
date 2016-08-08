@@ -61,12 +61,17 @@ def piter(iterable, storage=None, keep_None=False, print_stats=False):
         res = Result(rank, i)
 
         # yield to the for loop
-        yield local_iterable[i], res
+        if storage is not None:
+            yield local_iterable[i], res
+        else:
+            yield local_iterable[i]
 
         if keep_None is False and res.result is None:
             continue
-        # store the result
-        local_results.append(res)
+
+        if storage is not None:
+            # store the result
+            local_results.append(res)
 
     # If the executing code sets dest, then reduce it to rank 0
     if storage is not None:
@@ -96,6 +101,5 @@ def msg(message):
 def terminate(code, e=None):
     if e:
         msg("Caught exception: %s" % e)
-    else:
-        msg("Terminating")
+    msg("Terminating")
     comm.Abort(code)

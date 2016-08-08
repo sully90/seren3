@@ -12,23 +12,23 @@ class AHFCatalogue(HaloCatalogue):
 
     # assume file structure like this
 
-# ID(1)  hostHalo(2)     numSubStruct(3) Mvir(4) npart(5)        Xc(6)
-# Yc(7)   Zc(8)   VXc(9)  VYc(10) VZc(11) Rvir(12)        Rmax(13)
-# r2(14)  mbp_offset(15)  com_offset(16)  Vmax(17)        v_esc(18)
-# sigV(19)        lambda(20)      lambdaE(21)     Lx(22)  Ly(23)  Lz(24)
-# b(25)   c(26)   Eax(27) Eay(28) Eaz(29) Ebx(30) Eby(31) Ebz(32) Ecx(33)
-# Ecy(34) Ecz(35) ovdens(36)      nbins(37)       fMhires(38)     Ekin(39)
-# Epot(40)        SurfP(41)       Phi0(42)        cNFW(43)
-# n_gas(44)       M_gas(45)       lambda_gas(46)  lambdaE_gas(47)
-# Lx_gas(48)      Ly_gas(49)      Lz_gas(50)      b_gas(51)
-# c_gas(52)       Eax_gas(53)     Eay_gas(54)     Eaz_gas(55)
-# Ebx_gas(56)     Eby_gas(57)     Ebz_gas(58)     Ecx_gas(59)
-# Ecy_gas(60)     Ecz_gas(61)     Ekin_gas(62)    Epot_gas(63)
-# n_star(64)      M_star(65)      lambda_star(66) lambdaE_star(67)
-# Lx_star(68)     Ly_star(69)     Lz_star(70)     b_star(71)
-# c_star(72)      Eax_star(73)    Eay_star(74)    Eaz_star(75)
-# Ebx_star(76)    Eby_star(77)    Ebz_star(78)    Ecx_star(79)
-# Ecy_star(80)    Ecz_star(81)    Ekin_star(82)   Epot_star(83)
+    # ID(1)  hostHalo(2)     numSubStruct(3) Mvir(4) npart(5)        Xc(6)
+    # Yc(7)   Zc(8)   VXc(9)  VYc(10) VZc(11) Rvir(12)        Rmax(13)
+    # r2(14)  mbp_offset(15)  com_offset(16)  Vmax(17)        v_esc(18)
+    # sigV(19)        lambda(20)      lambdaE(21)     Lx(22)  Ly(23)  Lz(24)
+    # b(25)   c(26)   Eax(27) Eay(28) Eaz(29) Ebx(30) Eby(31) Ebz(32) Ecx(33)
+    # Ecy(34) Ecz(35) ovdens(36)      nbins(37)       fMhires(38)     Ekin(39)
+    # Epot(40)        SurfP(41)       Phi0(42)        cNFW(43)
+    # n_gas(44)       M_gas(45)       lambda_gas(46)  lambdaE_gas(47)
+    # Lx_gas(48)      Ly_gas(49)      Lz_gas(50)      b_gas(51)
+    # c_gas(52)       Eax_gas(53)     Eay_gas(54)     Eaz_gas(55)
+    # Ebx_gas(56)     Eby_gas(57)     Ebz_gas(58)     Ecx_gas(59)
+    # Ecy_gas(60)     Ecz_gas(61)     Ekin_gas(62)    Epot_gas(63)
+    # n_star(64)      M_star(65)      lambda_star(66) lambdaE_star(67)
+    # Lx_star(68)     Ly_star(69)     Lz_star(70)     b_star(71)
+    # c_star(72)      Eax_star(73)    Eay_star(74)    Eaz_star(75)
+    # Ebx_star(76)    Eby_star(77)    Ebz_star(78)    Ecx_star(79)
+    # Ecy_star(80)    Ecz_star(81)    Ekin_star(82)   Epot_star(83)
     halo_type = np.dtype([('id', np.int64), ('hosthalo', np.int64), ('numsubstruct', np.int64), ('mvir', 'f'),
                           ('num_p', np.int64), ('pos',
                                                 'f', 3), ('vel', 'f', 3),
@@ -141,6 +141,15 @@ class AHFCatalogue(HaloCatalogue):
 
         tasks = []
 
+        # Write the config
+        path = "%s/AHF/%03d/" % (self.base.path, self.base.ioutput)
+        if os.path.isfile("%s/ahf.input" % path) is False:
+            if os.path.isfile("%s/ahf.input" % path) is False:
+                if self.write_cfg(**kwargs):
+                    print "AHFCatalogue wrote a partial(!) config file."
+                else:
+                    raise Exception("AHFCatalogue unable to write config file!")
+
         # Check if GADGET data exists
         print 'GADGET format exists: ', self.gadget_format_exists()
         if self.gadget_format_exists() is False:
@@ -189,22 +198,26 @@ class AHFCatalogue(HaloCatalogue):
                     box_size = float(l.split(':')[1])
                     return box_size
 
+    # def can_load(self, **kwargs):
+    #     '''
+    #     Check if hlist files exist
+    #     '''
+    #     import os
+    #     if os.path.isfile('%s/all_halos' % self.ahf_path) is False:
+    #         path = "%s/AHF/%03d/" % (self.base.path, self.base.ioutput)
+    #         if os.path.isfile("%s/ahf.input" % path) is False:
+    #             if self.write_cfg(**kwargs):
+    #                 print "AHFCatalogue wrote a partial(!) config file."
+    #             else:
+    #                 raise Exception("AHFCatalogue unable to write config file!")
+    #         else:
+    #             print "AHFCatalogue not found - ahf.input already written!"
+    #         return False
+    #     return True
+
     def can_load(self, **kwargs):
-        '''
-        Check if hlist files exist
-        '''
         import os
-        if os.path.isfile('%s/all_halos' % self.ahf_path) is False:
-            path = "%s/AHF/%03d/" % (self.base.path, self.base.ioutput)
-            if os.path.isfile("%s/ahf.input" % path) is False:
-                if self.write_cfg(**kwargs):
-                    print "AHFCatalogue wrote a partial(!) config file."
-                else:
-                    raise Exception("AHFCatalogue unable to write config file!")
-            else:
-                print "AHFCatalogue not found - ahf.input already written!"
-            return False
-        return True
+        return os.path.isfile("%s/all_halos" % self.ahf_path)
 
     def get_filename(self, **kwargs):
         return "%s/all_halos" % self.ahf_path
@@ -286,3 +299,109 @@ class AHFCatalogue(HaloCatalogue):
         logger.info(
             "%sCatalogue wrote a partial(!) config file. Exiting" % self.finder)
         return True
+
+class RockstarCatalogue(HaloCatalogue):
+    '''
+    Class to handle catalogues produced by Rockstar
+    Reads the out.list files
+    '''
+    halo_type = np.dtype( [('id', np.int64), ('descid', np.int64), \
+                ('mvir', 'f'), ('vmax', 'f'), \
+                ('vrms', 'f'), ('rvir', 'f'), \
+                ('rs', 'f'), ('np', 'f'), \
+                ('pos', 'f', 3), ('vel', 'f', 3), \
+                ('J', 'f', 3), ('spin', 'f'), \
+                ('rs_klypin', 'f'), ('mvir_all', 'f'), \
+                ('m200b', 'f'), ('m200c', 'f'), \
+                ('m500c', 'f'), ('m2500c', 'f'), \
+                ('r200b', 'f'), ('r200c', 'f'), \
+                ('r500c', 'f'), ('r2500c', 'f'), \
+                ('xoff', 'f'), ('voff', 'f'), \
+                ('spin_bullock', 'f'), ('b_to_a', 'f'), \
+                ('c_to_a', 'f'), ('A', 'f', 3), \
+                ('b_to_a_500c', 'f'), ('c_to_a_500c', 'f'), \
+                ('A500c', 'f', 3), ('T/U', 'f'), \
+                ('m_pe_behroozi', 'f'), ('M_pe_Diemer', 'f'), \
+                ('halfmass_radius', 'f')] )
+
+    units = {'sam_mvir': 'Msun / h',
+        'mvir': 'Msun / h',
+        'rvir': 'kpccm / h',
+        'rs': 'kpccm / h',
+        'vrms': 'km / s',
+        'vmax': 'km / s',
+        'pos': 'Mpccm / h',
+        'vel': 'km / s',
+        'J': 'Msun/h Mpc/h km/s',
+        'mvir_all': 'Msun / h',
+        'm_alt': 'Msun / h',
+        #'r_alt': 'kpccm / h',
+        'xoff': 'kpccm / h',
+        'voff': 'km / s',
+        'A': 'kpccm / h',
+        'halfmass_r': 'kpccm / h',
+        'macc': 'Msun / h',
+        'mpeak': 'Msun / h',
+        'vacc': 'km / s',
+        'vpeak': 'km / s',
+        'acc_rate_inst': 'Msun/h/yr',
+        'acc_rate_100myr': 'Msun/h/100Myr',
+        'first_acc_mvir': 'Msun / h',
+        'first_acc_vmax': 'km / s',
+        'vmax_at_mpeak': 'km / s'}
+
+    def __init__(self, pymses_snapshot, **kwargs):
+        super(RockstarCatalogue, self).__init__(pymses_snapshot, "Rockstar", **kwargs)
+
+    def can_load(self, **kwargs):
+        import os
+        return os.path.isdir("%s/rockstar/" % self.base.path) and os.path.isfile(self.get_rockstar_info_fname())
+
+    def get_rockstar_info_fname(self):
+        return "%s/rockstar/info_rockstar.txt" % (self.base.path)
+
+    def get_filename(self, **kwargs):
+        '''
+        Returns the rockstar catalogue filename
+        '''
+        rockstar_info_fname = self.get_rockstar_info_fname()
+        base_aexp = 1./(1. + self.base.z)
+
+        out_num = []
+        aexp = []
+        with open(rockstar_info_fname, "r") as f:
+            for line in f:
+                split_line = line.split('\t')
+                out_num.append( int(split_line[0]) )
+                aexp.append( float(split_line[1]) )
+        aexp = np.array(aexp)
+        idx_closest = (np.abs(aexp - base_aexp)).argmin()
+
+        out_fname = "out_%i.list" % (out_num[idx_closest])
+        print 'RockstarCatalogue: matched to %s' % out_fname
+        fname = "%s/rockstar/%s" % (self.base.path, out_fname)
+        return fname
+
+    def get_boxsize(self, **kwargs):
+        '''
+        Returns boxsize according to rockstar
+        '''
+        import re
+
+        with open(self.filename, 'r') as f:
+            for line in f:
+                if line.startswith('#Box size:'):
+                    boxsize = re.findall("\d+\.\d+", line)[0]
+                    return float(boxsize)  # Mpccm/h
+
+    def load(self, **kwargs):
+        # Ensures file is closed at the end. If within_r is specified, it must be in code units
+        with open(self.filename, 'r') as f:
+            haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
+
+            self._nhalos = len(haloprops)
+            self._haloprops = haloprops
+
+    def _get_halo(self, item):
+        haloprops = self._haloprops[item]
+        return Halo(haloprops['id'], self, haloprops)

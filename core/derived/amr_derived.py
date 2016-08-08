@@ -5,6 +5,18 @@ from seren3.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 
+@seren3.derived_quantity(requires=["pos"], unit=C.Msun)
+@check_dset
+def amr_r(context, dset, center=None):
+    '''
+    Radial position
+    '''
+    pos = dset["pos"]
+
+    if center is not None:
+        pos -= center
+    return ((pos ** 2).sum(axis=1)) ** (1,2)
+
 @seren3.derived_quantity(requires=["rho", "dx"], unit=C.Msun)
 @check_dset
 def amr_mass(context, dset):

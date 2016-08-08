@@ -6,10 +6,11 @@ NOTE: The new Halo catalogue will only work when loaded through yt for unit cohe
 
 @author dsullivan, bthompson
 =======
+TODO -> Use SimArray instead of YTArray
 '''
-
 import seren3
 from seren3.core.snapshot import Family
+from seren3.array import SimArray
 import numpy as np
 import logging
 import abc
@@ -67,6 +68,10 @@ class Halo(object):
         return Family(self.subsnap, 'dm')
 
     @property
+    def gmc(self):
+        return Family(self.subsnap, "gmc")
+
+    @property
     def pos_r_code_units(self):
         pos_units = self.catalogue.units['pos'].lower()
         boxsize = self.catalogue.boxsize
@@ -81,6 +86,26 @@ class Halo(object):
         return pos, self['rvir'].v / (boxsize * 1.e3)
 
     @property
+    def pos(self):
+        pos_units = self.catalogue.units['pos'].lower()
+        boxsize = self.catalogue.boxsize
+        pos = None
+        if pos_units == 'mpccm / h':
+            pos = self['pos'].v / boxsize
+        elif pos_units == 'kpccm / h':
+            pos = self['pos'].v / (boxsize * 1.e3)
+        else:
+            raise Exception("Cannot handle pos units: %s" % pos_units)
+
+        return SimArray(pos, self.base.info["unit_length"])
+
+    @property
+    def rvir(self):
+        boxsize = self.catalogue.boxsize
+        rvir = self["rvir"].v / (boxsize * 1.e3)
+        return SimArray(rvir, self.base.info["unit_length"])
+
+    @property
     def sphere(self):
         pos, r = self.pos_r_code_units
         return self.base.get_sphere(pos, r)
@@ -92,6 +117,64 @@ class Halo(object):
     def camera(self, **kwargs):
         return self.subsnap.camera(**kwargs)
 
+    @property
+    def Vc(self):
+        '''
+        Returns the circular velocity of the halo
+        '''
+        G = SimArray(self.base.C.G)
+        M = self["mvir"].in_units("kg")
+        M = SimArray(M.v, str(M.units))
+        Rvir = self["rvir"].in_units("m")
+        Rvir = SimArray(Rvir.v, str(Rvir.units))
+
+        return np.sqrt( (G*M)/Rvir )
+
+    @property
+    def Tvir(self):
+        '''
+        Returns the virial Temperature of the halo
+        '''
+        mu = 0.59  # Okamoto 2008
+        mH = SimArray(self.base.C.mH)
+        kB = SimArray(self.base.C.kB)
+        Vc = self.Vc
+
+        Tvir = 1./2. * (mu*mH/kB) * Vc**2
+        return Tvir
+
+    # def fesc(self, **kwargs):
+    #     '''
+    #     Computes halo escape fraction of hydrogen ionising photons
+    #     '''
+    #     from seren3.analysis.render import render_spherical
+
+    #     rvir = self.rvir
+    #     rt_c = SimArray(self.base.info_rt["rt_c_frac"] * self.base.C.c)
+    #     dt = rvir / rt_c
+
+    #     # Compute number of ionising photons from stars at time
+    #     # rvir/rt_c (assumin halo is a point source)
+    #     dset = self.s[["Nion_d", "mass", "age"]].flatten(dt=dt)
+    #     keep = np.where(dset["age"] - dt >= 0.)
+    #     mass = dset["mass"][keep]
+    #     nPhot = dset["Nion_d"] * mass
+
+    #     # Computed integrated flux out of the virial sphere
+    #     integrated_flux = render_spherical.integrate_surface_flux( 
+    #         render_spherical.render_quantity(self.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, **kwargs), rvir )
+    #     integrated_flux *= self.base.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
+
+    #     # return the escape fraction
+    #     return nPhot.sum() / integrated_flux
+
+    def fesc(self, **kwargs):
+        from seren3 import analysis
+        return analysis.fesc(self.subsnap, **kwargs)
+
+    def pynbody_snapshot(self, **kwargs):
+        return self.subsnap.pynbody_snapshot(**kwargs)
+
 
 class HaloCatalogue(object):
     """
@@ -100,16 +183,18 @@ class HaloCatalogue(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, pymses_snapshot, finder, filename=None, **kwargs):
-        import yt
-        self.ds = yt.load(\
-            "%s/output_%05d/info_%05d.txt" % \
-            (pymses_snapshot.path, pymses_snapshot.ioutput, pymses_snapshot.ioutput))
         self.base = pymses_snapshot
         self.finder = finder
 
         if self.can_load(**kwargs) is False:
-            logger.info("Unable to load catalogue for dataset with filename %s." % pymses_snapshot.path)
+            print "Unable to load catalogue for dataset with filename %s" % pymses_snapshot.path
+            logger.info("Unable to load catalogue for dataset with filename %s" % pymses_snapshot.path)
             return
+
+        import yt
+        self.ds = yt.load(\
+            "%s/output_%05d/info_%05d.txt" % \
+            (pymses_snapshot.path, pymses_snapshot.ioutput, pymses_snapshot.ioutput))
         self.filename = self.get_filename(**kwargs) if filename is None else filename
         self.boxsize = self.get_boxsize(**kwargs)  # Mpccm/h
 
@@ -131,7 +216,7 @@ class HaloCatalogue(object):
         return self._get_halo(item)
 
     @abc.abstractmethod
-    def get_boxsize(self):
+    def get_boxsize(self, **kwargs):
         return
 
     @abc.abstractmethod
@@ -143,7 +228,7 @@ class HaloCatalogue(object):
         return False
 
     @abc.abstractmethod
-    def get_filename(self):
+    def get_filename(self, **kwargs):
         return
 
     @abc.abstractmethod
@@ -240,6 +325,11 @@ class HaloCatalogue(object):
         # found = self._haloprops[neighbors]
         # return found
         return self.from_indicies(neighbors)
+
+    def from_id(self, hid):
+        for h in self:
+            if h.hid == hid:
+                return h
 
     def from_indicies(self, idx):
         '''
