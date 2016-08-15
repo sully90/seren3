@@ -59,7 +59,7 @@ def _compute_step(i, theta, phi, flux_map):
     # print("[Worker %d] Result for i %d is %f" % (os.getpid(), i, val))
     return val
 
-def integrate_surface_flux(flux_map, r, smooth=False, threaded=False, **smooth_kwargs):
+def integrate_surface_flux(flux_map, r, smooth=False, threaded=False, ret_map=False, **smooth_kwargs):
     '''
     Integrates a healpix surface flux to compute the total
     net flux out of the sphere.

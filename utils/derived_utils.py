@@ -35,6 +35,10 @@ def check_dset(fn):
             keys = dset.keys()
         elif hasattr(dset, "fields"):
             keys = dset.fields
+            if hasattr(dset, "get_sizes"):
+                parsed_dset["dx"] = SimArray(dset.get_sizes(), context.info["unit_length"])
+            if hasattr(dset, "points"):
+                parsed_dset["pos"] = SimArray(dset.points, context.info["unit_length"])
         else:
             raise Exception("Can't get keys for dset: %s" % dset)
 

@@ -6,10 +6,10 @@ class PymsesSnapshot(Snapshot):
     """
     Class for handling pymses snapshots
     """
-    def __init__(self, path, ioutput, ro=None, **kwargs):
+    def __init__(self, path, ioutput, ro=None, verbose=False, **kwargs):
         super(PymsesSnapshot, self).__init__(path, ioutput, **kwargs)
         if ro is None:
-            self._ro = pymses.RamsesOutput(path, ioutput, metals=self.metals, **kwargs)
+            self._ro = pymses.RamsesOutput(path, ioutput, metals=self.metals, verbose=verbose, **kwargs)
         else:
             self._ro = ro
 

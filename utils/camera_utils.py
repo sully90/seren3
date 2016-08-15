@@ -1,7 +1,7 @@
 import numpy as np
 from pymses.filters import RegionFilter
 
-def find_galaxy_axis(subsnap, nbSample=2000):
+def find_galaxy_axis(subsnap, camera=None, nbSample=2000):
     '''
     Provides data access to _find_galaxy_axis function
 
@@ -14,7 +14,7 @@ def find_galaxy_axis(subsnap, nbSample=2000):
     '''
 
     point_dset_source = subsnap.g["rho"].point_dset_source
-    camera = subsnap.camera()
+    camera = subsnap.camera() if camera is None else camera
     return _find_galaxy_axis(point_dset_source, camera, nbSample)
 
 def _find_galaxy_axis(points_dset_source, camera, nbSample):
@@ -56,7 +56,7 @@ def _find_galaxy_axis(points_dset_source, camera, nbSample):
     result_vect = result_vect/np.linalg.norm(result_vect,2)
     return result_vect
 
-def find_center_of_mass(subsnap, nbSample=2000):
+def find_center_of_mass(subsnap, camera=None, nbSample=2000):
     '''
     Provides data access to _find_center_of_mass function
 
@@ -69,7 +69,7 @@ def find_center_of_mass(subsnap, nbSample=2000):
     '''
 
     point_dset_source = subsnap.g["rho"].point_dset_source
-    camera = subsnap.camera()
+    camera = subsnap.camera() if camera is None else camera
     return _find_center_of_mass(point_dset_source, camera, nbSample)
 
 def _find_center_of_mass(points_dset_source, camera, nbSample):
@@ -93,7 +93,7 @@ def _find_center_of_mass(points_dset_source, camera, nbSample):
         cm=np.sum(d[:,np.newaxis]*filtered_points_dset.points,axis=0)/mass
         return cm
 
-def find_los(subsnap, nbSample=2000):
+def find_los(subsnap, camera=None, nbSample=2000):
     '''
     Provides data access to _find_los function
 
@@ -106,7 +106,7 @@ def find_los(subsnap, nbSample=2000):
     '''
 
     point_dset_source = subsnap.g[["rho", "vel"]].point_dset_source
-    camera = subsnap.camera()
+    camera = subsnap.camera() if camera is None else camera
     return _find_los(point_dset_source, camera, nbSample)
 
 def _find_los(points_dset_source, camera, nbSample):

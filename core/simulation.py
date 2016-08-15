@@ -65,7 +65,7 @@ class Simulation(object):
             result = re.findall(r'\d+', outputs[i])[0]
             ioutput = int(result)
             numbered[i] = ioutput
-        return numbered
+        return sorted(numbered)
 
     @property
     def outputs(self):
@@ -75,6 +75,14 @@ class Simulation(object):
         outputs = glob.glob("%s/output_*/" % self.path)
         outputs.sort(key=string_utils.natural_keys)
         return outputs
+
+    @property
+    def age(self):
+        '''
+        Returns age of simulation at last snapshot
+        '''
+        last_iout = self.numbered_outputs[-1]
+        return self[last_iout].age
 
     @property
     def initial_redshift(self):
@@ -92,6 +100,36 @@ class Simulation(object):
                     aexp = np.float32(line.split("=")[1])
                 nline += 1
         return (1. / aexp) - 1.
+
+    def redshift_func(self, zmax=20.0, zmin=0.0, zstep=0.001):
+        '''
+        Returns an interpolation function that gives redshift as a function
+        of age
+        '''
+        import cosmolopy.distance as cd
+
+        init_z = self.initial_redshift
+        cosmo = self[self.redshift(init_z)].cosmo
+        del cosmo['z'], cosmo['aexp']
+
+        func = cd.quick_redshift_age_function(zmax, zmin, zstep, **cosmo)
+        return lambda age: func(age.in_units("s"))
+
+
+    def age_func(self, zmax=20.0, zmin=0.0, zstep=0.001, return_inverse=False):
+        '''
+        Returns an interpolation function that gives age as a function
+        of redshift
+        '''
+        import cosmolopy.distance as cd
+        from seren3.array import SimArray
+
+        init_z = self.initial_redshift
+        cosmo = self[self.redshift(init_z)].cosmo
+        del cosmo['z'], cosmo['aexp']
+
+        func = cd.quick_age_function(zmax, zmin, zstep, return_inverse, **cosmo)
+        return lambda z: SimArray(func(z), "s").in_units("Gyr")
 
     def z_reion(self, thresh=0.999, return_vw_z=False):
         '''
@@ -122,13 +160,16 @@ class Simulation(object):
         with out_list numbers against aexp
         '''
         import os
-        if os.path.isdir("%s/rockstar/" % self.path):
+        from seren3 import config
+        rockstar_base = config.get("halo", "rockstar_base")
+
+        if os.path.isdir("%s/%s/" % (self.path, rockstar_base)):
             import glob
 
             info = {}
-            files = glob.glob("%s/rockstar/out_*.list" % self.path)
+            files = glob.glob("%s/%s/out_*.list" % (self.path, rockstar_base))
             for fname in files:
-                out_num = int( filter(str.isdigit, fname) )
+                out_num = int( filter(str.isdigit, fname.replace(rockstar_base, '')) )
                 with open(fname, "r") as f:
                     while True:
                         line = f.readline()
@@ -138,8 +179,9 @@ class Simulation(object):
                             info[out_num] = aexp
                             break
             # Write to file
-            with open("%s/rockstar/info_rockstar.txt" % self.path, "w") as f:
-                for i in range(1, len(info)+1):
+            keys = sorted(info.keys())
+            with open("%s/%s/info_rockstar.txt" % (self.path, rockstar_base), "w") as f:
+                for i in keys:
                     line = "%i\t%f\n" % (i, info[i])
                     f.write(line)
             return info

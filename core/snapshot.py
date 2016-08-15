@@ -19,7 +19,7 @@ class Snapshot(object):
         self.C = C
 
         # Known particles
-        self.known_particles = ["dm", "star", "gmc"]
+        self.known_particles = ["part", "dm", "star", "gmc"]
         self.particle_field_list = ["mass", "pos", "vel", "epoch", "id"]
 
         # Load the namelist file
@@ -77,13 +77,18 @@ class Snapshot(object):
     def get_sphere(self, pos, r):
         return
 
-    def halos(self, finder=config.DEFAULT_HALO_FINDER, **kwargs):
+    def halos(self, finder=config.get("halo", "default_finder"), **kwargs):
         if finder.lower() == 'ahf':
             from seren3.halos.halos import AHFCatalogue
             return AHFCatalogue(self, **kwargs)
         elif finder.lower() == 'rockstar':
             from seren3.halos.halos import RockstarCatalogue
             return RockstarCatalogue(self, **kwargs)
+        elif finder.lower() == 'ctrees':
+            from seren3.halos.halos import ConsistentTreesCatalogue
+            return ConsistentTreesCatalogue(self, **kwargs)
+        else:
+            raise Exception("Unknown halo finder: %s" % finder)
 
     @property
     def h(self):
@@ -155,15 +160,24 @@ class Snapshot(object):
         return self.cosmo["z"]
 
     @property
+    def age(self):
+        from seren3.array import SimArray
+
+        fr = self.friedmann
+        age_simu = fr["age_simu"]
+        return SimArray(age_simu, "Gyr")
+
+
+    @property
     def cosmo(self):
         """
         Returns a cosmolopy compatible dict
         """
         par = self.info
-        cosmo = {'omega_M_0': par['omega_m'],
-                       'omega_lambda_0': par['omega_l'],
-                       'omega_k_0': par['omega_k'],
-                       'omega_b_0': par['omega_b'],
+        cosmo = {'omega_M_0': round(par['omega_m'], 3),
+                       'omega_lambda_0': round(par['omega_l'], 3),
+                       'omega_k_0': round(par['omega_k'], 3),
+                       'omega_b_0': round(par['omega_b'], 3),
                        'h': par['H0'] / 100.,
                        'aexp': par['aexp'],
                        'z': (1. / par['aexp']) - 1.,
@@ -265,8 +279,10 @@ class Family(object):
         field_list = None  # Fields RAMSES knows about
         if self.family == 'amr':
             field_list = self.ro._amr_fields().field_name_list
+            field_list.extend(["pos", "dx"])
         else:
             field_list = self.base.particle_field_list
+            field_list.append("pos")
 
         known_fields = set()
 

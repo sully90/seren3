@@ -96,6 +96,3 @@ class CylindricalProfileBinner(ProfileBinner):
 
         # Bin is determined by the radial component only
         return np.sqrt(np.sum(ortho * ortho, axis=1))
-
-def bin_spherical(subsnap, field, prof_func=None, r_units="pc", nbins=200, prof_units=None, divide_by_counts=False):
-    return

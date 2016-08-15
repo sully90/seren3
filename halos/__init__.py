@@ -9,6 +9,7 @@ NOTE: The new Halo catalogue will only work when loaded through yt for unit cohe
 TODO -> Use SimArray instead of YTArray
 '''
 import seren3
+from seren3 import config
 from seren3.core.snapshot import Family
 from seren3.array import SimArray
 import numpy as np
@@ -35,8 +36,9 @@ class Halo(object):
         return "halo_" + str(self.hid)
 
     def __repr__(self):
-        pos, r = self.pos_r_code_units
-        return "pos: %s \t r: %s" % (pos, r)
+        # pos, r = self.pos_r_code_units
+        # return "pos: %s \t r: %s" % (pos, r)
+        return "halo_%i" % self.hid
 
     def __getitem__(self, item):
         # Return the requested property of this halo, i.e Mvir
@@ -185,10 +187,12 @@ class HaloCatalogue(object):
     def __init__(self, pymses_snapshot, finder, filename=None, **kwargs):
         self.base = pymses_snapshot
         self.finder = finder
+        self.finder_base_dir = "%s/%s" % (self.base.path, config.get("halo", "%s_base" % self.finder.lower()))
 
-        if self.can_load(**kwargs) is False:
-            print "Unable to load catalogue for dataset with filename %s" % pymses_snapshot.path
-            logger.info("Unable to load catalogue for dataset with filename %s" % pymses_snapshot.path)
+        can_load, message = self.can_load(**kwargs)
+        if can_load is False:
+            print "Unable to load catalogue: %s" % message
+            logger.error("Unable to load catalogue: %s" % message)
             return
 
         import yt
@@ -278,26 +282,32 @@ class HaloCatalogue(object):
             found.append(self[i])
         return found
 
-    def with_id(self, id):
-        '''
-        Returns halo(s) with the desired id.
-        Slow, but preserves id order
-        '''
-        # halos = []
-        # for i in id:
-        #     ix = np.where(self._haloprops[:]['id'] == i)
-        #     halos.append(self[ix])
-        # return halos
-        if hasattr(id, "__iter__"):
-            keep = []
-            for h in self:
-                if h['id'] in id:
-                    keep.append(h)
-            return keep
-        else:
-            func = lambda h: h['id'] == id
-            idx = np.where(func(self._haloprops))[0][0]
-            return self[idx]
+    def from_id(self, hid):
+        for h in self:
+            if h.hid == hid:
+                return h
+        return None
+
+    # def with_id(self, ids):
+    #     '''
+    #     Returns halo(s) with the desired id.
+    #     Slow, but preserves id order
+    #     '''
+    #     # halos = []
+    #     # for i in id:
+    #     #     ix = np.where(self._haloprops[:]['id'] == i)
+    #     #     halos.append(self[ix])
+    #     # return halos
+    #     if hasattr(ids, "__iter__"):
+    #         keep = []
+    #         for h in self:
+    #             if h['id'] in ids:
+    #                 keep.append(h)
+    #         return keep
+    #     else:
+    #         func = lambda h: h['id'] == id
+    #         idx = np.where(func(self._haloprops))[0][0]
+    #         return self[idx]
 
     def closest_halos(self, point, n_halos=1, units='code_length'):
         '''

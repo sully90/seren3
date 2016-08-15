@@ -112,11 +112,11 @@ def plot(paths, ioutputs, labels, nbins=5, alpha=0.25, ax=None, cols=None):
     return ax
 
 
-def load(path, iout, pickle_path="pickle/"):
+def load(path, iout, finder):
     import pickle
     import numpy as np
 
-    fname = "%s/%s/fesc_%05i.p" % (path, pickle_path, iout)
+    fname = "%s/pickle/%s/fesc_%05i.p" % (path, finder, iout)
     fesc = None; tot_mass = None
     with open(fname, 'rb') as f:
         dset = pickle.load( f )
@@ -129,7 +129,7 @@ def load(path, iout, pickle_path="pickle/"):
     return tot_mass, fesc
 
 
-def main(path, iout):
+def main(path, iout, finder):
     import seren3
     from seren3.analysis import fesc
     from seren3.analysis.parallel import mpi
@@ -139,10 +139,13 @@ def main(path, iout):
     mpi.msg("Loading snapshot")
     snap = seren3.load_snapshot(path, iout)
     snap.set_nproc(1)
+    halos = None
 
+    mpi.msg("Using halo finder: %s" % finder)
     mpi_spheres = None
     if mpi.host:
-        mpi_spheres = snap.halos().mpi_spheres()
+        halos = snap.halos(finder=finder)
+        mpi_spheres = halos.mpi_spheres()
 
     dest = {}
     for h, sto in mpi.piter(mpi_spheres, storage=dest):
@@ -163,7 +166,7 @@ def main(path, iout):
             sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass}
 
     if mpi.host:
-        pickle_path = "%s/pickle/" % path
+        pickle_path = "%s/pickle/%s/" % (path, halos.finder.lower())
         # pickle_path = "%s/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
@@ -171,13 +174,19 @@ def main(path, iout):
 
 if __name__ == "__main__":
     import sys
+    from seren3 import config
+
     path = sys.argv[1]
     iout = int(sys.argv[2])
 
-    # main(path, iout)
+    finder = config.get("halo", "default_finder")
+    if len(sys.argv) == 4:
+        finder = sys.argv[3]
+
+    # main(path, iout, finder)
 
     try:
-        main(path, iout)
+        main(path, iout, finder)
     except Exception as e:
         from seren3.analysis.parallel import mpi
         print 'Caught exception: ', e

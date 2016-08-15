@@ -1,4 +1,4 @@
-def fesc(subsnap, **kwargs):
+def fesc(subsnap, ret_flux_map=False, **kwargs):
     '''
     Computes halo escape fraction of hydrogen ionising photons
     '''
@@ -18,9 +18,11 @@ def fesc(subsnap, **kwargs):
     nPhot = dset["Nion_d"] * mass
 
     # Computed integrated flux out of the virial sphere
-    integrated_flux = render_spherical.integrate_surface_flux( 
-        render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs), rvir )
+    flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
+    integrated_flux = render_spherical.integrate_surface_flux(flux_map, rvir)
     integrated_flux *= subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
 
     # return the escape fraction
+    if ret_flux_map:
+        return nPhot.sum() / integrated_flux, flux_map
     return nPhot.sum() / integrated_flux

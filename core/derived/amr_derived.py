@@ -83,6 +83,16 @@ def amr_T2(context, dset):
     kB = SimArray(context.C.kB)
     T2 = (P/rho * (mH / kB))
     return T2.in_units("K")
+
+@seren3.derived_quantity(requires=["xHII", "xHeII", "xHeIII"], unit=C.none)
+@check_dset
+def amr_mu(context, dset):
+    X_frac, Y_frac = (context.info['X_fraction'], context.info['Y_fraction'])
+    return 1. / ( X_frac*(1. + dset["xHII"]) + 0.25 * Y_frac * (1. + dset["xHeII"] + 2. * dset["xHeIII"]) )
+
+@seren3.derived_quantity(requires=["T2", "mu"], unit=C.K)
+def amr_T(context, dset):
+    return dset["T2"].in_units("K")/dset["mu"]
     
 ############################################### RAMSES-RT ###############################################
 @seren3.derived_quantity(requires=["Np1", "Np2", "Np3"], unit=1./C.s)

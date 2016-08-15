@@ -183,7 +183,7 @@ class AHFCatalogue(HaloCatalogue):
 
     @property
     def ahf_path(self):
-        return "%s/AHF/%03d/halos/" % (self.base.path, self.base.ioutput)
+        return "%s/%03d/halos/" % (self.finder_base_dir, self.base.ioutput)
 
     def get_boxsize(self, **kwargs):
         '''
@@ -217,7 +217,10 @@ class AHFCatalogue(HaloCatalogue):
 
     def can_load(self, **kwargs):
         import os
-        return os.path.isfile("%s/all_halos" % self.ahf_path)
+        if os.path.isfile("%s/all_halos" % self.ahf_path):
+          return True, "exists"
+        else:
+          return False, "Cannot locate all_halos file"
 
     def get_filename(self, **kwargs):
         return "%s/all_halos" % self.ahf_path
@@ -305,6 +308,25 @@ class RockstarCatalogue(HaloCatalogue):
     Class to handle catalogues produced by Rockstar
     Reads the out.list files
     '''
+    # halo_type = np.dtype( [('id', np.int64), ('descid', np.int64), \
+    #             ('mvir', 'f'), ('vmax', 'f'), \
+    #             ('vrms', 'f'), ('rvir', 'f'), \
+    #             ('rs', 'f'), ('np', 'f'), \
+    #             ('pos', 'f', 3), ('vel', 'f', 3), \
+    #             ('J', 'f', 3), ('spin', 'f'), \
+    #             ('rs_klypin', 'f'), ('mvir_all', 'f'), \
+    #             ('m200b', 'f'), ('m200c', 'f'), \
+    #             ('m500c', 'f'), ('m2500c', 'f'), \
+    #             ('r200b', 'f'), ('r200c', 'f'), \
+    #             ('r500c', 'f'), ('r2500c', 'f'), \
+    #             ('xoff', 'f'), ('voff', 'f'), \
+    #             ('spin_bullock', 'f'), ('b_to_a', 'f'), \
+    #             ('c_to_a', 'f'), ('A', 'f', 3), \
+    #             ('b_to_a_500c', 'f'), ('c_to_a_500c', 'f'), \
+    #             ('A500c', 'f', 3), ('T/U', 'f'), \
+    #             ('m_pe_behroozi', 'f'), ('M_pe_Diemer', 'f'), \
+    #             ('halfmass_radius', 'f')] )
+
     halo_type = np.dtype( [('id', np.int64), ('descid', np.int64), \
                 ('mvir', 'f'), ('vmax', 'f'), \
                 ('vrms', 'f'), ('rvir', 'f'), \
@@ -314,8 +336,6 @@ class RockstarCatalogue(HaloCatalogue):
                 ('rs_klypin', 'f'), ('mvir_all', 'f'), \
                 ('m200b', 'f'), ('m200c', 'f'), \
                 ('m500c', 'f'), ('m2500c', 'f'), \
-                ('r200b', 'f'), ('r200c', 'f'), \
-                ('r500c', 'f'), ('r2500c', 'f'), \
                 ('xoff', 'f'), ('voff', 'f'), \
                 ('spin_bullock', 'f'), ('b_to_a', 'f'), \
                 ('c_to_a', 'f'), ('A', 'f', 3), \
@@ -355,10 +375,17 @@ class RockstarCatalogue(HaloCatalogue):
 
     def can_load(self, **kwargs):
         import os
-        return os.path.isdir("%s/rockstar/" % self.base.path) and os.path.isfile(self.get_rockstar_info_fname())
+        # return os.path.isdir("%s/%s/" % (self.base.path, config.get("halo", "rockstar_base"))) and os.path.isfile(self.get_rockstar_info_fname())        
+        if os.path.isdir(self.finder_base_dir):
+          if os.path.isfile(self.get_rockstar_info_fname()):
+            return True, "exists"
+          else:
+            return False, "Cannot locate info file"
+        else:
+          return False, "rockstar directory doesn't exist"
 
     def get_rockstar_info_fname(self):
-        return "%s/rockstar/info_rockstar.txt" % (self.base.path)
+        return "%s/info_rockstar.txt" % self.finder_base_dir
 
     def get_filename(self, **kwargs):
         '''
@@ -379,7 +406,7 @@ class RockstarCatalogue(HaloCatalogue):
 
         out_fname = "out_%i.list" % (out_num[idx_closest])
         print 'RockstarCatalogue: matched to %s' % out_fname
-        fname = "%s/rockstar/%s" % (self.base.path, out_fname)
+        fname = "%s/%s" % (self.finder_base_dir, out_fname)
         return fname
 
     def get_boxsize(self, **kwargs):
@@ -405,3 +432,251 @@ class RockstarCatalogue(HaloCatalogue):
     def _get_halo(self, item):
         haloprops = self._haloprops[item]
         return Halo(haloprops['id'], self, haloprops)
+
+class ConsistentTreesCatalogue(HaloCatalogue):
+
+    halo_type = np.dtype([('aexp', 'f'),
+                          ('id', np.int64),
+                          ('desc_aexp', 'f'),
+                          ('desc_id', 'f'),
+                          ('num_prog', np.int64),
+                          ('pid', np.int64),
+                          ('upid', np.int64),
+                          ('desc_pid', np.int64),
+                          ('phantom', 'f'),
+                          ('sam_mvir', 'f'),
+                          ('mvir', 'f'),
+                          ('rvir', 'f'),
+                          ('rs', 'f'),
+                          ('vrms', 'f'),
+                          ('mmp', np.int64),  # Bool - most massive progenitor
+                          ('scale_of_last_MM', 'f'),
+                          ('vmax', 'f'),
+                          ('pos', 'f', 3),
+                          ('vel', 'f', 3),
+                          ('J', 'f', 3),
+                          ('spin', 'f'),
+                          ('breadth_first_id',
+                           np.int64),
+                          ('depth_first_id',
+                           np.int64),
+                          ('tree_root_id', np.int64),
+                          ('orig_halo_id', np.int64),
+                          ('snap_num', np.int64),
+                          ('next_coprog_depth_first_id',
+                           np.int64),
+                          ('last_prog_depth_first_id',
+                           np.int64),
+                          ('last_mainlead_depth_first_id',
+                            np.int64),
+                          ('tidal_force', 'f'),
+                          ('tidal_id', np.int64),
+                          ('rs_klypin', 'f'),
+                          ('mvir_all', 'f'),
+                          ('m_alt', 'f', 4),
+                          #('r_alt', 'f', 4),
+                          ('xoff', 'f'),
+                          ('voff', 'f'),
+                          ('spin_bullock', 'f'),
+                          ('b_to_a', 'f'),
+                          ('c_to_a', 'f'),
+                          ('A', 'f', 3),
+                          ('b_to_a_500c', 'f'),
+                          ('c_to_a_500c', 'f'),
+                          ('A_500c', 'f', 3),
+                          ('T/|U|', 'f'),
+                          ('m_pe_behroozi', 'f'),
+                          ('m_pe_diemer', 'f'),
+                          ('halfmass_r', 'f'),
+                          # Consistent Trees Version 1.0 - Mass at accretion
+                          ('macc', 'f'),
+                          ('mpeak', 'f'),
+                          # Consistent Trees Version 1.0 - Vmax at accretion
+                          ('vacc', 'f'),
+                          ('vpeak', 'f'),
+                          ('halfmass_scale', 'f'),
+                          ('acc_rate_inst', 'f'),
+                          ('acc_rate_100myr', 'f'),
+                          ('acc_rate_1tdyn', 'f'),
+                          ('acc_rate_2tdyn', 'f'),
+                          ('acc_rate_mpeak', 'f'),
+                          ('mpeak_scale', 'f'),
+                          ('acc_scale', 'f'),
+                          ('first_acc_scale', 'f'),
+                          ('first_acc_mvir', 'f'),
+                          ('first_acc_vmax', 'f'),
+                          ('vmax_at_mpeak', 'f'),
+                          ('tidal_force_tdyn', 'f'),
+                          ('log_vmax_vmax_tdyn_dmpeak', 'f'),
+                          ('time_to_future_merger', 'f'),
+                          ('future_merger_mmp_id', 'f')])
+
+    units = {
+        'sam_mvir': 'Msun / h',
+        'mvir': 'Msun / h',
+        'rvir': 'kpccm / h',
+        'rs': 'kpccm / h',
+        'vrms': 'km / s',
+        'vmax': 'km / s',
+        'pos': 'Mpccm / h',
+        'vel': 'km / s',
+        'J': 'Msun/h Mpc/h km/s',
+        'mvir_all': 'Msun / h',
+        'm_alt': 'Msun / h',
+        #'r_alt': 'kpccm / h',
+        'xoff': 'kpccm / h',
+        'voff': 'km / s',
+        'A': 'kpccm / h',
+        'halfmass_r': 'kpccm / h',
+        'macc': 'Msun / h',
+        'mpeak': 'Msun / h',
+        'vacc': 'km / s',
+        'vpeak': 'km / s',
+        'acc_rate_inst': 'Msun/h/yr',
+        'acc_rate_100myr': 'Msun/h/100Myr',
+        'first_acc_mvir': 'Msun / h',
+        'first_acc_vmax': 'km / s',
+        'vmax_at_mpeak': 'km / s'
+    }
+
+    def __init__(self, pymses_snapshot, **kwargs):
+      super(ConsistentTreesCatalogue, self).__init__(pymses_snapshot, "ConsistentTrees", **kwargs)
+
+    def can_load(self, **kwargs):
+        import glob
+        if len(glob.glob("%s/hlist_*" % self.finder_base_dir)) > 0.:
+            return True, "exists"
+        else:
+            return False, "Unable to locate hlists files"
+
+    @property
+    def rockstar_path(self):
+      return "%s/hlists" % self.finder_base_dir
+
+    def get_filename(self, **kwargs):
+        import glob
+        # Filename is hlist_aexp.list
+        # Look through the outputs and find the closest expansion factor
+        aexp = self.base.cosmo['aexp']
+
+        # Scan halo files for available expansion factors
+        outputs = glob.glob("%s/hlist_*" % self.finder_base_dir )
+
+        if len(outputs) == 0:
+          raise IOError("ConsistentTreesCatalogue: No outputs found")
+
+        aexp_hlist = np.zeros(len(outputs))
+        for i in range(len(outputs)):
+            output = outputs[i]
+            # Trim the aexp from the string
+            aexp_hfile = float(output.split('/')[-1][6:-5])
+            aexp_hlist[i] = aexp_hfile
+
+        # Find the closest match
+        idx = np.argmin(np.abs(aexp_hlist - aexp))
+
+        if min(aexp_hlist[idx] / aexp, aexp / aexp_hlist[idx]) < 0.985:
+          raise Exception("Unable to locate catalogue close to this snapshot.\nHlist aexp: %f, Snap aexp: %f" % (aexp_hlist[idx], aexp))
+
+        return outputs[idx]
+
+    def get_boxsize(self, **kwargs):
+        '''
+        Returns boxsize according to rockstar
+        '''
+        import re
+
+        with open(self.filename, 'r') as f:
+            for line in f:
+                if line.startswith('#Full box size'):
+                    boxsize = re.findall("\d+\.\d+", line)[0]
+                    return float(boxsize)  # Mpccm/h
+
+    def load(self, **kwargs):
+        # Ensures file is closed at the end. If within_r is specified, it must be in code units
+        with open(self.filename, 'r') as f:
+            haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
+
+            self._nhalos = len(haloprops)
+            self._haloprops = haloprops
+
+    def _get_halo(self, item):
+        haloprops = self._haloprops[item]
+        return Halo(haloprops['id'], self, haloprops)
+
+    @staticmethod
+    def _find_mmp(hid, prog_halos):
+        search_key = lambda halos: halos[:]["desc_id"] == hid
+        progs = prog_halos.search(search_key)
+        if len(progs) > 1:
+            mmp_search_key = lambda x: x["mvir"]
+            progs_sorted = sorted(progs, key=mmp_search_key, reverse=True)
+            return progs_sorted[0].hid
+        elif len(progs) == 1:
+            return progs[0].hid
+        else:
+            return None
+
+    def find_mmp(self, halo, back_to_iout=None):
+        '''
+        Locates all progentiors of a given halo
+        '''
+        from seren3 import load_snapshot
+        if back_to_iout is None:
+            back_to_iout = self.base.ioutput-1
+
+        hid = halo.hid
+        ioutputs = range(back_to_iout, self.base.ioutput)[::-1]
+
+        last = self.base.ioutput
+        for iout_prog in ioutputs:
+            # Start with the previous snapshot, find the most massive progenitor and use that
+            prog_snap = load_snapshot(self.base.path, iout_prog)
+            prog_halos = prog_snap.halos(finder='ctrees')
+            mmp_id = self._find_mmp(hid, prog_halos)
+            if mmp_id is None:
+                print 'Unable to fing progenitor in output %i.\nReturning last know progenitor (output %i)' % (iout_prog, last)
+                return hid, prog_halos
+            else:
+                hid = mmp_id
+                last = iout_prog
+        return hid, prog_halos
+
+    def iterate_progenitors(self, halo, back_to_iout=None):
+      '''
+      Iterates through list of progenitors
+      '''
+      from seren3 import load_snapshot
+
+      if back_to_iout is None:
+        back_to_iout = self.base.ioutput-1
+
+      hid = halo.hid
+      ioutputs = range(back_to_iout, self.base.ioutput)[::-1]
+
+      last = self.base.ioutput
+      for iout_prog in ioutputs:
+          # Start with the previous snapshot, find the most massive progenitor and use that
+          prog_snap = load_snapshot(self.base.path, iout_prog)
+          prog_halos = prog_snap.halos(finder='ctrees')
+          mmp_id = self._find_mmp(hid, prog_halos)
+          yield prog_halos.from_id(mmp_id)
+          hid = mmp_id
+
+    # def find_progenitors(self, halos):
+    #     '''
+    #     Locates all progentiors of a given halo
+    #     '''
+    #     from seren3 import load_snapshot
+    #     path, ioutput = (self.base.path, self.base.ioutput)
+    #     prog_snap = load_snapshot(path, ioutput-1)
+    #     prog_halos = prog_snap.halos(finder='ctrees')
+
+    #     if not hasattr(halos, "__iter__"):
+    #         halos = [halos]
+    #     result = {}
+    #     for h in halos:
+    #         search_key = lambda halos: halos[:]["desc_id"] == h.hid
+    #         result[h.hid] = prog_halos.search(search_key)
+
+    #     return prog_halos, prog_halos.search(search_key)
