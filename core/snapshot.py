@@ -41,6 +41,14 @@ class Snapshot(object):
         # Quantities object
         self.quantities = Quantity(self)
 
+    def ancestor(self):
+        import weakref
+        return weakref.ref(self)
+
+    def array(self, array, units=None, **kwargs):
+        from seren3.array import SimArray
+        return SimArray(array, units, snapshot=self)
+
     @abc.abstractmethod
     def get_source(self, family, fields):
         return
@@ -135,6 +143,10 @@ class Snapshot(object):
         fname = self.info_rt_fname
         from pymses.sources.ramses import info
         return info.read_ramses_rt_info_file(fname)
+
+    @property
+    def unit_l(self):
+        return self.array(self.info["unit_length"])
 
     @property
     def hilbert_dom_decomp(self):

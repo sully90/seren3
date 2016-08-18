@@ -26,3 +26,46 @@ def fesc(subsnap, ret_flux_map=False, **kwargs):
     if ret_flux_map:
         return nPhot.sum() / integrated_flux, flux_map
     return nPhot.sum() / integrated_flux
+
+def time_integrated_fesc(halo, back_to_iout, return_data=False):
+    '''
+    Computes the time integrated escapte fraction across
+    the history of the halo, a la Kimm & Cen 2014
+    '''
+    import numpy as np
+    from scipy.integrate import trapz
+    import random
+
+    # Need to compute fesc(t) and \dot{Nion} at each snapshot
+    catalogue = halo.catalogue
+    fesc_dict = {}
+    Nion_d_dict = {}
+    age_dict = {}
+
+    # This snapshot
+    def _compute(h):
+        dset = h.s[["Nion_d", "mass"]]
+        fesc_h = fesc(h.subsnap)
+        if fesc_h > 1.:
+            fesc_h = random.uniform(0.9, 1.0)
+        fesc_dict[h.base.ioutput] = fesc_h
+        Nion_d_dict[h.base.ioutput] = (dset["Nion_d"] * dset["mass"]).sum()  # at t=0, not dt=rvir/c !!!
+        age_dict[h.base.ioutput] = h.base.age
+    
+    _compute(halo)
+    for prog in catalogue.iterate_progenitors(halo, back_to_iout=back_to_iout):
+        _compute(prog)
+
+    I1 = np.zeros(len(fesc_dict)); I2 = np.zeros(len(fesc_dict)); age_array = np.zeros(len(age_dict))
+
+    for key, i in zip( sorted(fesc_dict.keys(), reverse=True), range(len(fesc_dict)) ):
+        I1[i] = fesc_dict[key]*Nion_d_dict[key]
+        I2[i] = Nion_d_dict[key]
+        age_array[i] = age_dict[key]
+
+    lbtime = halo.base.age - age_array
+
+    result = trapz(I1, lbtime) / trapz(I2, lbtime)
+    if return_data:
+        return result, I1, I2, lbtime
+    return result

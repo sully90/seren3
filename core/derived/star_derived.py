@@ -20,9 +20,9 @@ def star_Nion_d(context, dset, dt=0., group=1):
     from scipy.interpolate import interp2d
     from seren3.exceptions import NoParticlesException
 
-    print 'Computing Nion_d for photon group %i' % group
     Z_sun = 0.02  # metallicity of the sun
     nGroups = context.info_rt["nGroups"]
+    print 'Computing Nion_d for photon group %i/%i' % (group, nGroups)
     nIons = context.info_rt["nIons"]
     nPhotons_idx = 0  # index of photon number in SED
 
@@ -37,8 +37,8 @@ def star_Nion_d(context, dset, dt=0., group=1):
     if dt != 0.:
         age -= dt
         keep = np.where( age >= 0. )
-    age = age[keep]
-    Z = Z[keep]
+        age = age[keep]
+        Z = Z[keep]
 
     if len(age) == 0:
         raise NoParticlesException("No particles with (age - dt) > 0", "star_Nion_d")

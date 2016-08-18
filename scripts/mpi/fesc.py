@@ -12,7 +12,6 @@ def _plot(fesc, tot_mass, label, alpha, ax, c, nbins):
     import random
     # from seren3.analysis.plots import fit_scatter
     from seren3.analysis import plots
-    reload(plots)
 
     # Deal with fesc>1. following Kimm & Cen 2014
     bad = np.where( fesc > 1. )

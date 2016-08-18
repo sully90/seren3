@@ -26,7 +26,6 @@ class Halo(object):
     def __init__(self, halo_id, catalogue, properties):
         self.hid = halo_id
         self.catalogue = catalogue
-        self.ds = catalogue.ds
         self.base = catalogue.base
         self.properties = properties
 
@@ -47,7 +46,7 @@ class Halo(object):
         unit = 'dimensionless'  # Default to dimensionless
         if item in unit_dict:
             unit = unit_dict[item]
-        return self.ds.arr(self.properties[item], unit)
+        return self.base.array(self.properties[item], unit)
 
     @property
     def info(self):
@@ -75,37 +74,15 @@ class Halo(object):
 
     @property
     def pos_r_code_units(self):
-        pos_units = self.catalogue.units['pos'].lower()
-        boxsize = self.catalogue.boxsize
-        pos, r = (None, None)
-        if pos_units == 'mpccm / h':
-            pos = self['pos'].v / boxsize
-        elif pos_units == 'kpccm / h':
-            pos = self['pos'].v / (boxsize * 1.e3)
-        else:
-            raise Exception("Cannot handle pos units: %s" % pos_units)
-
-        return pos, self['rvir'].v / (boxsize * 1.e3)
+        return self.pos, self.rvir
 
     @property
     def pos(self):
-        pos_units = self.catalogue.units['pos'].lower()
-        boxsize = self.catalogue.boxsize
-        pos = None
-        if pos_units == 'mpccm / h':
-            pos = self['pos'].v / boxsize
-        elif pos_units == 'kpccm / h':
-            pos = self['pos'].v / (boxsize * 1.e3)
-        else:
-            raise Exception("Cannot handle pos units: %s" % pos_units)
-
-        return SimArray(pos, self.base.info["unit_length"])
+        return self["pos"].in_units(self.catalogue.boxsize)
 
     @property
     def rvir(self):
-        boxsize = self.catalogue.boxsize
-        rvir = self["rvir"].v / (boxsize * 1.e3)
-        return SimArray(rvir, self.base.info["unit_length"])
+        return self["rvir"].in_units(self.catalogue.boxsize)
 
     @property
     def sphere(self):
@@ -126,9 +103,7 @@ class Halo(object):
         '''
         G = SimArray(self.base.C.G)
         M = self["mvir"].in_units("kg")
-        M = SimArray(M.v, str(M.units))
         Rvir = self["rvir"].in_units("m")
-        Rvir = SimArray(Rvir.v, str(Rvir.units))
 
         return np.sqrt( (G*M)/Rvir )
 
@@ -145,37 +120,30 @@ class Halo(object):
         Tvir = 1./2. * (mu*mH/kB) * Vc**2
         return Tvir
 
-    # def fesc(self, **kwargs):
-    #     '''
-    #     Computes halo escape fraction of hydrogen ionising photons
-    #     '''
-    #     from seren3.analysis.render import render_spherical
-
-    #     rvir = self.rvir
-    #     rt_c = SimArray(self.base.info_rt["rt_c_frac"] * self.base.C.c)
-    #     dt = rvir / rt_c
-
-    #     # Compute number of ionising photons from stars at time
-    #     # rvir/rt_c (assumin halo is a point source)
-    #     dset = self.s[["Nion_d", "mass", "age"]].flatten(dt=dt)
-    #     keep = np.where(dset["age"] - dt >= 0.)
-    #     mass = dset["mass"][keep]
-    #     nPhot = dset["Nion_d"] * mass
-
-    #     # Computed integrated flux out of the virial sphere
-    #     integrated_flux = render_spherical.integrate_surface_flux( 
-    #         render_spherical.render_quantity(self.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, **kwargs), rvir )
-    #     integrated_flux *= self.base.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
-
-    #     # return the escape fraction
-    #     return nPhot.sum() / integrated_flux
-
     def fesc(self, **kwargs):
         from seren3 import analysis
         return analysis.fesc(self.subsnap, **kwargs)
 
     def pynbody_snapshot(self, **kwargs):
         return self.subsnap.pynbody_snapshot(**kwargs)
+
+
+class SortedHaloCatalogue(object):
+
+    '''
+    Simple wrapper to sort halos and return Halo
+    objects
+    '''
+    def __init__(self, halo_catalogue, sort_key):
+        self._halo_catalogue = halo_catalogue
+        self._sorted_halos = np.sort(halo_catalogue._haloprops, order=sort_key)[::-1]
+
+    def __getitem__(self, item):
+        hprops = self._sorted_halos[item]
+        return Halo(hprops["id"], self._halo_catalogue, hprops)
+
+    def __len__(self):
+        return len(self._sorted_halos)
 
 
 class HaloCatalogue(object):
@@ -195,10 +163,6 @@ class HaloCatalogue(object):
             logger.error("Unable to load catalogue: %s" % message)
             return
 
-        import yt
-        self.ds = yt.load(\
-            "%s/output_%05d/info_%05d.txt" % \
-            (pymses_snapshot.path, pymses_snapshot.ioutput, pymses_snapshot.ioutput))
         self.filename = self.get_filename(**kwargs) if filename is None else filename
         self.boxsize = self.get_boxsize(**kwargs)  # Mpccm/h
 
@@ -263,7 +227,7 @@ class HaloCatalogue(object):
         '''
         if not hasattr(self, '_ctree'):
             from periodic_kdtree import PeriodicCKDTree
-            points = np.array([halo['pos'].in_units('code_length')
+            points = np.array([halo['pos'].in_units("Mpc") / self.boxsize.in_units("Mpc")
                                for halo in self])
             T = PeriodicCKDTree(bounds, points)
             self._ctree = T
@@ -309,7 +273,7 @@ class HaloCatalogue(object):
     #         idx = np.where(func(self._haloprops))[0][0]
     #         return self[idx]
 
-    def closest_halos(self, point, n_halos=1, units='code_length'):
+    def closest_halos(self, point, n_halos=1):
         '''
         Return the closest halo to the point
         n_halos - Number of halos to find - default to 1
@@ -328,7 +292,7 @@ class HaloCatalogue(object):
 
         if convert_units:
             neighbors = T.query_ball_point(
-                pos.in_units('code_length').v, r=rad.in_units('code_length').v)
+                pos.in_units(self.catalogue.boxsize), r=rad.in_units(self.catalogue.boxsize))
         else:
             neighbors = T.query_ball_point(
                 pos, r=rad)
@@ -347,22 +311,18 @@ class HaloCatalogue(object):
         '''
         return np.array([self[i] for i in range(len(self)) if i in idx])
 
-    def sort(self, field, halos=None, reverse=True):
-        '''
-        Sort halos by a given field
-        '''
-        if halos is None:
-            halos = self
-        return sorted(halos, key=lambda x: x[field], reverse=reverse)
+    # def sort(self, field, halos=None, reverse=True):
+    #     '''
+    #     Sort halos by a given field
+    #     '''
+    #     if halos is None:
+    #         halos = self
+    #     return sorted(halos, key=lambda x: x[field], reverse=reverse)
 
-    def custom_sort(self, func, reverse=True):
-        '''
-        Sort halos based on a custom function
-        func - a function which returns a number (i.e Mass) to sort by
-        '''
-        return sorted(self, key=func, reverse=reverse)
+    def sort(self, key):
+        return SortedHaloCatalogue(self, key)
 
-    def plot_mass_function(self, units='Msun/h', kern='ST', ax=None,\
+    def plot_mass_function(self, units='Msol h**-1', kern='ST', ax=None,\
                      plot_Tvir=True, label_z=False, nbins=100, label=None, show=True, **kwargs):
         '''
         Plot the Halo mass function and (optionally) Tvir on twinx axis
@@ -372,9 +332,9 @@ class HaloCatalogue(object):
             plot_Tvir: Calculates the Virial temperature in Kelvin for a halo of a given mass using equation 26 of Barkana & Loeb.
         '''
         import matplotlib.pylab as plt
-        from seren2.analysis.plots import fit_scatter
+        from seren3.analysis.plots import fit_scatter
 
-        snapshot = self.snapshot
+        snapshot = self.base
         if ax is None:
             fig = plt.figure()
             ax = fig.add_subplot(111)
@@ -398,7 +358,7 @@ class HaloCatalogue(object):
             cosmo = snapshot.cosmo
             M_ticks = np.array(ax.get_xticks())
 
-            mass = self.ds.arr(10**M_ticks, units).in_units("Msun").v
+            mass = self.base.array(10**M_ticks, units).in_units("Msol")
             Tvir = [float("%1.3f" % np.log10(v)) for v in cp.virial_temp(mass, **cosmo)]
 
             ax2 = ax.twiny()
@@ -458,7 +418,7 @@ class HaloCatalogue(object):
             import time
             t0 = time.time()
             print 'Loading positions...'
-        pos = np.array([h['pos'].in_units('code_length') for h in self])
+        pos = np.array([h['pos'].in_units(self.catalogue.boxsize) for h in self])
         ind = np.array([h['id'] for h in self])
 
         if super_verbose:

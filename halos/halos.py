@@ -60,58 +60,58 @@ class AHFCatalogue(HaloCatalogue):
     units = {'id': 'dimensionless',
              'hosthalo': 'dimensionless',
              'numsubstruct': 'dimensionless',
-             'mvir': 'Msun / h',
+             'mvir': 'Msol h**-1',
              'num_p': 'dimensionless',
-             'pos': 'kpccm / h',
-             'vel': 'km / s',
-             'rvir': 'kpccm / h',
-             'rmax': 'kpccm / h',
-             'r2': 'kpccm / h',
-             'mpb_offset': 'kpccm / h',
-             'com_offset': 'kpccm / h',
-             'v_max': 'km / s',
-             'v_esc': 'km / s',
-             'sigv': 'km / s',
+             'pos': 'kpc a h**-1',
+             'vel': 'km s**-1',
+             'rvir': 'kpc a h**-1',
+             'rmax': 'kpc a h**-1',
+             'r2': 'kpc a h**-1',
+             'mpb_offset': 'kpc a h**-1',
+             'com_offset': 'kpc a h**-1',
+             'v_max': 'km s**-1',
+             'v_esc': 'km s**-1',
+             'sigv': 'km s**-1',
              'bullock_spin': 'dimensionless',
              'spin': 'dimensionless',
              'l': 'dimensionless',
-             'b_to_a': 'kpccm / h',
-             'c_to_a': 'kpccm / h',
+             'b_to_a': 'kpc a h**-1',
+             'c_to_a': 'kpc a h**-1',
              'ea': 'dimensionless',
              'eb': 'dimensionless',
              'ec': 'dimensionless',
              'ovdens': 'dimensionless',
              'nbins': 'dimensionless',
              'fmhires': 'dimensionless',
-             'ekin': 'Msun / h (km / sec)**2',
-             'epot': 'Msun / h (km / sec)**2',
-             'surfp': 'Msun / h (km / sec)**2',
-             'phiO': '(km / sec)**2',
+             'ekin': 'Msol h**-1 (km s**-1ec)**2',
+             'epot': 'Msol h**-1 (km s**-1ec)**2',
+             'surfp': 'Msol h**-1 (km s**-1ec)**2',
+             'phiO': '(km s**-1ec)**2',
              'cnfw': 'dimensionless',
-             'm_gas': 'Msun / h',
+             'm_gas': 'Msol h**-1',
              'bullock_spin_gas': 'dimensionless',
              'spin_gas': 'dimensionless',
              'l_gas': 'dimensionless',
-             'b_to_a_gas': 'kpccm / h',
-             'c_to_a_gas': 'kpccm / h',
+             'b_to_a_gas': 'kpc a h**-1',
+             'c_to_a_gas': 'kpc a h**-1',
              'ea_gas': 'dimensionless',
              'eb_gas': 'dimensionless',
              'ec_gas': 'dimensionless',
              'n_gas': 'dimensionless',
-             'ekin_gas': 'Msun / h (km / sec)**2',
-             'epot_gas': 'Msun / h (km / sec)**2',
-             'm_star': 'Msun / h',
+             'ekin_gas': 'Msol h**-1 (km s**-1ec)**2',
+             'epot_gas': 'Msol h**-1 (km s**-1ec)**2',
+             'm_star': 'Msol h**-1',
              'bullock_spin_star': 'dimensionless',
              'spin_star': 'dimensionless',
              'l_star': 'dimensionless',
-             'b_to_a_star': 'kpccm / h',
-             'c_to_a_star': 'kpccm / h',
+             'b_to_a_star': 'kpc a h**-1',
+             'c_to_a_star': 'kpc a h**-1',
              'ea_star': 'dimensionless',
              'eb_star': 'dimensionless',
              'ec_star': 'dimensionless',
              'n_star': 'dimensionless',
-             'ekin_star': 'Msun / h (km / sec)**2',
-             'epot_star': 'Msun / h (km / sec)**2',
+             'ekin_star': 'Msol h**-1 (km s**-1ec)**2',
+             'epot_star': 'Msol h**-1 (km s**-1ec)**2',
              }
 
     def __init__(self, pymses_snapshot, filename=None, **kwargs):
@@ -187,7 +187,7 @@ class AHFCatalogue(HaloCatalogue):
 
     def get_boxsize(self, **kwargs):
         '''
-        Returns the boxsize, according to AHF, in Mpccm/h
+        Returns the boxsize, according to AHF, in Mpc a h**-1
         '''
         import glob
         list_files = glob.glob("%s/*.log" % self.ahf_path)
@@ -196,7 +196,7 @@ class AHFCatalogue(HaloCatalogue):
                 l = f.readline()
                 if l.startswith('simu.boxsize'):
                     box_size = float(l.split(':')[1])
-                    return box_size
+                    return self.base.array(box_size, "Mpc a h**-1")
 
     # def can_load(self, **kwargs):
     #     '''
@@ -344,31 +344,31 @@ class RockstarCatalogue(HaloCatalogue):
                 ('m_pe_behroozi', 'f'), ('M_pe_Diemer', 'f'), \
                 ('halfmass_radius', 'f')] )
 
-    units = {'sam_mvir': 'Msun / h',
-        'mvir': 'Msun / h',
-        'rvir': 'kpccm / h',
-        'rs': 'kpccm / h',
-        'vrms': 'km / s',
-        'vmax': 'km / s',
-        'pos': 'Mpccm / h',
-        'vel': 'km / s',
-        'J': 'Msun/h Mpc/h km/s',
-        'mvir_all': 'Msun / h',
-        'm_alt': 'Msun / h',
-        #'r_alt': 'kpccm / h',
-        'xoff': 'kpccm / h',
-        'voff': 'km / s',
-        'A': 'kpccm / h',
-        'halfmass_r': 'kpccm / h',
-        'macc': 'Msun / h',
-        'mpeak': 'Msun / h',
-        'vacc': 'km / s',
-        'vpeak': 'km / s',
-        'acc_rate_inst': 'Msun/h/yr',
-        'acc_rate_100myr': 'Msun/h/100Myr',
-        'first_acc_mvir': 'Msun / h',
-        'first_acc_vmax': 'km / s',
-        'vmax_at_mpeak': 'km / s'}
+    units = {'sam_mvir': 'Msol h**-1',
+        'mvir': 'Msol h**-1',
+        'rvir': 'kpc a h**-1',
+        'rs': 'kpc a h**-1',
+        'vrms': 'km s**-1',
+        'vmax': 'km s**-1',
+        'pos': 'Mpc a h**-1',
+        'vel': 'km s**-1',
+        'J': 'Msol h**-1 Mpc h**-1 km s**-1',
+        'mvir_all': 'Msol h**-1',
+        'm_alt': 'Msol h**-1',
+        #'r_alt': 'kpc a h**-1',
+        'xoff': 'kpc a h**-1',
+        'voff': 'km s**-1',
+        'A': 'kpc a h**-1',
+        'halfmass_r': 'kpc a h**-1',
+        'macc': 'Msol h**-1',
+        'mpeak': 'Msol h**-1',
+        'vacc': 'km s**-1',
+        'vpeak': 'km s**-1',
+        'acc_rate_inst': 'Msol h**-1 yr**-1',
+        'acc_rate_100myr': 'Msol h**-1 100Myr**-1',
+        'first_acc_mvir': 'Msol h**-1',
+        'first_acc_vmax': 'km s**-1',
+        'vmax_at_mpeak': 'km s**-1'}
 
     def __init__(self, pymses_snapshot, **kwargs):
         super(RockstarCatalogue, self).__init__(pymses_snapshot, "Rockstar", **kwargs)
@@ -419,7 +419,7 @@ class RockstarCatalogue(HaloCatalogue):
             for line in f:
                 if line.startswith('#Box size:'):
                     boxsize = re.findall("\d+\.\d+", line)[0]
-                    return float(boxsize)  # Mpccm/h
+                    return self.base.array(float(boxsize), "Mpc a h**-1")  # Mpc a h**-1
 
     def load(self, **kwargs):
         # Ensures file is closed at the end. If within_r is specified, it must be in code units
@@ -512,31 +512,31 @@ class ConsistentTreesCatalogue(HaloCatalogue):
                           ('future_merger_mmp_id', 'f')])
 
     units = {
-        'sam_mvir': 'Msun / h',
-        'mvir': 'Msun / h',
-        'rvir': 'kpccm / h',
-        'rs': 'kpccm / h',
-        'vrms': 'km / s',
-        'vmax': 'km / s',
-        'pos': 'Mpccm / h',
-        'vel': 'km / s',
-        'J': 'Msun/h Mpc/h km/s',
-        'mvir_all': 'Msun / h',
-        'm_alt': 'Msun / h',
-        #'r_alt': 'kpccm / h',
-        'xoff': 'kpccm / h',
-        'voff': 'km / s',
-        'A': 'kpccm / h',
-        'halfmass_r': 'kpccm / h',
-        'macc': 'Msun / h',
-        'mpeak': 'Msun / h',
-        'vacc': 'km / s',
-        'vpeak': 'km / s',
-        'acc_rate_inst': 'Msun/h/yr',
-        'acc_rate_100myr': 'Msun/h/100Myr',
-        'first_acc_mvir': 'Msun / h',
-        'first_acc_vmax': 'km / s',
-        'vmax_at_mpeak': 'km / s'
+        'sam_mvir': 'Msol h**-1',
+        'mvir': 'Msol h**-1',
+        'rvir': 'kpc a h**-1',
+        'rs': 'kpc a h**-1',
+        'vrms': 'km s**-1',
+        'vmax': 'km s**-1',
+        'pos': 'Mpc a h**-1',
+        'vel': 'km s**-1',
+        'J': 'Msol h**-1 Mpc h**-1 km s**-1',
+        'mvir_all': 'Msol h**-1',
+        'm_alt': 'Msol h**-1',
+        #'r_alt': 'kpc a h**-1',
+        'xoff': 'kpc a h**-1',
+        'voff': 'km s**-1',
+        'A': 'kpc a h**-1',
+        'halfmass_r': 'kpc a h**-1',
+        'macc': 'Msol h**-1',
+        'mpeak': 'Msol h**-1',
+        'vacc': 'km s**-1',
+        'vpeak': 'km s**-1',
+        'acc_rate_inst': 'Msol h**-1 yr**-1',
+        'acc_rate_100myr': 'Msol h**-1 100Myr**-1',
+        'first_acc_mvir': 'Msol h**-1',
+        'first_acc_vmax': 'km s**-1',
+        'vmax_at_mpeak': 'km s**-1'
     }
 
     def __init__(self, pymses_snapshot, **kwargs):
@@ -590,7 +590,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
             for line in f:
                 if line.startswith('#Full box size'):
                     boxsize = re.findall("\d+\.\d+", line)[0]
-                    return float(boxsize)  # Mpccm/h
+                    return self.base.array(float(boxsize), "Mpc a h**-1")  # Mpc a/h
 
     def load(self, **kwargs):
         # Ensures file is closed at the end. If within_r is specified, it must be in code units

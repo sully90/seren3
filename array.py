@@ -9,7 +9,17 @@ class SimArray(array.SimArray):
     '''
     Wrapper to support use of pymses units
     '''
-    def __new__(subtype, data, units=None, sim=None, **kwargs):
+
+    # def __init__(self, array, ptr, **kwargs):
+    #     super(SimArray, self).__init__(array, ptr)
+    #     self._context = {}
+
+    #     if "snapshot" in kwargs:
+    #         cosmo = kwargs.pop("snapshot").cosmo
+    #         self._context["h"] = cosmo["h"]
+    #         self._context["a"] = cosmo["aexp"]
+
+    def __new__(subtype, data, units=None, snapshot=None, **kwargs):
         if isinstance(data, pymses_Unit):
             units = data._decompose_base_units().replace("^", "**").replace(".", " ")
             data = data.coeff
@@ -17,9 +27,10 @@ class SimArray(array.SimArray):
             units = unit_string(units)
 
         new = np.array(data, **kwargs).view(subtype)
-        if hasattr(data, 'units') and hasattr(data, 'sim') and units is None and sim is None:
+        new._context = {}
+        if hasattr(data, 'units') and hasattr(data, 'snapshot') and units is None and sim is None:
             units = data.units
-            sim = data.sim
+            snapshot = data.snapshot
 
         if hasattr(data, 'family'):
             new.family = data.family
@@ -40,10 +51,42 @@ class SimArray(array.SimArray):
         # So, set the sim attribute to the top-level snapshot and use
         # the normal weak-reference system.
 
-        if sim is not None:
-            new.sim = sim.ancestor
+        if snapshot is not None:
+            new.snapshot = snapshot.ancestor            
+            new._context["h"] = snapshot.cosmo["h"]
+            new._context["a"] = snapshot.cosmo["aexp"]
             # will generate a weakref automatically
 
         new._name = None
 
         return new
+
+    def in_units(self, new_unit, **context_overrides):
+        """Return a copy of this array expressed relative to an alternative
+        unit."""
+
+        context = self.conversion_context()
+        context.update(context_overrides)
+
+        if isinstance(new_unit, SimArray):
+            new_unit = "{val} {unit}".format(val=str(new_unit), unit=str(new_unit.units))
+
+        if self.units is not None:
+            r = self * self.units.ratio(new_unit,
+                                        **context)
+            r.units = new_unit
+            return r
+        else:
+            raise ValueError, "Units of array unknown"
+
+    def conversion_context(self):
+        return self._context
+
+    def add_conversion_context(self, key, value):
+        self._context[key] = value
+
+    def remove_conversion_context(self, key):
+        if key in self._context:
+            del self._context[key]
+        else:
+            raise Exception("No entry with key: %s" % key)
