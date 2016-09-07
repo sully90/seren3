@@ -6,18 +6,6 @@ _units = units
 from pymses.utils.constants.unit import Unit as pymses_Unit
 
 class SimArray(array.SimArray):
-    '''
-    Wrapper to support use of pymses units
-    '''
-
-    # def __init__(self, array, ptr, **kwargs):
-    #     super(SimArray, self).__init__(array, ptr)
-    #     self._context = {}
-
-    #     if "snapshot" in kwargs:
-    #         cosmo = kwargs.pop("snapshot").cosmo
-    #         self._context["h"] = cosmo["h"]
-    #         self._context["a"] = cosmo["aexp"]
 
     def __new__(subtype, data, units=None, snapshot=None, **kwargs):
         if isinstance(data, pymses_Unit):
@@ -75,6 +63,12 @@ class SimArray(array.SimArray):
             r = self * self.units.ratio(new_unit,
                                         **context)
             r.units = new_unit
+
+            # Convert back to seren3 SimArray
+            r = SimArray(r.tolist(), r.units)
+
+            if hasattr(self, "_context"):
+                r._context = self._context
             return r
         else:
             raise ValueError, "Units of array unknown"

@@ -94,7 +94,12 @@ class PymsesSnapshot(Snapshot):
 class PymsesSubSnapshot(PymsesSnapshot):
     def __init__(self, pymses_snapshot, region):
         super(PymsesSubSnapshot, self).__init__(pymses_snapshot.path, pymses_snapshot.ioutput, ro=pymses_snapshot.ro)
+        self._base = pymses_snapshot
         self.region = region
+
+    @property
+    def friedmann(self):
+        return self._base.friedmann
 
     def camera(self, **kwargs):
         from pymses.analysis import Camera

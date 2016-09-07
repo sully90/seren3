@@ -555,6 +555,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
 
     def get_filename(self, **kwargs):
         import glob
+        from seren3.exceptions import CatalogueNotFoundException
         # Filename is hlist_aexp.list
         # Look through the outputs and find the closest expansion factor
         aexp = self.base.cosmo['aexp']
@@ -576,7 +577,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
         idx = np.argmin(np.abs(aexp_hlist - aexp))
 
         if min(aexp_hlist[idx] / aexp, aexp / aexp_hlist[idx]) < 0.985:
-          raise Exception("Unable to locate catalogue close to this snapshot.\nHlist aexp: %f, Snap aexp: %f" % (aexp_hlist[idx], aexp))
+          raise CatalogueNotFoundException("Unable to locate catalogue close to this snapshot.\nHlist aexp: %f, Snap aexp: %f" % (aexp_hlist[idx], aexp))
 
         return outputs[idx]
 
@@ -606,6 +607,9 @@ class ConsistentTreesCatalogue(HaloCatalogue):
 
     @staticmethod
     def _find_mmp(hid, prog_halos):
+        '''
+        Returns the id for the most massive progenitor
+        '''
         search_key = lambda halos: halos[:]["desc_id"] == hid
         progs = prog_halos.search(search_key)
         if len(progs) > 1:
@@ -619,7 +623,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
 
     def find_mmp(self, halo, back_to_iout=None):
         '''
-        Locates all progentiors of a given halo
+        Locates the most massive progenitor
         '''
         from seren3 import load_snapshot
         if back_to_iout is None:
@@ -647,6 +651,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
       Iterates through list of progenitors
       '''
       from seren3 import load_snapshot
+      from seren3.exceptions import CatalogueNotFoundException
 
       if back_to_iout is None:
         back_to_iout = self.base.ioutput-1
@@ -656,27 +661,17 @@ class ConsistentTreesCatalogue(HaloCatalogue):
 
       last = self.base.ioutput
       for iout_prog in ioutputs:
+        try:
           # Start with the previous snapshot, find the most massive progenitor and use that
           prog_snap = load_snapshot(self.base.path, iout_prog)
           prog_halos = prog_snap.halos(finder='ctrees')
           mmp_id = self._find_mmp(hid, prog_halos)
-          yield prog_halos.from_id(mmp_id)
-          hid = mmp_id
-
-    # def find_progenitors(self, halos):
-    #     '''
-    #     Locates all progentiors of a given halo
-    #     '''
-    #     from seren3 import load_snapshot
-    #     path, ioutput = (self.base.path, self.base.ioutput)
-    #     prog_snap = load_snapshot(path, ioutput-1)
-    #     prog_halos = prog_snap.halos(finder='ctrees')
-
-    #     if not hasattr(halos, "__iter__"):
-    #         halos = [halos]
-    #     result = {}
-    #     for h in halos:
-    #         search_key = lambda halos: halos[:]["desc_id"] == h.hid
-    #         result[h.hid] = prog_halos.search(search_key)
-
-    #     return prog_halos, prog_halos.search(search_key)
+          if mmp_id is None:
+            print "No progenitor for halo %i - exiting" % hid
+            return
+          else:
+            hid = mmp_id
+            yield prog_halos.from_id(mmp_id)
+        except CatalogueNotFoundException:
+          print "No more outputs found - exiting"
+          return

@@ -17,7 +17,7 @@ def fesc(subsnap, ret_flux_map=False, **kwargs):
     mass = dset["mass"][keep]
     nPhot = dset["Nion_d"] * mass
 
-    # Computed integrated flux out of the virial sphere
+    # Compute integrated flux out of the virial sphere
     flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
     integrated_flux = render_spherical.integrate_surface_flux(flux_map, rvir)
     integrated_flux *= subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
@@ -33,8 +33,9 @@ def time_integrated_fesc(halo, back_to_iout, return_data=False):
     the history of the halo, a la Kimm & Cen 2014
     '''
     import numpy as np
-    from scipy.integrate import trapz
     import random
+    from scipy.integrate import trapz
+    from seren3.exceptions import NoParticlesException
 
     # Need to compute fesc(t) and \dot{Nion} at each snapshot
     catalogue = halo.catalogue
@@ -53,19 +54,25 @@ def time_integrated_fesc(halo, back_to_iout, return_data=False):
         age_dict[h.base.ioutput] = h.base.age
     
     _compute(halo)
+    
     for prog in catalogue.iterate_progenitors(halo, back_to_iout=back_to_iout):
-        _compute(prog)
+        try:
+            _compute(prog)
+        except NoParticlesException as e:
+            print e.message
+            break
 
     I1 = np.zeros(len(fesc_dict)); I2 = np.zeros(len(fesc_dict)); age_array = np.zeros(len(age_dict))
 
     for key, i in zip( sorted(fesc_dict.keys(), reverse=True), range(len(fesc_dict)) ):
-        I1[i] = fesc_dict[key]*Nion_d_dict[key]
+        I1[i] = fesc_dict[key] * Nion_d_dict[key]
         I2[i] = Nion_d_dict[key]
         age_array[i] = age_dict[key]
 
     lbtime = halo.base.age - age_array
 
+    # fesc at each time step can be computed by taking I1/I2
     result = trapz(I1, lbtime) / trapz(I2, lbtime)
-    if return_data:
+    if return_data:    
         return result, I1, I2, lbtime
     return result

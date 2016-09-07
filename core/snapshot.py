@@ -15,7 +15,9 @@ class Snapshot(object):
         from pymses.utils import constants as C
 
         self.path = os.getcwd() if path.strip('/') == '.' else path
-        self.ioutput = ioutput
+        if ioutput != int(ioutput):
+            raise Exception("Must provide integer output number (got %f)" % ioutput)
+        self.ioutput = int(ioutput)
         self.C = C
 
         # Known particles
@@ -252,7 +254,8 @@ class Family(object):
     Class to load family specific fields
     """
     def __init__(self, snapshot, family):
-        self.base = snapshot
+        import weakref
+        self._base = weakref.ref(snapshot)
         self.family = family.lower()
 
     def __str__(self):
@@ -264,6 +267,10 @@ class Family(object):
     def __len__(self):
         dset = self["pos"].f
         return len(dset)
+
+    @property
+    def base(self):
+        return self._base()
 
     @property
     def ro(self):

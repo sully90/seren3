@@ -11,3 +11,8 @@ class UnknownFieldException(Exception):
         super(UnknownFieldException, self).__init__("Unknown field: %s" % field)
 
         self.field = field
+
+class CatalogueNotFoundException(Exception):
+
+    def __init__(self, message):
+        super(CatalogueNotFoundException, self).__init__(message)

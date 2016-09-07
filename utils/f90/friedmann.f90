@@ -39,8 +39,9 @@ subroutine friedmann(O_mat_0,O_vac_0,O_k_0,alpha,axp_min, &
   t = 0.0D0
   nstep = 0
 
-  print*, 'Cosmology: ', O_mat_0, O_vac_0, O_k_0
-  print*, 'Params: ', alpha,axp_min
+  ! Uncomment below for debugging
+  !print*, 'Cosmology: ', O_mat_0, O_vac_0, O_k_0
+  !print*, 'Params: ', alpha,axp_min
   
   do while ( (axp_tau .ge. axp_min) .or. (axp_t .ge. axp_min) ) 
      

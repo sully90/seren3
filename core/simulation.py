@@ -17,6 +17,9 @@ class Simulation(object):
     def __getitem__(self, ioutput):
         return self.snapshot(ioutput)
 
+    def __len__(self):
+        return len(self.numbered_outputs)
+
     def __iter__(self):
         for ioutput in self.numbered_outputs:
             yield self[ioutput]
@@ -72,9 +75,16 @@ class Simulation(object):
         import glob
         from seren3.utils import string_utils
 
-        outputs = glob.glob("%s/output_*/" % self.path)
+        outputs = glob.glob("%s/output_*" % self.path)
         outputs.sort(key=string_utils.natural_keys)
-        return outputs
+
+	result = []
+	for o in outputs:
+		if '/' in o:
+			result.append( o.split('/')[-1] )
+		else:
+			result.append(o)
+        return result
 
     @property
     def age(self):

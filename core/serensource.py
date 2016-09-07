@@ -10,9 +10,9 @@ class SerenSource(sources.DataSource):
     def __init__(self, family, source, required_fields, requested_fields, cpu_list=None):
         super(SerenSource, self).__init__()
         self._source = source
-        self._family = family
         self._dset = None
         self._cpu_list = cpu_list
+        self.family = family
         self.required_fields = required_fields
         self.requested_fields = requested_fields
 
@@ -29,7 +29,7 @@ class SerenSource(sources.DataSource):
         if self._cpu_list is not None:
             cpu_list = self._cpu_list
         else:
-            cpu_list = range(1, self._family.info['ncpu'] + 1)
+            cpu_list = range(1, self.family.info['ncpu'] + 1)
         for idomain in cpu_list:
             yield self.get_domain_dset(idomain)
 
@@ -87,12 +87,14 @@ class SerenSource(sources.DataSource):
     def _derived_dset(self, **kwargs):
         print "Deriving dataset..."
 
+        # Setup dicts to hold fields
         if self._dset is None:
             return {}
         derived_dset = {}
         dset = self._dset
-        family = self._family.family
+        family = self.family.family
 
+        # User requested dx or pos fields?
         if "dx" in self.required_fields:
             dset.add_scalars("dx", dset.get_sizes())
         if "pos" in self.required_fields:
@@ -106,16 +108,19 @@ class SerenSource(sources.DataSource):
             if f[-1].isdigit():
                 s = f[:-1]
             if seren3.in_tracked_field_registry(s):
+                # Field is tracked by RAMSES -> Get unit information
                 info_for_field = seren3.info_for_tracked_field(s)
                 unit_key = info_for_field["info_key"]
 
-                unit = self._family.info[unit_key]
+                unit = self.family.info[unit_key]
                 val = SimArray(dset[f], unit)
 
+                # User defined default unit?
                 if "default_unit" in info_for_field:
                     val = val.in_units(info_for_field["default_unit"])
                 tracked_fields[f] = val
             else:
+                # We have no unit information -> return dimensionless SimArray
                 tracked_fields[f] = SimArray(dset[f])
 
         # Derive fields
@@ -123,6 +128,7 @@ class SerenSource(sources.DataSource):
             '''
             Recursively derive all the fields we need
             '''
+            # List of fields required to derive requested field
             rules = [r for r in seren3.required_for_field(family, field)]
             for r in rules:
                 if seren3.is_derived(family, r) and r not in dset.fields:
@@ -132,8 +138,9 @@ class SerenSource(sources.DataSource):
                 elif r in tracked_fields:
                     temp[r] = tracked_fields[r]
 
+            # Get the appropriate function from the registry and call it
             fn = seren3.get_derived_field(family, field)
-            temp[field] = fn(self._family.base, temp, **kwargs)
+            temp[field] = fn(self.family.base, temp, **kwargs)
 
         for f in self.requested_fields:
             if f in dset.fields:  # tracked field
@@ -150,6 +157,7 @@ class SerenSource(sources.DataSource):
                     else:
                         temp[r] = dset[r]
 
+                # Populate temp with the required fields to derive f
                 _get_derived(f, temp)
                 derived_dset[f] = temp[f]
             else:

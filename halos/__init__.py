@@ -2,11 +2,7 @@
 Heavily based on halos.py from pynbody, so credit to those guys
 Rewritten to allow loading of Rockstar catalogues when using any module
 
-NOTE: The new Halo catalogue will only work when loaded through yt for unit coherence.
-
 @author dsullivan, bthompson
-=======
-TODO -> Use SimArray instead of YTArray
 '''
 import seren3
 from seren3 import config
@@ -29,7 +25,7 @@ class Halo(object):
         self.base = catalogue.base
         self.properties = properties
 
-        self._subhalos = None
+        self._subsnap = None
 
     def __str__(self):
         return "halo_" + str(self.hid)
@@ -43,7 +39,7 @@ class Halo(object):
         # Return the requested property of this halo, i.e Mvir
         item = item.lower()
         unit_dict = self.catalogue.units
-        unit = 'dimensionless'  # Default to dimensionless
+        unit = None  # Default to dimensionless
         if item in unit_dict:
             unit = unit_dict[item]
         return self.base.array(self.properties[item], unit)
@@ -85,13 +81,26 @@ class Halo(object):
         return self["rvir"].in_units(self.catalogue.boxsize)
 
     @property
+    def dt(self):
+        '''
+        Time delay for photons to escape, assuming point source
+        '''
+        rvir = self.rvir.in_units("m")
+        rt_c = SimArray(self.base.info_rt["rt_c_frac"] * self.base.C.c)
+
+        dt = rvir / rt_c
+        return dt
+
+    @property
     def sphere(self):
         pos, r = self.pos_r_code_units
         return self.base.get_sphere(pos, r)
 
     @property
     def subsnap(self):
-        return self.base[self.sphere]
+        if self._subsnap is None:
+            self._subsnap = self.base[self.sphere]
+        return self._subsnap
 
     def camera(self, **kwargs):
         return self.subsnap.camera(**kwargs)
@@ -153,7 +162,8 @@ class HaloCatalogue(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, pymses_snapshot, finder, filename=None, **kwargs):
-        self.base = pymses_snapshot
+        import weakref
+        self._base = weakref.ref(pymses_snapshot)
         self.finder = finder
         self.finder_base_dir = "%s/%s" % (self.base.path, config.get("halo", "%s_base" % self.finder.lower()))
 
@@ -182,6 +192,10 @@ class HaloCatalogue(object):
 
     def __getitem__(self, item):
         return self._get_halo(item)
+
+    @property
+    def base(self):
+        return self._base()
 
     @abc.abstractmethod
     def get_boxsize(self, **kwargs):
