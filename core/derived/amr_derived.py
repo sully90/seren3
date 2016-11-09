@@ -1,5 +1,4 @@
 import seren3
-from seren3.utils import constants
 from seren3.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
@@ -141,8 +140,6 @@ def amr_Gamma(context, dset, iIon=0):
     '''
     Gas photoionization rate in [s^-1]
     '''
-    from seren3.utils import constants
-
     emi = 0.
     for i in range(1, context.info_rt["nGroups"] + 1):
         Np = dset["Np%i" % i]
