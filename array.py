@@ -13,7 +13,8 @@ from pymses.utils.constants.unit import Unit as pymses_Unit
 
 
 def _unit_string(unit):
-    return "%s %s" % (unit.coeff, unit._decompose_base_units())
+    u = unit._decompose_base_units().replace("^", "**").replace(".", " ")
+    return "%s %s" % (unit.coeff, u)
 
 
 class SimArray(np.ndarray):
