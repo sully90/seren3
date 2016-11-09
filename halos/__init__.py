@@ -13,17 +13,19 @@ import logging
 import abc
 import sys
 
+verbose = config.get("general", "verbose")
 logger = logging.getLogger('seren3.halos.halos')
 
 class Halo(object):
     """
     Object to represent a halo and allow filtered data access
     """
-    def __init__(self, halo_id, catalogue, properties):
-        self.hid = halo_id
-        self.catalogue = catalogue
-        self.base = catalogue.base
+    def __init__(self, properties, snapshot, units, boxsize):
+        self.hid = properties["id"]
         self.properties = properties
+        self.base = snapshot
+        self.units = units
+        self.boxsize = boxsize
 
         self._subsnap = None
 
@@ -38,7 +40,7 @@ class Halo(object):
     def __getitem__(self, item):
         # Return the requested property of this halo, i.e Mvir
         item = item.lower()
-        unit_dict = self.catalogue.units
+        unit_dict = self.units
         unit = None  # Default to dimensionless
         if item in unit_dict:
             unit = unit_dict[item]
@@ -74,11 +76,11 @@ class Halo(object):
 
     @property
     def pos(self):
-        return self["pos"].in_units(self.catalogue.boxsize)
+        return self["pos"].in_units(self.boxsize)
 
     @property
     def rvir(self):
-        return self["rvir"].in_units(self.catalogue.boxsize)
+        return self["rvir"].in_units(self.boxsize)
 
     @property
     def dt(self):
@@ -89,7 +91,7 @@ class Halo(object):
         rt_c = SimArray(self.base.info_rt["rt_c_frac"] * self.base.C.c)
 
         dt = rvir / rt_c
-        return dt
+        return self.base.array(dt, dt.units)
 
     @property
     def sphere(self):
@@ -113,8 +115,9 @@ class Halo(object):
         G = SimArray(self.base.C.G)
         M = self["mvir"].in_units("kg")
         Rvir = self["rvir"].in_units("m")
+        Vc = np.sqrt( (G*M)/Rvir )
 
-        return np.sqrt( (G*M)/Rvir )
+        return self.base.array(Vc, Vc.units)
 
     @property
     def Tvir(self):
@@ -127,7 +130,7 @@ class Halo(object):
         Vc = self.Vc
 
         Tvir = 1./2. * (mu*mH/kB) * Vc**2
-        return Tvir
+        return self.base.array(Tvir, Tvir.units)
 
     def fesc(self, **kwargs):
         from seren3 import analysis
@@ -149,7 +152,7 @@ class SortedHaloCatalogue(object):
 
     def __getitem__(self, item):
         hprops = self._sorted_halos[item]
-        return Halo(hprops["id"], self._halo_catalogue, hprops)
+        return Halo(hprops, self._halo_catalogue.base, self._halo_catalogue.units, self._halo_catalogue.get_boxsize())
 
     def __len__(self):
         return len(self._sorted_halos)
@@ -162,8 +165,9 @@ class HaloCatalogue(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, pymses_snapshot, finder, filename=None, **kwargs):
-        import weakref
-        self._base = weakref.ref(pymses_snapshot)
+        # import weakref
+        # self._base = weakref.ref(pymses_snapshot)
+        self.base = pymses_snapshot
         self.finder = finder
         self.finder_base_dir = "%s/%s" % (self.base.path, config.get("halo", "%s_base" % self.finder.lower()))
 
@@ -176,16 +180,22 @@ class HaloCatalogue(object):
         self.filename = self.get_filename(**kwargs) if filename is None else filename
         self.boxsize = self.get_boxsize(**kwargs)  # Mpccm/h
 
-        print "%sCatalogue: loading halos..." % self.finder,
-        sys.stdout.flush()
+        if(verbose):
+            print "%sCatalogue: loading halos..." % self.finder,
+            sys.stdout.flush()
+
         self.load(**kwargs)
-        print 'Loaded %d halos' % len(self)
+        if(verbose):
+            print 'Loaded %d halos' % len(self)
 
     def __len__(self):
         return len(self._haloprops)
 
     def __str__(self):
-        return "%sCatalogue - Snapshot - %s" % (self.finder, self.snapshot)
+        return "%sCatalogue - Snapshot - %s" % (self.finder, self.base)
+
+    def __repr__(self):
+        return self.__str__()
 
     def __iter__(self):
         return self._halo_generator()
@@ -193,9 +203,9 @@ class HaloCatalogue(object):
     def __getitem__(self, item):
         return self._get_halo(item)
 
-    @property
-    def base(self):
-        return self._base()
+    # @property
+    # def base(self):
+    #     return self._base()
 
     @abc.abstractmethod
     def get_boxsize(self, **kwargs):
@@ -297,23 +307,6 @@ class HaloCatalogue(object):
         neighbours = T.query(point, n_halos)
         return neighbours
 
-    def within_radius(self, pos, rad, convert_units=True):
-        '''
-        Find halos within a given radius of pos
-        '''
-        T = self.kdtree()
-        neighbors = None
-
-        if convert_units:
-            neighbors = T.query_ball_point(
-                pos.in_units(self.catalogue.boxsize), r=rad.in_units(self.catalogue.boxsize))
-        else:
-            neighbors = T.query_ball_point(
-                pos, r=rad)
-        # found = self._haloprops[neighbors]
-        # return found
-        return self.from_indicies(neighbors)
-
     def from_id(self, hid):
         for h in self:
             if h.hid == hid:
@@ -334,7 +327,7 @@ class HaloCatalogue(object):
     #     return sorted(halos, key=lambda x: x[field], reverse=reverse)
 
     def sort(self, key):
-        return SortedHaloCatalogue(self, key)
+        return SortedHaloCatalogue(self, key.lower())
 
     def plot_mass_function(self, units='Msol h**-1', kern='ST', ax=None,\
                      plot_Tvir=True, label_z=False, nbins=100, label=None, show=True, **kwargs):
@@ -357,12 +350,13 @@ class HaloCatalogue(object):
             label = "%s z=%1.3f" % (label, self.snapshot.z)
 
         # Compute HMF from realization and plot
-        boxsize = self.boxsize  # Mpccm/h
+        # boxsize = self.boxsize  # Mpccm/h
+        boxsize = self.base.boxsize.in_units("Mpc a h**-1")
 
         mbinmps, mhist, mbinsize = self.mass_function(units=units, nbins=nbins)
-        y = mhist/(boxsize**3)/mbinsize
+        y = self.base.array(mhist/(boxsize**3)/mbinsize, "Mpc**-3 h**3 a**-3")
         ax.semilogy(mbinmps, y, 'o', label=label, color='b')
-        ax.set_xlim(6, 8)
+        # ax.set_xlim(6, 8)
 
         bin_centers, mean, std = fit_scatter(mbinmps, y)
         ax.errorbar(bin_centers, mean, yerr=std, color='b')
@@ -372,7 +366,7 @@ class HaloCatalogue(object):
             cosmo = snapshot.cosmo
             M_ticks = np.array(ax.get_xticks())
 
-            mass = self.base.array(10**M_ticks, units).in_units("Msol")
+            mass = self.base.array(10**M_ticks, units)
             Tvir = [float("%1.3f" % np.log10(v)) for v in cp.virial_temp(mass, **cosmo)]
 
             ax2 = ax.twiny()
@@ -389,7 +383,8 @@ class HaloCatalogue(object):
             s = pynbody.snapshot.ramses.RamsesSnap("%s/output_%05d" % (snapshot.path, snapshot.ioutput), cpus=[1])
             M_kern, sigma_kern, N_kern = pynbody.analysis.halo_mass_function(s, kern=kern)
 
-            ax.semilogy(np.log10(M_kern*(snapshot.info['H0']/100)), N_kern, label=kern)
+            # ax.semilogy(np.log10(M_kern*(snapshot.info['H0']/100)), N_kern, label=kern)
+            ax.semilogy(np.log10(M_kern*self.base.cosmo["h"]), N_kern, label=kern, color="k")
 
         ax.set_xlabel(r'log$_{10}$(M [M$_{\odot}$/h])')
         ax.set_ylabel('dN / dlog$_{10}$(M [Mpc$^{-3}$ h$^{3}$])')
@@ -397,7 +392,8 @@ class HaloCatalogue(object):
         if "title" in kwargs:
             ax.set_title(kwargs.get("title"))
 
-        # ax.set_xlim(mbinmps.min(), mbinmps.max())
+        ax.set_xlim(mbinmps.min(), mbinmps.max())
+        ax.set_ylim(1e-1, 1e3)
         # ax.set_ylim(y.min(), y.max())
 
         if show:
@@ -422,63 +418,6 @@ class HaloCatalogue(object):
             mbinsize[i] = mbin_edges[i + 1] - mbin_edges[i]
 
         return mbinmps, mhist, mbinsize
-
-    def dbscan(self, eps=0.4, min_samples=20):
-        '''
-        DBSCAN halo catalogue to identify clusters
-        '''
-        # Get the positions in code units
-        if super_verbose:
-            import time
-            t0 = time.time()
-            print 'Loading positions...'
-        pos = np.array([h['pos'].in_units(self.catalogue.boxsize) for h in self])
-        ind = np.array([h['id'] for h in self])
-
-        if super_verbose:
-            print 'Got positions'
-            t1 = time.time()
-            print 'Took %f s' % (t1 - t0)
-
-        # We have the data to run dbscan
-        from scipy.spatial import distance
-        #from sklearn.preprocessing import StandardScaler
-        from sklearn.cluster import DBSCAN
-        #from sklearn import metrics
-        # Compute similarities
-        if super_verbose:
-            print 'Computing similarities'
-            t0 = time.time()
-        D = distance.squareform(distance.pdist(pos))
-        S = np.max(D) - D
-        # print pos
-        # print S
-        if super_verbose:
-            print 'Got similarities'
-            t1 = time.time()
-            print 'Took %f s' % (t1 - t0)
-
-        if super_verbose:
-            print 'Starting DBSCAN'
-            t0 = time.time()
-        #db = DBSCAN(eps=eps, min_samples=min_samples).fit(pos)
-        db = DBSCAN(eps=eps * np.max(D), min_samples=10).fit(S)
-        if super_verbose:
-            print 'Finished DBSCAN'
-            t1 = time.time()
-            print 'Took %f s' % (t1 - t0)
-        del(D)
-        del(S)
-        #core_samples = db.core_sample_indices_
-        labels = db.labels_
-
-        # add the particle indices to the origional array
-        Y = np.insert(pos, 3, ind, axis=1)
-
-        # Number of clusters in labels, ignoring noise if present.
-        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-        print 'Found %d groups' % (n_clusters_)
-        return db, Y
 
     def dump(self, fname):
         '''

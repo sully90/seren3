@@ -1,5 +1,4 @@
 import numpy as np
-from seren3.analysis.parallel import Result
 
 # Setup MPI environment
 from mpi4py import MPI
@@ -9,11 +8,34 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 host = (rank == 0)
 
+class Result(object):
+    '''
+    Simple wrapper object to contain result of single iteration MPI computation
+    '''
+    def __init__(self, rank, idx):
+        self.rank = rank
+        self.idx = idx
+        self.result = None
+
+    def __repr__(self):
+        return "rank: %d idx: %s result: %s" % (self.rank, self.idx, self.result)
+
+    def __eq__(self, other):
+        return self.result == other.result
+
+    def __ne__(self, other):
+        return self.result != other.result
+
+    def __hash__(self):
+        return hash(self.result)
+
+
 def is_host():
     return host
 
 def piter(iterable, storage=None, keep_None=False, print_stats=False):
     '''
+    Embarrassingly parallel MPI for loop
     Chunks and scatters iterables before gathering the results at the end
     Parameters
     ----------
@@ -57,27 +79,25 @@ def piter(iterable, storage=None, keep_None=False, print_stats=False):
     local_results = []
     # yield the iterable
     for i in xrange(len(local_iterable)):
-        #init the result
-        res = Result(rank, i)
 
         # yield to the for loop
         if storage is not None:
+            #init the result
+            res = Result(rank, i)
             yield local_iterable[i], res
+
+            if keep_None is False and res.result is None:
+                # Dont append None result to list
+                continue
+            local_results.append(res)
+
         else:
             yield local_iterable[i]
 
-        if keep_None is False and res.result is None:
-            continue
-
-        if storage is not None:
-            # store the result
-            local_results.append(res)
-
-    # If the executing code sets dest, then reduce it to rank 0
+    # If the executing code sets storage, then reduce it to rank 0
     if storage is not None:
         if print_stats:
             msg("Pending gather")
-        # comm.Barrier()
         results = comm.gather(local_results, root=0)
         del local_results
 
@@ -88,6 +108,9 @@ def piter(iterable, storage=None, keep_None=False, print_stats=False):
                 storage[irank] = local_results
 
 def unpack(dest):
+    '''
+    Flatten the dictionary from piter (keys are mpi rank)
+    '''
     result = []
     for rank in dest:
         for item in dest[rank]:
@@ -96,7 +119,6 @@ def unpack(dest):
 
 def msg(message):
     print '[rank %d   ]: %s' % (rank, message)
-
 
 def terminate(code, e=None):
     if e:

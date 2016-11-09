@@ -1,11 +1,9 @@
 import seren3
 from .part_derived import *
-from seren3.utils.derived_utils import check_dset
 import numpy as np
 from pymses.utils import constants as C
 
 @seren3.derived_quantity(requires=["epoch"], unit=C.Gyr)
-@check_dset
 def star_age(context, dset, **kwargs):
     return part_age(context, dset, **kwargs)
 
@@ -16,13 +14,17 @@ def star_Nion_d(context, dset, dt=0., group=1):
     Computes the number of ionisiing photons produced by a stellar population per solar mass per second
     '''
     from seren3.array import SimArray
-    from seren3.utils import io
-    from scipy.interpolate import interp2d
+    from seren3.utils.sed import io
     from seren3.exceptions import NoParticlesException
+    from seren3 import config
+    from scipy.interpolate import interp2d
+
+    verbose = config.get("general", "verbose")
 
     Z_sun = 0.02  # metallicity of the sun
     nGroups = context.info_rt["nGroups"]
-    print 'Computing Nion_d for photon group %i/%i' % (group, nGroups)
+    
+    if(verbose): print 'Computing Nion_d for photon group %i/%i' % (group, nGroups)
     nIons = context.info_rt["nIons"]
     nPhotons_idx = 0  # index of photon number in SED
 
@@ -52,10 +54,11 @@ def star_Nion_d(context, dset, dt=0., group=1):
     # Multiply by (SSP) escape fraction and return
     nml = context.nml
     rt_esc_frac = float(nml[nml.NML.RT_PARAMS]['rt_esc_frac'].replace('d', 'e'))
-    return SimArray(rt_esc_frac * nPhotons, "s**-1 Msol**-1")
+    Nion_d = SimArray(rt_esc_frac * nPhotons, "s**-1 Msol**-1")
+    Nion_d.set_latex("$\\dot{N_{\\mathrm{ion}}}$")
+    return Nion_d
 
 @seren3.derived_quantity(requires=["age", "mass"], unit=1./C.Gyr)
-@check_dset
 def star_sSFR(context, dset, nbins=100, **kwargs):
     from seren3.exceptions import NoParticlesException
 
@@ -86,10 +89,14 @@ def star_sSFR(context, dset, nbins=100, **kwargs):
     M_star = mass.sum()
     # sSFR = (sfrhist * 1e9) / M_star  # Msun/yr -> Msun/Gyr
     sSFR = sfrhist.in_units("Msol Gyr**-1") / M_star  # Msun/yr -> Msun/Gyr -> Gyr^-1
+
+    sSFR.set_latex("$\\mathrm{sSFR}$")
+    binmps.set_latex("$\\mathrm{Lookback-Time}$")
+    binsize.set_latex("$\Delta$")
+
     return {'sSFR' : sSFR, 'lookback-time' : binmps, 'binsize' : binsize}  # sSFR [Gyr^-1], Lookback Time [Gyr], binsize [Gyr]
 
 @seren3.derived_quantity(requires=["age", "mass"], unit=C.Msun/C.Gyr)
-@check_dset
 def star_SFR(context, dset, nbins=100, **kwargs):
     from seren3.exceptions import NoParticlesException
 
@@ -117,5 +124,9 @@ def star_SFR(context, dset, nbins=100, **kwargs):
 
     sfrhist, binmps, binsize = sfr(age, mass, **kwargs)
     SFR = sfrhist.in_units("Msol Gyr**-1")
+
+    SFR.set_latex("$\\mathrm{SFR}$")
+    binmps.set_latex("$\\mathrm{Lookback-Time}$")
+    binsize.set_latex("$\Delta$")
     return {'SFR' : SFR, 'lookback-time' : binmps, 'binsize' : binsize}  # SFR [Msol Gyr^-1], Lookback Time [Gyr], binsize [Gyr]
 

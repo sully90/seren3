@@ -44,7 +44,7 @@ def interp_xHe(xion, z, sim):
     return tau, redshifts
 
 
-def plot_from_sims(sims, labels, cols=None, show=True):
+def plot_from_sims(sims, labels, cols=None, show=True, **kwargs):
     '''
     Plots optical depth to reionization for each sim, if reion_history table exists
     '''
@@ -77,22 +77,22 @@ def plot_from_sims(sims, labels, cols=None, show=True):
         count += 1
         tau, redshifts = interp_xHe(vw, z, sim)
         if has_more:
-            plot(tau, redshifts, ax=ax, label=label, color=c)
+            plot(tau, redshifts, ax=ax, label=label, color=c, **kwargs)
         else:
             # last element, draw PLANCK constraints
-            plot(tau, redshifts, ax=ax, label=label, color=c, plot_PLANCK=True)
+            plot(tau, redshifts, ax=ax, label=label, color=c, plot_PLANCK=True, **kwargs)
     if show:
         plt.legend()
         plt.show(block=False)
     return fig, ax
 
 
-def plot(tau, z, ax=None, color='k', label=None, plot_WMAP7=False, plot_PLANCK=False, show=False):
+def plot(tau, z, ax=None, color='k', label=None, plot_WMAP7=False, plot_PLANCK=False, show=False, **kwargs):
     import matplotlib.pylab as plt
 
     if ax is None:
         ax = plt.gca()
-    p = ax.plot(z, tau, color=color, label=label, linewidth=1.5)
+    p = ax.plot(z, tau, color=color, label=label, **kwargs)
     tau_planck, err = (0.066, 0.016)  # http://arxiv.org/pdf/1502.01589v2.pdf
     tau_WMAP7, err = (0.088, 0.015)  # http://arxiv.org/pdf/1502.01589v2.pdf
 
@@ -108,7 +108,7 @@ def plot(tau, z, ax=None, color='k', label=None, plot_WMAP7=False, plot_PLANCK=F
         ax.fill_between(
             z, tau_WMAP7 - err, tau_WMAP7 + err, color='k', alpha=0.3)
 
-    ax.set_ylabel(r'$\tau_{reion}$')
+    ax.set_ylabel(r'$\tau_{\mathrm{reion}}$')
     ax.set_xlabel(r'$z$')
     ax.set_xlim(0., 14.5)
     ax.set_ylim(0., 0.12)

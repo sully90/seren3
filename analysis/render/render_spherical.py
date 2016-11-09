@@ -91,10 +91,8 @@ def integrate_surface_flux(flux_map, r, smooth=False, threaded=False, ret_map=Fa
         integrand[i] = r**2 * np.sin(th)\
          * np.dot(flux_map[i], unit_r)\
          * heaviside(np.dot(flux_map[i], unit_r))
-        # integrand[i] = _compute_step(i, theta, phi, flux_map)
     # integrand *= r**2
 
-    # del flux_map
     integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
 
     I = trapz(trapz(integrand, phi), theta)

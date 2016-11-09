@@ -87,6 +87,29 @@ class Snapshot(object):
     def get_sphere(self, pos, r):
         return
 
+    @property
+    def boxsize(self):
+        return self.array(self.info["unit_length"]).in_units("Mpc a h**-1")
+
+    def pickle_dump(self, fname, data):
+        '''
+        Dumps data (safely) to a pickle database
+        '''
+        import pickle
+        with open(fname, "wb") as f:
+            pickle.dump(data, f)
+
+    def pickle_load(self, fname):
+        '''
+        Loads data (safely) from a pickle databse
+        '''
+        import pickle
+        data = None
+        with open(fname, "rb") as f:
+            data = pickle.load(f)
+
+        return data
+
     def halos(self, finder=config.get("halo", "default_finder"), **kwargs):
         if finder.lower() == 'ahf':
             from seren3.halos.halos import AHFCatalogue

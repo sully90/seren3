@@ -210,6 +210,51 @@ def binned_by_density(density, field, xlogrange=True, ylogrange=True, thresh=Non
     bin_centres, mean, std = fit_scatter(density, field, nbins=nbins)
     return bin_centres, mean, std
 
+def nH_halo_cdf_fit(snapshot, the_mass_bins=[8., 9., 10.], nbins=10):
+    import numpy as np
+    from seren3.analysis.plots import fit_scatter
+    from seren3.utils import flatten_nested_array
+
+    # First, compute min/max nH in the snapshot
+    print "Bracketing nH"
+    min_nH = np.inf; max_nH = -np.inf
+    for dset in snapshot.g["nH"]:
+        if dset.min() < min_nH:
+            min_nH = dset.min()
+        if dset.max() > max_nH:
+            max_nH = dset.max()
+
+    nH_range = (min_nH, max_nH)
+
+    halos = snapshot.halos(finder = 'ctrees')
+    nhalos = len(halos)
+
+    cdf_halos = []; bin_centre_halos = []; Mvir = []
+
+    for i in range(nhalos):
+        print '(%i / %i)' % (i+1, nhalos)
+        h = halos[i]
+        if len(h.g['nH'].f) > 0:
+            P, C, bc, dx = pdf_cdf(h.g, "nH", cumulative=True, plot=False, bins=50, x_range=nH_range, density=True)
+            cdf_halos.append(C)
+            bin_centre_halos.append(bc)
+            Mvir.append(h["Mvir"])
+
+    cdf_halos = np.array(cdf_halos); bin_centre_halos = np.array(bin_centre_halos); Mvir = np.array(Mvir)
+
+    # Bin idx
+    mass_bins = np.digitize(np.log10(Mvir), the_mass_bins, right=True)
+    binned_cdf = {}
+
+    for i in range(len(the_mass_bins)):
+        idx = np.where( mass_bins == i )
+        x, y = ( flatten_nested_array(bin_centre_halos[idx]), flatten_nested_array(cdf_halos[idx]) )
+        binned_cdf[i] = fit_scatter(x, y, ret_stderr=True)
+
+    binned_cdf['the_mass_bins'] = the_mass_bins
+
+    return binned_cdf
+
 def pdf_cdf(snapshot, field, field_latex=None, bins=50, logscale=True, density=False, cumulative=False, \
          plot=False, show=False, color_ax2_y=True, P_y_range=None, x_range=None, **kwargs):
     '''

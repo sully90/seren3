@@ -10,7 +10,7 @@ def fit_scatter(x, y, ret_n=False, ret_sterr=False, nbins=10):
     mean = sy / n
     std = np.sqrt(sy2/n - mean*mean)
 
-    bin_centres = (_[1:] + _[:-1])/2
+    bin_centres = (_[1:] + _[:-1])/2.
 
     if ret_sterr:
         stderr = std/np.sqrt(n)

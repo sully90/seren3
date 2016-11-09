@@ -1,16 +1,13 @@
 import seren3
-from seren3.utils.derived_utils import check_dset
 from .part_derived import *
 import numpy as np
 from pymses.utils import constants as C
 
 @seren3.derived_quantity(requires=["epoch"], unit=C.Gyr)
-@check_dset
 def gmc_age(context, dset, **kwargs):
     return part_age(context, dset, **kwargs)
 
 @seren3.derived_quantity(requires=["age", "mass"], unit=1./C.Gyr)
-@check_dset
 def gmc_sSNeR(context, dset, nbins=100, **kwargs):
     from seren3.exceptions import NoParticlesException
 

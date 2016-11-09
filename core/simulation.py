@@ -7,6 +7,7 @@ class Simulation(object):
     '''
     def __init__(self, path):
         self.path = path
+        self.store = {}
 
     def __str__(self):
         return "Simulation: %s" % self.path
@@ -24,8 +25,8 @@ class Simulation(object):
         for ioutput in self.numbered_outputs:
             yield self[ioutput]
 
-    def snapshot(self, ioutput):
-        return PymsesSnapshot(self.path, ioutput)
+    def snapshot(self, ioutput, **kwargs):
+        return PymsesSnapshot(self.path, ioutput, **kwargs)
 
     def redshift(self, z):
         '''
@@ -33,7 +34,7 @@ class Simulation(object):
         '''
         idx = (np.abs(self.redshifts - z)).argmin()
         outputs = self.outputs
-        iout = int(outputs[idx][-6:-1])
+        iout = int(outputs[idx][-5:])
         return iout
 
     @property
@@ -42,10 +43,8 @@ class Simulation(object):
         Returns a list of available redshifts
         '''
         redshifts = []
-        outputs = self.outputs
-        for output in outputs:
-            s = output[:-1]
-            info = '%s/info_%s.txt' % (s, s[-5:])
+        for iout in self.numbered_outputs:
+            info = "%s/output_%05i/info_%05i.txt" % (self.path, iout, iout)
             f = open(info, 'r')
             nline = 1
             while nline <= 10:
@@ -99,9 +98,8 @@ class Simulation(object):
         '''
         Returns redshift of first output
         '''
-        output = self.outputs[0]
-        s = output[:-1]
-        info = '%s/info_%s.txt' % (s, s[-5:])
+        ifirst = self.numbered_outputs[0]
+        info = '%s/output_%05i/info_%05i.txt' % (self.path, ifirst, ifirst)
         with open(info, 'r') as f:
             nline = 1
             while nline <= 10:

@@ -3,6 +3,10 @@ import re
 
 heaviside = lambda x: 0.5 if x == 0 else 0 if x < 0 else 1  # step function
 
+def flatten_nested_array(arr):
+    import itertools, numpy as np
+    return np.array( list(itertools.chain.from_iterable(arr)) )
+
 def unit_vec_r(theta, phi):
     '''
     Unit vector along theta and phi
@@ -27,7 +31,7 @@ def lookahead(iterable):
 
 def first_above(value, iterable):
     '''
-    Returns the index of the iterable which first exceedes value
+    Returns the value of the iterable which first exceedes value
     '''
     return next(x[0] for x in enumerate(iterable) if x[1] > value)
 

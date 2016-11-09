@@ -3,6 +3,9 @@ from seren3.array import SimArray
 from pymses.sources.ramses.sources import RamsesAmrSource, RamsesParticleSource
 from pymses.core import sources
 
+from seren3 import config
+verbose = config.get("general", "verbose")
+
 class SerenSource(sources.DataSource):
     """
     Class to extend pymses source and implement derived fields
@@ -32,6 +35,10 @@ class SerenSource(sources.DataSource):
             cpu_list = range(1, self.family.info['ncpu'] + 1)
         for idomain in cpu_list:
             yield self.get_domain_dset(idomain)
+
+    def field_latex(self, field):
+        icpu = self._cpu_list[0]
+        return self.get_domain_dset(icpu).latex
 
     @property
     def points(self):
@@ -67,7 +74,7 @@ class SerenSource(sources.DataSource):
         return self.flatten()
 
     def flatten(self, **kwargs):
-        self._dset = self._source.flatten()
+        self._dset = self._source.flatten(verbose=self.family.base.verbose)
         return self._derived_dset(**kwargs)
 
     def get_domain_dset(self, idomain, **kwargs):
@@ -85,7 +92,7 @@ class SerenSource(sources.DataSource):
         return self._derived_dset(**kwargs)
 
     def _derived_dset(self, **kwargs):
-        print "Deriving dataset..."
+        if(verbose): print "Deriving dataset..."
 
         # Setup dicts to hold fields
         if self._dset is None:
@@ -121,7 +128,8 @@ class SerenSource(sources.DataSource):
                 tracked_fields[f] = val
             else:
                 # We have no unit information -> return dimensionless SimArray
-                tracked_fields[f] = SimArray(dset[f])
+                # tracked_fields[f] = SimArray(dset[f], 1)
+                tracked_fields[f] = dset[f]
 
         # Derive fields
         def _get_derived(field, temp):
@@ -163,7 +171,7 @@ class SerenSource(sources.DataSource):
             else:
                 raise Exception("Don't know what to do with non-tracked and non-derived field: %s", f)
 
-        print "Done"
+        if(verbose): print "Done"
         if len(self.requested_fields) == 1:
             return derived_dset[self.requested_fields[0]]
         return derived_dset

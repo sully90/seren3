@@ -8,4 +8,8 @@ def get_config():
     return _configParser
 
 def get(section, key):
-    return get_config().get(section, key)
+    value = get_config().get(section, key) 
+    if value in ["True", "False"]:
+        return value == "True"
+    else:
+        return value

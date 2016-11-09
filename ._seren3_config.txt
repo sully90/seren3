@@ -1,3 +1,6 @@
+[general]
+verbose = False
+
 [data]
 data_dir = /home/d/ds/ds381/seren3/data/
 

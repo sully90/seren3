@@ -244,7 +244,7 @@ class AHFCatalogue(HaloCatalogue):
 
     def _get_halo(self, item):
         haloprops = self._haloprops[item]
-        return Halo(haloprops['id'], self, haloprops)
+        return Halo(haloprops, self.base, self.units, self.get_boxsize())
 
     def write_cfg(self, **kwargs):
         '''
@@ -394,6 +394,12 @@ class RockstarCatalogue(HaloCatalogue):
         rockstar_info_fname = self.get_rockstar_info_fname()
         base_aexp = 1./(1. + self.base.z)
 
+        if kwargs.get("strict_so", False):
+          # Used for accurate comparissons of halo mass-function.
+          # Uses strict spherical-overdensities for mass calculation, instead
+          # of FOF group.
+          self.finder_base_dir = "%s/rockstar_strict_so_mass/" % self.base.path
+
         out_num = []
         aexp = []
         with open(rockstar_info_fname, "r") as f:
@@ -423,6 +429,7 @@ class RockstarCatalogue(HaloCatalogue):
 
     def load(self, **kwargs):
         # Ensures file is closed at the end. If within_r is specified, it must be in code units
+        print self.filename
         with open(self.filename, 'r') as f:
             haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
 
@@ -431,7 +438,7 @@ class RockstarCatalogue(HaloCatalogue):
 
     def _get_halo(self, item):
         haloprops = self._haloprops[item]
-        return Halo(haloprops['id'], self, haloprops)
+        return Halo(haloprops, self.base, self.units, self.get_boxsize())
 
 class ConsistentTreesCatalogue(HaloCatalogue):
 
@@ -549,10 +556,6 @@ class ConsistentTreesCatalogue(HaloCatalogue):
         else:
             return False, "Unable to locate hlists files"
 
-    @property
-    def rockstar_path(self):
-      return "%s/hlists" % self.finder_base_dir
-
     def get_filename(self, **kwargs):
         import glob
         from seren3.exceptions import CatalogueNotFoundException
@@ -560,8 +563,14 @@ class ConsistentTreesCatalogue(HaloCatalogue):
         # Look through the outputs and find the closest expansion factor
         aexp = self.base.cosmo['aexp']
 
+        if kwargs.get("strict_so", False):
+          # Used for accurate comparissons of halo mass-function.
+          # Uses strict spherical-overdensities for mass calculation, instead
+          # of FOF group.
+          self.finder_base_dir = "%s/rockstar_strict_so_mass/hlists/" % self.base.path
+
         # Scan halo files for available expansion factors
-        outputs = glob.glob("%s/hlist_*" % self.finder_base_dir )
+        outputs = glob.glob( "%s/hlist_*" % (self.finder_base_dir) )
 
         if len(outputs) == 0:
           raise IOError("ConsistentTreesCatalogue: No outputs found")
@@ -583,7 +592,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
 
     def get_boxsize(self, **kwargs):
         '''
-        Returns boxsize according to rockstar
+        Returns boxsize according to rockstar in Mpc a / h
         '''
         import re
 
@@ -591,7 +600,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
             for line in f:
                 if line.startswith('#Full box size'):
                     boxsize = re.findall("\d+\.\d+", line)[0]
-                    return self.base.array(float(boxsize), "Mpc a h**-1")  # Mpc a/h
+                    return self.base.array(float(boxsize), "Mpc a h**-1")  # Mpc a / h
 
     def load(self, **kwargs):
         # Ensures file is closed at the end. If within_r is specified, it must be in code units
@@ -603,7 +612,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
 
     def _get_halo(self, item):
         haloprops = self._haloprops[item]
-        return Halo(haloprops['id'], self, haloprops)
+        return Halo(haloprops, self.base, self.units, self.get_boxsize())
 
     @staticmethod
     def _find_mmp(hid, prog_halos):
@@ -646,32 +655,48 @@ class ConsistentTreesCatalogue(HaloCatalogue):
                 last = iout_prog
         return hid, prog_halos
 
-    def iterate_progenitors(self, halo, back_to_iout=None):
-      '''
-      Iterates through list of progenitors
-      '''
-      from seren3 import load_snapshot
-      from seren3.exceptions import CatalogueNotFoundException
+    def iterate_progenitors(self, halo, back_to_aexp = 0.):
+        '''
+        Iterates through list of progenitors without loading halo catalogues completely
+        '''
+        import numpy as np
+        import glob
+        from seren3.utils import natural_sort
+        from seren3.core.simulation import Simulation
 
-      if back_to_iout is None:
-        back_to_iout = self.base.ioutput-1
+        outputs = natural_sort(glob.glob("%s/hlist_*" % self.finder_base_dir))
 
-      hid = halo.hid
-      ioutputs = range(back_to_iout, self.base.ioutput)[::-1]
+        aexp_hlist = np.zeros(len(outputs))
+        for i in range(len(outputs)):
+            output = outputs[i]
+            # Trim aexp from string
+            aexp_hfile = float(output.split('/')[-1][6:-5])
+            aexp_hlist[i] = aexp_hfile
 
-      last = self.base.ioutput
-      for iout_prog in ioutputs:
-        try:
-          # Start with the previous snapshot, find the most massive progenitor and use that
-          prog_snap = load_snapshot(self.base.path, iout_prog)
-          prog_halos = prog_snap.halos(finder='ctrees')
-          mmp_id = self._find_mmp(hid, prog_halos)
-          if mmp_id is None:
-            print "No progenitor for halo %i - exiting" % hid
-            return
-          else:
-            hid = mmp_id
-            yield prog_halos.from_id(mmp_id)
-        except CatalogueNotFoundException:
-          print "No more outputs found - exiting"
-          return
+        idx_start = np.abs( aexp_hlist - self.base.info["aexp"] ).argmin()
+        idx_end = np.abs( aexp_hlist - back_to_aexp ).argmin()
+
+        hid = int(halo.hid)
+
+        # Loop through hlists in reverse and locate progenitors
+        for i in range(idx_end, idx_start)[::-1]:
+            mmp_props = None
+            mmp_mass = 0.
+            with open( outputs[i], "r" ) as f:
+                haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
+                for props in haloprops:
+                    if (props["desc_id"] == hid) and (props["mvir"] > mmp_mass):
+                        # This halo is a candidate for mmp
+                        mmp_props = props
+                        mmp_mass = props["mvir"]
+
+            if (mmp_props != None):
+                sim = Simulation(halo.base.path)
+                # print aexp_hlist[::-1][i]
+                z = (1./aexp_hlist[::-1][i]) - 1.
+                prog_snap = sim[sim.redshift(z)]
+                yield Halo(mmp_props, prog_snap, self.units, self.get_boxsize())  # the mmp
+                hid = int(mmp_props["id"])
+            else:
+                print "No descentent found - exiting"
+                break

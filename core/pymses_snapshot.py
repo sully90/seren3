@@ -8,8 +8,9 @@ class PymsesSnapshot(Snapshot):
     """
     def __init__(self, path, ioutput, ro=None, verbose=False, **kwargs):
         super(PymsesSnapshot, self).__init__(path, ioutput, **kwargs)
+        self.verbose = verbose
         if ro is None:
-            self._ro = pymses.RamsesOutput(path, ioutput, metals=self.metals, verbose=verbose, **kwargs)
+            self._ro = pymses.RamsesOutput(path, ioutput, metals=self.metals, verbose=self.verbose, **kwargs)
         else:
             self._ro = ro
 
