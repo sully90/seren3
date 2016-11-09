@@ -8,8 +8,12 @@ from pynbody.backcompat import fractions
 import atexit
 import functools
 
-from seren3.utils.constants import unit_string
+# from seren3.utils.constants import unit_string
 from pymses.utils.constants.unit import Unit as pymses_Unit
+
+
+def _unit_string(unit):
+    return "%s %s" % (unit.coeff, unit._decompose_base_units)
 
 
 class SimArray(np.ndarray):
@@ -57,7 +61,7 @@ class SimArray(np.ndarray):
             units = data._decompose_base_units().replace("^", "**").replace(".", " ")
             data = data.coeff
         if isinstance(units, pymses_Unit):
-            units = unit_string(units)
+            units = _unit_string(units)
 
         new = np.array(data, **kwargs).view(subtype)
         new._context = {}
