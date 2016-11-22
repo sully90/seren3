@@ -8,6 +8,52 @@ class Quantity(object):
     def __init__(self, snapshot):
         self.base = snapshot
 
+    @property
+    def rhoc(self):
+        '''
+        Performs CIC interpolation to compute CDM density on the simulation coarse grid in units
+        kg/m^3
+        '''
+        from seren3.utils.cython import cic
+        pos = self.base.d["pos"].flatten()
+        x,y,z = pos.T
+        x = np.ascontiguousarray(x); y = np.ascontiguousarray(y); z = np.ascontiguousarray(z)
+        npart = len(x)
+        N = 2**self.base.info['levelmin']
+        L = self.base.info['boxlen']  # box units
+
+        # Perform CIC interpolation. This supports OpenMP threading if OMP_NUM_THREADS env var is set
+        rho = np.zeros(N**3)
+        cic.cic(x,y,z,npart,L,N,rho)
+
+        # Compute units
+        boxmass = self.box_mass(species='cdm').in_units("kg")
+        pm_mass = boxmass/npart
+
+        boxsize = self.base.array(self.base.info['unit_length']).in_units('m')
+        dx = boxsize/N
+
+        rhoc_unit = pm_mass/dx**3
+
+        return rho.reshape((N, N, N)) * rhoc_unit
+
+    @property
+    def deltac(self):
+        '''
+        Returns CDM overdensity field
+        '''
+        from seren3.cosmology import rho_mean_z
+
+        omega0 = cosmo['omega_M_0'] - cosmo['omega_b_0']
+
+        cosmo = self.base.cosmo
+        rho_mean = rho_mean_z(omega0, **cosmo)
+
+        rhoc = self.rhoc
+        delta = (rhoc - rho_mean) / rho_mean
+
+        return delta
+
     def rho_mean(self, species='baryon'):
         '''
         Mean density at current redshift of baryons or cdm

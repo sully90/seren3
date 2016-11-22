@@ -227,6 +227,47 @@ class HaloCatalogue(object):
     def load(self):
         return
 
+    @property
+    def mvir_array(self):
+        mvir = np.zeros(len(self._haloprops))
+        for i in range(len(self._haloprops)):
+            mvir[i] = self._haloprops[i]['mvir']
+
+        return mvir
+
+    @property
+    def mass_sigma_relation(self):
+        '''
+        Returns the mass-sigma relation required to compute the
+        multipllicity function (f(sigma))
+        Requires transfer functions to exist for this redshift in the camb/MUSIC dir
+        '''
+        from seren3.cosmology import transfer_function
+        from seren3.cosmology import lingrowthfac
+
+        # Dict describing our cosmology
+        cosmo = self.base.cosmo
+        print 'Rounding redshift: %1.1f -> %1.1f' % (cosmo['z'], np.round(cosmo['z']))
+        cosmo['z'] = np.round(cosmo['z'])
+        cosmo['aexp'] = 1./(1. + cosmo['z'])
+
+        # PowerSpectrum & routines to compute species specific ps using
+        # transfer functions
+        ps = transfer_function.PowerSpectrumCamb(**cosmo)
+        
+        # Out TopHat filter kernel
+        f_filter = transfer_function.TophatFilter(**cosmo)
+
+        mvir = sorted(self.mvir_array)
+        # Integrate k**2 * P(k) * W(k,R)**2
+        # lingrowth = lingrowthfac(self.base.z, **cosmo)
+        # variance func. includes factor 1/(2*pi**2)
+        var = np.array( [transfer_function.variance(m, ps, f_filter=f_filter, arg_is_R=False) for m in mvir] )
+        # var = lingrowth**2 * np.array( [transfer_function.variance(m, ps, f_filter=f_filter, arg_is_R=False) for m in mvir] )
+
+        sigma = np.sqrt(var)
+        return sigma, mvir
+
     def mpi_spheres(self):
         '''
         Returns iterable which can be scattered/gathered
@@ -347,7 +388,7 @@ class HaloCatalogue(object):
             ax = fig.add_subplot(111)
 
         if label_z:
-            label = "%s z=%1.3f" % (label, self.snapshot.z)
+            label = "%s z=%1.3f" % (label, self.base.z)
 
         # Compute HMF from realization and plot
         # boxsize = self.boxsize  # Mpccm/h

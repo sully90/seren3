@@ -21,8 +21,8 @@ def read_seds_from_lists(seddir, nGroups=3, nIons=3):
 
     for igroup in range(nGroups):
         count = 0
-        fname = "%s/SEDtable%d_trimmed.list" % (seddir, igroup+1)
-        data = np.loadtxt(fname)
+        fname = "%s/SEDtable%d.list" % (seddir, igroup+1)
+        data = np.loadtxt(fname, skiprows=1)
 
         if agebins is None or zbins is None:
             agebins = []; zbins = []
@@ -37,15 +37,15 @@ def read_seds_from_lists(seddir, nGroups=3, nIons=3):
 
         for j in range(nZ):
             for i in range(nAge):
-                SEDs[i, j, igroup, 0] = data[count][2]
+                SEDs[i, j, igroup, 0] = data[count][2]  # Luminosity [# photons/s]
                 SEDs[i, j, igroup, 1] = data[count][3]  # CUMULAIVE photon no. at time t
-                SEDs[i, j, igroup, 2] = data[count][4]
-                SEDs[i, j, igroup, 3] = data[count][5]
-                SEDs[i, j, igroup, 4] = data[count][6]
-                SEDs[i, j, igroup, 5] = data[count][7]
-                SEDs[i, j, igroup, 6] = data[count][8]
-                SEDs[i, j, igroup, 7] = data[count][9]
-                SEDs[i, j, igroup, 8] = data[count][10]
+                SEDs[i, j, igroup, 2] = data[count][4]  # Avg. Egy
+                SEDs[i, j, igroup, 3] = data[count][5]  # Ion1 csn
+                SEDs[i, j, igroup, 4] = data[count][6]  # Ion1 cse
+                SEDs[i, j, igroup, 5] = data[count][7]  # Ion2 csn
+                SEDs[i, j, igroup, 6] = data[count][8]  # Ion2 cse
+                SEDs[i, j, igroup, 7] = data[count][9]  # Ion3 csn
+                SEDs[i, j, igroup, 8] = data[count][10]  # Ion3 cse
                 count += 1
 
     return agebins, zbins, SEDs

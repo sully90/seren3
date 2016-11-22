@@ -28,7 +28,8 @@ def fesc(subsnap, ret_flux_map=False, **kwargs):
     integrated_flux = render_spherical.integrate_surface_flux(flux_map, rvir)
     integrated_flux *= subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
 
-    fesc = nPhot.sum() / integrated_flux
+    # fesc = nPhot.sum() / integrated_flux
+    fesc = integrated_flux / nPhot.sum()
 
     # return the escape fraction
     if ret_flux_map:

@@ -7,4 +7,6 @@ analysis/*.html
 cosmology/*.c
 cosmology/*.html
 utils/cython/*.c
+utils/cython/*.so
+utils/cython/*.o
 utils/cython/*.html
