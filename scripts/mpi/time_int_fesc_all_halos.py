@@ -1,4 +1,4 @@
-def main(path):
+def main(path, pickle_path):
     import random
     import numpy as np
     import seren3
@@ -41,7 +41,7 @@ def main(path):
 
         if mpi.host:
             import pickle, os
-            pickle_path = "%s/pickle/%s/" % (snap.path, halos.finder)
+            # pickle_path = "%s/pickle/%s/" % (snap.path, halos.finder)
             if not os.path.isdir(pickle_path):
                 os.mkdir(pickle_path)
             pickle.dump( mpi.unpack(dest), open("%s/time_int_fesc_all_halos_%05i.p" % (pickle_path, snap.ioutput), "wb") )
@@ -52,12 +52,13 @@ def main(path):
 if __name__ == "__main__":
     import sys, warnings
     path = sys.argv[1]
+    pickle_path = sys.argv[2]
     
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         # main(path)
         try:
-           main(path)
+           main(path, pickle_path)
         except Exception as e:
            from seren3.analysis.parallel import mpi
            mpi.msg("Caught exception - terminating")

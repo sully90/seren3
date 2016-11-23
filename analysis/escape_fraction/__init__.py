@@ -16,17 +16,21 @@ def fesc(subsnap, ret_flux_map=False, **kwargs):
     rt_c = SimArray(subsnap.info_rt["rt_c_frac"] * subsnap.C.c)
     dt = rvir / rt_c
 
-    # Compute number of ionising photons from stars at time
-    # t - rvir/rt_c (assuming halo is a point source)
-    dset = subsnap.s[["Nion_d", "mass", "age"]].flatten(dt=dt)
-    keep = np.where(dset["age"] - dt >= 0.)
-    mass = dset["mass"][keep]
-    nPhot = dset["Nion_d"] * mass
+    nIons = subsnap.info_rt["nIons"]
 
-    # Compute integrated flux out of the virial sphere
-    flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
-    integrated_flux = render_spherical.integrate_surface_flux(flux_map, rvir)
-    integrated_flux *= subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
+    integrated_flux = 0.
+    nPhot = 0.
+    for ii in range(nIons):
+        # Compute number of ionising photons from stars at time
+        # t - rvir/rt_c (assuming halo is a point source)
+        dset = subsnap.s[["Nion_d", "mass", "age"]].flatten(group=ii+1, dt=dt)
+        keep = np.where(dset["age"] - dt >= 0.)
+        mass = dset["mass"][keep]
+        nPhot += (dset["Nion_d"] * mass).sum()
+
+        # Compute integrated flux out of the virial sphere
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
+        integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir) * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
 
     # fesc = nPhot.sum() / integrated_flux
     fesc = integrated_flux / nPhot.sum()
