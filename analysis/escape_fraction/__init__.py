@@ -4,7 +4,7 @@ of halos (or subsnaps in general).
 Uses the pynbody python module to create healpix maps
 '''
 
-def fesc(subsnap, ret_flux_map=False, **kwargs):
+def fesc(subsnap, do_multigroup=True, ret_flux_map=False, **kwargs):
     '''
     Computes halo escape fraction of hydrogen ionising photons
     '''
@@ -20,16 +20,29 @@ def fesc(subsnap, ret_flux_map=False, **kwargs):
 
     integrated_flux = 0.
     nPhot = 0.
-    for ii in range(nIons):
+
+    if do_multigroup:
+        for ii in range(nIons):
+            # Compute number of ionising photons from stars at time
+            # t - rvir/rt_c (assuming halo is a point source)
+            dset = subsnap.s[["Nion_d", "mass", "age"]].flatten(group=ii+1, dt=dt)
+            keep = np.where(dset["age"] - dt >= 0.)
+            mass = dset["mass"][keep]
+            nPhot += (dset["Nion_d"] * mass).sum()
+
+            # Compute integrated flux out of the virial sphere
+            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
+            integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir) * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
+    else:
         # Compute number of ionising photons from stars at time
         # t - rvir/rt_c (assuming halo is a point source)
-        dset = subsnap.s[["Nion_d", "mass", "age"]].flatten(group=ii+1, dt=dt)
+        dset = subsnap.s[["Nion_d", "mass", "age"]].flatten(group=1, dt=dt)
         keep = np.where(dset["age"] - dt >= 0.)
         mass = dset["mass"][keep]
         nPhot += (dset["Nion_d"] * mass).sum()
 
         # Compute integrated flux out of the virial sphere
-        flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
         integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir) * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
 
     # fesc = nPhot.sum() / integrated_flux
@@ -44,7 +57,7 @@ def integrate_fesc(I1, I2, lbtime):
     from scipy.integrate import trapz
     return trapz(I1, lbtime) / trapz(I2, lbtime)
 
-def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True):
+def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True, **kwargs):
     '''
     Computes the time integrated escapte fraction across
     the history of the halo, a la Kimm & Cen 2014
@@ -63,9 +76,9 @@ def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True):
 
     def _compute(h):
         dset = h.s[["Nion_d", "mass"]]
-        fesc_h = fesc(h.subsnap, nside=nside)
-        if fesc_h > 1.:
-            fesc_h = random.uniform(0.9, 1.0)
+        fesc_h = fesc(h.subsnap, nside=nside, **kwargs)
+        # if fesc_h > 1.:
+            # fesc_h = random.uniform(0.9, 1.0)
         fesc_dict[h.base.ioutput] = fesc_h
         Nion_d_dict[h.base.ioutput] = (dset["Nion_d"] * dset["mass"]).sum()  # at t=0, not dt=rvir/c !!!
         age_dict[h.base.ioutput] = h.base.age
