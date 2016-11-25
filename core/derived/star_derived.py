@@ -48,11 +48,10 @@ def star_Nion_d(context, dset, dt=0., group=1):
 
     # interpolate photon production rate from SED
     nStars = len(age)
-    # nPhotons = np.zeros(nStars)
-    # for i in xrange(nStars):
-    #     nPhotons[i] = fn(Z[i], age[i])
+    nPhotons = np.zeros(nStars)
+    for i in xrange(nStars):
+        nPhotons[i] = fn(Z[i], age[i])
     # nPhotons = interpolate.interpolate2d(age, Z, agebins, zbins, SEDs[:,:,igroup,nPhotons_idx])
-    nPhotons = fn(Z[:], age[:])
 
     # Multiply by (SSP) escape fraction and return
     nml = context.nml
