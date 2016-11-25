@@ -17,8 +17,8 @@ def star_Nion_d(context, dset, dt=0., group=1):
     from seren3.utils.sed import io
     from seren3.exceptions import NoParticlesException
     from seren3 import config
-    from seren3.analysis import interpolate
-    # from scipy.interpolate import interp2d
+    # from seren3.analysis import interpolate
+    from scipy.interpolate import interp2d
 
     verbose = config.get("general", "verbose")
 
@@ -32,7 +32,7 @@ def star_Nion_d(context, dset, dt=0., group=1):
     # Load the SED table
     agebins, zbins, SEDs = io.read_seds_from_lists(context.path, nGroups, nIons)
     igroup = group - 1
-    # fn = interp2d(zbins, agebins, SEDs[:,:,igroup,nPhotons_idx])
+    fn = interp2d(zbins, agebins, SEDs[:,:,igroup,nPhotons_idx])
 
     age = dset["age"].in_units("Myr")
     Z = dset["metal"] /  Z_sun  # in units of solar metalicity
@@ -51,7 +51,8 @@ def star_Nion_d(context, dset, dt=0., group=1):
     # nPhotons = np.zeros(nStars)
     # for i in xrange(nStars):
     #     nPhotons[i] = fn(Z[i], age[i])
-    nPhotons = interpolate.interpolate2d(age, Z, agebins, zbins, SEDs[:,:,igroup,nPhotons_idx])
+    # nPhotons = interpolate.interpolate2d(age, Z, agebins, zbins, SEDs[:,:,igroup,nPhotons_idx])
+    nPhotons = fn(Z[:], age[:])
 
     # Multiply by (SSP) escape fraction and return
     nml = context.nml
