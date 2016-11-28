@@ -32,8 +32,7 @@ def star_Nion_d(context, dset, dt=0., group=1):
     # Load the SED table
     agebins, zbins, SEDs = io.read_seds_from_lists(context.path, nGroups, nIons)
     igroup = group - 1
-    # fn = interp2d(zbins, agebins, SEDs[:,:,igroup,nPhotons_idx])
-    fn = interp2d(agebins, zbins, SEDs[:,:,igroup,nPhotons_idx])
+    fn = interp2d(zbins, agebins, SEDs[:,:,igroup,nPhotons_idx])
 
     age = dset["age"].in_units("Myr")
     Z = dset["metal"] /  Z_sun  # in units of solar metalicity
