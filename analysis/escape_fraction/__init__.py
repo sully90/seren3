@@ -27,7 +27,7 @@ def fesc(subsnap, do_multigroup=True, ret_flux_map=False, **kwargs):
     keep = np.where(dset["age"].in_units("Gyr") - dt.in_units("Gyr") >= 0.)
     mass = dset["mass"][keep]
 
-    star_Nion_d = derived.get_derived_field("star", "Nion_d")
+    star_Nion_d = derived_utils.get_derived_field("star", "Nion_d")
 
     if do_multigroup:
         for ii in range(nIons):
