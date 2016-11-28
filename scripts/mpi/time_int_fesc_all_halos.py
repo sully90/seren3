@@ -29,7 +29,7 @@ def main(path, pickle_path):
             if len(age_delay) > 0 and any(age_delay >= 0.):
                 try:
                     mpi.msg("%05i \t %i" % (snap.ioutput, h.hid))
-                    tint_fesc_hist, I1, I2, lbtime = time_integrated_fesc(h, 0., return_data=True)
+                    tint_fesc_hist, I1, I2, lbtime = time_integrated_fesc(h, 0., return_data=True, do_multigroup=False)
 
                     fesc = I1/I2
                     sto.idx = h.hid
