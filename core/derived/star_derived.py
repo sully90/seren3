@@ -34,11 +34,11 @@ def star_Nion_d(context, dset, dt=0., group=1):
     igroup = group - 1
     fn = interp2d(zbins, agebins, SEDs[:,:,igroup,nPhotons_idx])
 
-    age = dset["age"].in_units("Myr")
+    age = dset["age"].in_units("Gyr")
     Z = dset["metal"] /  Z_sun  # in units of solar metalicity
     # Which star particles should we keep
     if dt != 0.:
-        age -= dt.in_units("Myr")
+        age -= dt.in_units("Gyr")
         keep = np.where( age >= 0. )
         age = age[keep]
         Z = Z[keep]

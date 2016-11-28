@@ -22,7 +22,7 @@ def fesc(subsnap, do_multigroup=True, ret_flux_map=False, **kwargs):
     nPhot = 0.
 
     dset = subsnap.s[["mass", "age"]].flatten()
-    keep = np.where(dset["age"].in_units("Myr") - dt.in_units("Myr") >= 0.)
+    keep = np.where(dset["age"].in_units("Gyr") - dt.in_units("Gyr") >= 0.)
     mass = dset["mass"][keep]
 
     if do_multigroup:
