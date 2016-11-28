@@ -133,8 +133,8 @@ class Halo(object):
         return self.base.array(Tvir, Tvir.units)
 
     def fesc(self, **kwargs):
-        from seren3 import analysis
-        return analysis.fesc(self.subsnap, **kwargs)
+        from seren3.analysis import escape_fraction
+        return escape_fraction.fesc(self.subsnap, **kwargs)
 
     def pynbody_snapshot(self, **kwargs):
         return self.subsnap.pynbody_snapshot(**kwargs)

@@ -108,9 +108,9 @@ class PymsesSubSnapshot(PymsesSnapshot):
         center = self.region.center
         radius = self.region.radius
 
-        region_size = [radius, radius]
-        distance = radius
-        far_cut_depth = radius
+        region_size = [2*radius, 2*radius]
+        distance = 2*radius
+        far_cut_depth = 2*radius
         map_max_size = kwargs.pop("map_max_size", 1024)
 
         return Camera(center=center, region_size=region_size, \
@@ -149,7 +149,7 @@ class PymsesSubSnapshot(PymsesSnapshot):
             # s.gmc = s.s[np.where(s.s['iord'] < 0)]
 
             # Just remove GMC for now, until a better solution is found
-            s.s = s.s[s.s['iord'] > 0]
+            s.s = s.s[s.s['iord'] >= 0]
 
         # Create age field for star particles
         if len(s.s) > 0:
