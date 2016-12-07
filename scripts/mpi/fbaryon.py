@@ -115,7 +115,7 @@ def fit(snapshot):
     # return popt, pcov
 
 
-def main(path, iout):
+def main(path, iout, pickle_path):
     import seren3
     import pickle, os
     from seren3.analysis.parallel import mpi
@@ -124,7 +124,7 @@ def main(path, iout):
     snap = seren3.load_snapshot(path, iout)
     snap.set_nproc(1)  # disbale multiprocessing
 
-    halos = snap.halos()
+    halos = snap.halos(finder="rockstar")
     mpi_halos = halos.mpi_spheres()
 
     dest = {}
@@ -145,7 +145,8 @@ def main(path, iout):
         sto.result = {"fb" : fb, "tot_mass" : tot_mass}
 
     if mpi.host:
-        pickle_path = "%s/pickle/" % path
+        if pickle_path is None:
+            pickle_path = "%s/pickle/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
         pickle.dump( mpi.unpack(dest), open( "%s/fbaryon_%05i.p" % (pickle_path, iout), "wb" ) )
@@ -154,8 +155,11 @@ if __name__ == "__main__":
     import sys
     path = sys.argv[1]
     iout = int(sys.argv[2])
+    pickle_path = None
+    if len(sys.argv) > 3:
+        pickle_path = sys.argv[3]
     try:
-        main(path, iout)
+        main(path, iout, pickle_path)
     except Exception as e:
         from seren3.analysis.parallel import mpi
         mpi.terminate(500, e=e)

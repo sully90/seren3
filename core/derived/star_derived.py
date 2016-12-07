@@ -57,7 +57,7 @@ def star_Nion_d(context, dset, dt=0., group=1):
     nml = context.nml
     rt_esc_frac = float(nml[nml.NML.RT_PARAMS]['rt_esc_frac'].replace('d', 'e'))
     Nion_d = SimArray(rt_esc_frac * nPhotons, "s**-1 Msol**-1")
-    Nion_d.set_latex("$\\dot{N_{\\mathrm{ion}}}$")
+    Nion_d.set_field_latex("$\\dot{N_{\\mathrm{ion}}}$")
     return Nion_d
 
 @seren3.derived_quantity(requires=["age", "mass"], unit=1./C.Gyr)
@@ -92,9 +92,9 @@ def star_sSFR(context, dset, nbins=100, **kwargs):
     # sSFR = (sfrhist * 1e9) / M_star  # Msun/yr -> Msun/Gyr
     sSFR = sfrhist.in_units("Msol Gyr**-1") / M_star  # Msun/yr -> Msun/Gyr -> Gyr^-1
 
-    sSFR.set_latex("$\\mathrm{sSFR}$")
-    binmps.set_latex("$\\mathrm{Lookback-Time}$")
-    binsize.set_latex("$\Delta$")
+    sSFR.set_field_latex("$\\mathrm{sSFR}$")
+    binmps.set_field_latex("$\\mathrm{Lookback-Time}$")
+    binsize.set_field_latex("$\Delta$")
 
     return {'sSFR' : sSFR, 'lookback-time' : binmps, 'binsize' : binsize}  # sSFR [Gyr^-1], Lookback Time [Gyr], binsize [Gyr]
 
@@ -127,8 +127,8 @@ def star_SFR(context, dset, nbins=100, **kwargs):
     sfrhist, binmps, binsize = sfr(age, mass, **kwargs)
     SFR = sfrhist.in_units("Msol Gyr**-1")
 
-    SFR.set_latex("$\\mathrm{SFR}$")
-    binmps.set_latex("$\\mathrm{Lookback-Time}$")
-    binsize.set_latex("$\Delta$")
+    SFR.set_field_latex("$\\mathrm{SFR}$")
+    binmps.set_field_latex("$\\mathrm{Lookback-Time}$")
+    binsize.set_field_latex("$\Delta$")
     return {'SFR' : SFR, 'lookback-time' : binmps, 'binsize' : binsize}  # SFR [Msol Gyr^-1], Lookback Time [Gyr], binsize [Gyr]
 

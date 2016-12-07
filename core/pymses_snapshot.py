@@ -23,11 +23,17 @@ class PymsesSnapshot(Snapshot):
         else:
             raise ValueError("Unknown item: ", item)
 
+    def __str__(self):
+        return "PymsesSnapshot: %05i:z=%1.2f" % (self.ioutput, self.z)
+
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def ro(self):
         return self._ro
 
-    def get_source(self, family, fields):
+    def get_io_source(self, family, fields):
         source = getattr(self, "%s_source" % family)
         return source(fields)
 

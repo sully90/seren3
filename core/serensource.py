@@ -1,33 +1,99 @@
+'''
+Module to handle implementation of derived fields and I/O
+'''
 import seren3
 from seren3.array import SimArray
-from pymses.sources.ramses.sources import RamsesAmrSource, RamsesParticleSource
-from pymses.core import sources
 
-from seren3 import config
-verbose = config.get("general", "verbose")
-
-class SerenSource(sources.DataSource):
-    """
-    Class to extend pymses source and implement derived fields
-    """
-    def __init__(self, family, source, required_fields, requested_fields, cpu_list=None):
-        super(SerenSource, self).__init__()
-        self._source = source
-        self._dset = None
-        self._cpu_list = cpu_list
+class DerivedDataset(object):
+    '''
+    Class to handle indexing/deriving of fields
+    '''
+    def __init__(self, family, indexed_fields, **kwargs):
         self.family = family
-        self.required_fields = required_fields
-        self.requested_fields = requested_fields
+        self.kwargs = kwargs
 
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            return self.flatten()[item]
-        elif str(item).isdigit():
-            return self.get_domain_dset(item)
-        else:
-            raise Exception("Can't get item: %s" % item)
+        # Index RAMSES fields with unit information
+        self.indexed_fields = {}
+        keys = indexed_fields.fields if hasattr(indexed_fields, "fields") else indexed_fields.keys()
+
+        for field in keys:
+            if seren3.in_tracked_field_registry(field):
+                info_for_field = seren3.info_for_tracked_field(field)
+                unit_key = info_for_field["info_key"]
+                unit = self.family.info[unit_key]
+                self.indexed_fields[field] = SimArray(indexed_fields[field], unit)
+
+                if "default_unit" in info_for_field:
+                    self.indexed_fields[field].convert_units(info_for_field["default_unit"])
+            else:
+                self.indexed_fields[field] = SimArray(indexed_fields[field])
+
+    def __getitem__(self, field):
+        if field not in self.indexed_fields:
+            # Derive the field and add it to our index
+            self.indexed_fields[field] = self.derive_field(self.family.family, field, **self.kwargs)
+
+        return self.indexed_fields[field]
+
+
+    def __setitem__(self, item, value):
+        if item in self.indexed_fields:
+            raise Exception("Cowardly refusing to override item: %s" % item)
+        self.indexed_fields[item] = value
+
+
+    def derive_field(self, family, field, **kwargs):
+        '''
+        Recursively derives a field using the existing indexed fields
+        '''
+
+        dset = self.indexed_fields.copy()  # dict to store non-indexed fields required to derive our field
+
+        # First we must collect a list of known RAMSES fields which we require to derive field
+        required = seren3.required_for_field(family, field)
+
+        # Recursively Derive any required fields as necessary
+        for r in required:
+            if r in dset:
+                continue
+            elif (seren3.is_derived(family, r)):
+                dset[r] = self.derive_field(family, r)
+            elif r == "pos":
+                dset[r] = self.indexed_fields.points
+            elif (r == "dx") or (r == "size"):
+                dset[r] = self.indexed_fields.get_sizes()
+            else:
+                raise Exception("Field not indexed or can't derive: %s" % r)
+
+        # dset contains everything we need
+        fn = seren3.get_derived_field(family, field)
+        var = fn(self.family, dset, **kwargs)
+
+        return var
+
+class SerenSource(object):
+    '''
+    Class to expose data reading routines/pass dsets to DerivedDataset
+    '''
+    def __init__(self, family, source):
+        self.family = family
+        self.source = source
+        self._cpu_list = None
+
+        if hasattr(self.family, "region"):
+            bbox = self.family.region.get_bounding_box()
+            self._cpu_list = self.family.cpu_list(bbox)
+
+    def __len__(self):
+        '''
+        Returns the number of CPU domains to be read for this source
+        '''
+        return len(self._cpu_list)
 
     def __iter__(self):
+        '''
+        Iterate over cpu domains
+        '''
         cpu_list = None
         if self._cpu_list is not None:
             cpu_list = self._cpu_list
@@ -36,31 +102,14 @@ class SerenSource(sources.DataSource):
         for idomain in cpu_list:
             yield self.get_domain_dset(idomain)
 
-    def field_latex(self, field):
-        icpu = self._cpu_list[0]
-        return self.get_domain_dset(icpu).latex
-
     @property
-    def points(self):
-        if self._dset is None:
-            return self._source.flatten().points
-        return self._dset.points
-
-    def get_sizes(self):
-        if self._dset is None:
-            return self._source.flatten().get_sizes()
-        return self._dset.get_sizes()
-
-    @property
-    def point_dset_source(self):
-        return self._source
-
-    @property
-    def source(self):
+    def pymses_source(self):
         '''
         The base RamsesAmrSource
         '''
-        src = self._source
+        from pymses.sources.ramses.sources import RamsesAmrSource, RamsesParticleSource
+
+        src = self.source
         if isinstance(src, RamsesAmrSource) or isinstance(src, RamsesParticleSource):
             return src
         else:
@@ -69,109 +118,10 @@ class SerenSource(sources.DataSource):
                 if isinstance(src, RamsesAmrSource) or isinstance(src, RamsesParticleSource):
                     return src
 
-    @property
-    def f(self):
-        return self.flatten()
+    def get_domain_dset(self, idomain, **kwargs):
+        dset = self.source.get_domain_dset(idomain)
+        return DerivedDataset(self.family, dset, **kwargs)
 
     def flatten(self, **kwargs):
-        self._dset = self._source.flatten(verbose=self.family.base.verbose)
-        return self._derived_dset(**kwargs)
-
-    def get_domain_dset(self, idomain, **kwargs):
-        self._dset = self._source.get_domain_dset(idomain)
-        return self._derived_dset(**kwargs)
-
-    def sample_points(self, pxyz, **kwargs):
-        import pymses
-
-        # source = self.source
-        # if hasattr(source, "source"):
-        #     source = source.source
-        source = self.source
-        self._dset = pymses.analysis.sample_points(source, pxyz, use_C_code=True)
-        return self._derived_dset(**kwargs)
-
-    def _derived_dset(self, **kwargs):
-        if(verbose): print "Deriving dataset..."
-
-        # Setup dicts to hold fields
-        if self._dset is None:
-            return {}
-        derived_dset = {}
-        dset = self._dset
-        family = self.family.family
-
-        # User requested dx or pos fields?
-        if "dx" in self.required_fields:
-            dset.add_scalars("dx", dset.get_sizes())
-        if "pos" in self.required_fields:
-            dset.add_vectors("pos", dset.points)
-
-        # Deal with tracked fields / units
-        tracked_fields = {}
-        for f in self.required_fields:
-            # Deal with group specific fields i.e Np1
-            s = f
-            if f[-1].isdigit():
-                s = f[:-1]
-            if seren3.in_tracked_field_registry(s):
-                # Field is tracked by RAMSES -> Get unit information
-                info_for_field = seren3.info_for_tracked_field(s)
-                unit_key = info_for_field["info_key"]
-
-                unit = self.family.info[unit_key]
-                val = SimArray(dset[f], unit)
-
-                # User defined default unit?
-                if "default_unit" in info_for_field:
-                    val = val.in_units(info_for_field["default_unit"])
-                tracked_fields[f] = val
-            else:
-                # We have no unit information -> return dimensionless SimArray
-                # tracked_fields[f] = SimArray(dset[f], 1)
-                tracked_fields[f] = dset[f]
-
-        # Derive fields
-        def _get_derived(field, temp):
-            '''
-            Recursively derive all the fields we need
-            '''
-            # List of fields required to derive requested field
-            rules = [r for r in seren3.required_for_field(family, field)]
-            for r in rules:
-                if seren3.is_derived(family, r) and r not in dset.fields:
-                    # Recursively derive required field
-                    _get_derived(r, temp)
-
-                elif r in tracked_fields:
-                    temp[r] = tracked_fields[r]
-
-            # Get the appropriate function from the registry and call it
-            fn = seren3.get_derived_field(family, field)
-            temp[field] = fn(self.family.base, temp, **kwargs)
-
-        for f in self.requested_fields:
-            if f in dset.fields:  # tracked field
-                derived_dset[f] = tracked_fields[f]
-            elif f not in derived_dset and seren3.is_derived(family, f):
-                temp = {}
-                for r in self.required_fields:
-                    if r == 'pos':
-                        temp["pos"] = dset.points
-
-                    elif r == 'dx':
-                        temp["dx"] = dset.get_sizes()
-
-                    else:
-                        temp[r] = dset[r]
-
-                # Populate temp with the required fields to derive f
-                _get_derived(f, temp)
-                derived_dset[f] = temp[f]
-            else:
-                raise Exception("Don't know what to do with non-tracked and non-derived field: %s", f)
-
-        if(verbose): print "Done"
-        if len(self.requested_fields) == 1:
-            return derived_dset[self.requested_fields[0]]
-        return derived_dset
+        dset = self.source.flatten()
+        return DerivedDataset(self.family, dset, **kwargs)

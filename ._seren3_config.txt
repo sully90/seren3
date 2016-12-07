@@ -6,6 +6,6 @@ data_dir = /home/d/ds/ds381/seren3/data/
 
 [halo]
 default_finder = ctrees
-rockstar_base = rockstar2/
-consistenttrees_base = rockstar2/hlists/
+rockstar_base = rockstar/
+consistenttrees_base = rockstar/hlists/
 ahf_base = AHF/

@@ -60,5 +60,5 @@ def part_age(context, dset, **kwargs):
                 # output[j] = (time_simu - time)*unit_t/(365 * 24 * 3600 * 1e9)
 
     result = SimArray(output, "Gyr")
-    result.set_latex("$\\mathrm{Age}$")
+    result.set_field_latex("$\\mathrm{Age}$")
     return result

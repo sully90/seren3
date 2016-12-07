@@ -5,51 +5,67 @@ Routines for binning RAMSES datasets
 import abc
 import numpy as np
 from seren3.array import SimArray
+from seren3.core.serensource import SerenSource
 
 class ProfileBinner(object):
     '''
     Base class for all profile binners
     '''
     __metaclass__ = abc.ABCMeta # Abstract class
-    def __init__(self, field, profile_func, bin_bounds, divide_by_counts=True):
+    def __init__(self, field, profile_func, bin_bounds):  #, divide_by_counts=True):
         self.field = field
         self.profile_func = profile_func
         self.bin_bounds = bin_bounds
-        self.divide_by_counts = divide_by_counts
+        # self.divide_by_counts = divide_by_counts
 
     @abc.abstractmethod
     def bin_func(self, point_dset):
         return
 
-    def process(self, source):
+    def process(self, source, ncell_per_dim):
         """Compute the profile of the specified data source
         """
 
+        if not isinstance(source, SerenSource):
+            raise Exception("Must supply SerenSource object")
         # Prepare full profile histogram
         # profile = np.zeros(len(self.bin_bounds) - 1)
         profile = 0.
 
-        for dset in source:
-            bin_coords = self.bin_func(dset)
+        dest = None
+        divide_by_counts = False
+        if source.family.family == "amr":
+            divide_by_counts = True
+            dset = source.amr_sample_points(ncell_per_dim=ncell_per_dim, reshape=False)
+        elif source.family.family in ["dm", "star"]:
+            dset = source.flatten()
 
-            # Compute profile for this batch
-            dprofile = np.histogram(
+        bin_coords = self.bin_func(dset)
+
+        # Compute profile for this batch
+        dprofile = np.histogram(
+            bin_coords,
+            weights=self.profile_func(dset),
+            bins=self.bin_bounds,
+            normed=False)[0]
+
+        if divide_by_counts:
+            print "Dividing by bin counts"
+            # Divide by counts
+            counts = np.histogram(
                 bin_coords,
-                weights=self.profile_func(dset),
                 bins=self.bin_bounds,
                 normed=False)[0]
+            counts[counts == 0] = 1
+            dprofile = dprofile / counts
 
-            if self.divide_by_counts:
-                # Divide by counts
-                counts = np.histogram(
-                    bin_coords,
-                    bins=self.bin_bounds,
-                    normed=False)[0]
-                counts[counts == 0] = 1
-                dprofile = dprofile / counts
+        profile += SimArray(dprofile, dset[self.field].units)
 
-            profile += SimArray(dprofile, dset[self.field].units)
-
+        # if average_over_dsets:
+        #     # Average out over number of dsets
+        #     return profile / float(len(source))
+        # else:
+        #     return profile
         return profile
 
 class SphericalProfileBinner(ProfileBinner):

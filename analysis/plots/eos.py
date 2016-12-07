@@ -7,10 +7,10 @@ class PhasePlot(object):
     '''
     Class to handle equation of state plot and annotations
     '''
-    def __init__(self, snapshot, den_field='nH', temp_field='T2', limit_axes=False, load_nH=False, verbose=False, **kwargs):
+    def __init__(self, snapshot, den_field='nH', temp_field='T2', limit_axes=False, load_nH=False, verbose=True, **kwargs):
         from seren3.utils.sge import ncpu
 
-    	nthreads = kwargs.get('nthreads', int(ncpu() / 2.))
+    	nthreads = kwargs.get('nthreads', 8)
         if hasattr(snapshot, "base"):
             snapshot.base.set_nproc(nthreads)
         else:
@@ -21,9 +21,10 @@ class PhasePlot(object):
         self.temp_field = temp_field
 
         self.cmap = kwargs.get('cmap', 'jet_black')
+        self.verbose = verbose
         self.annotations = []
 
-        if verbose: print 'Reading data'
+        if self.verbose: print 'Reading data on %i threads' % nthreads
 
         if den_field != 'nH' and load_nH:
             # Need nH for annotations
@@ -32,9 +33,6 @@ class PhasePlot(object):
             self.dset = snapshot.g[[den_field, temp_field, 'mass']].flatten()
 
         kwargs['plot'] = False
-        kwargs['xo'] = None
-        kwargs['yo'] = None
-        kwargs['mass'] = None
         kwargs['xlogrange'] = True
         kwargs['ylogrange'] = True
         self.kwargs = kwargs
@@ -57,9 +55,10 @@ class PhasePlot(object):
         self.im = None
 
         # xs & ys are logscaled nH / Temperature respectively
-        if verbose: print 'Creating histogram'
-
+        if self.verbose: print 'Creating histogram'
         self.h, self.xs, self.ys = self._profile(**kwargs)
+
+        if self.verbose: print 'Done'
 
     def _profile(self, **kwargs):
         from seren3.analysis.plots import histograms
@@ -69,7 +68,7 @@ class PhasePlot(object):
         totmass = mass.sum()
 
         nbins = self.nbins
-        h, xs, ys = histograms.hist2d(xo, yo, xlogrange=True, ylogrange=True, density=False, mass=mass, nbins=nbins)
+        h, xs, ys = histograms.hist2d(xo, yo, density=False, mass=mass, nbins=nbins, **kwargs)
         h /= totmass
 
         return h, xs, ys
@@ -91,39 +90,12 @@ class PhasePlot(object):
     def nbins(self):
         return self.kwargs.get('nbins', 500)
 
-    def fit(self):
+    def fit(self, nbins_fit):
+        from seren3.analysis.plots import fit_scatter
 
-        def fit_scatter(x, y, nbins):
-            '''
-            Bins scattered points and fits with error bars
-            '''
-            import numpy as np
-
-            n, _ = np.histogram(x, bins=nbins)
-            sy, _ = np.histogram(x, bins=nbins, weights=y)
-            sy2, _ = np.histogram(x, bins=nbins, weights=y*y)
-            mean = sy / n
-            std = np.sqrt(sy2/n - mean*mean)
-
-            bin_centres = (_[1:] + _[:-1])/2
-            return bin_centres, mean, std
-
-        bc, y, std = fit_scatter(np.log10(self.dset[self.den_field]), np.log10(self.dset[self.temp_field]), self.nbins)
-        return y
-
-    def fit_mw(self):
-        log_den = np.log10(self.dset[self.den_field])
-        bins = np.linspace(log_den.min(), log_den.max(), self.nbins)
-
-        idx = np.digitize(log_den, bins)
-        y = np.zeros(self.nbins)  # mass weighted temperatures
-        mass = self.dset['mass'].in_units("Msol")
-
-        for i in range(self.nbins):
-            ix = np.where(idx==i+1)
-            y[i] = np.sum(self.dset[self.temp_field][ix]*mass[ix]) / np.sum(mass[ix])
-
-        return np.log10(y)
+        bc, mean, std, sterr = fit_scatter(np.log10(self.dset[self.den_field]),\
+                 np.log10(self.dset[self.temp_field]), nbins=nbins_fit, ret_sterr=True)
+        return bc, mean, std, sterr
 
     def T_poly(self):
         '''
@@ -177,7 +149,7 @@ class PhasePlot(object):
     def remove_T2_thresh_annotation(self):
         self.annotations.remove(_annotate_T2_thresh)
 
-    def draw(self, ax=None, label_axes=True, draw_cbar=True):
+    def draw(self, ax=None, label_axes=True, draw_cbar=True, **kwargs):
         if ax is None:
             self._setup_axes()
             ax = self.ax
@@ -188,7 +160,7 @@ class PhasePlot(object):
             self.im.set_clim(self.vmin, self.vmax)
 
         for anno in self.annotations:
-            anno(ax, self, **self.kwargs)
+            anno(ax, self, **kwargs)
 
         # Get appropiate latex
         # temp_latex = seren3.get_derived_field_latex(seren3.Field(('amr', self.temp_field)))
@@ -213,8 +185,9 @@ class PhasePlot(object):
         self._teardown()
 
 def _annotate_fit(ax, pp, **kwargs):
-    y = pp.fit()
-    ax.plot(pp.xs, y, linestyle='-', color='k')
+    bc, mean, std, sterr = pp.fit(nbins_fit = kwargs.pop("nbins_fit", pp.nbins/4))
+    # ax.plot(pp.xs, y, linestyle='-', color='k')
+    ax.errorbar(bc, mean, yerr=sterr, linestyle='-', color='k')
 
 def _annotate_fit_mw(ax, pp, **kwargs):
     y = pp.fit_mw()
@@ -330,7 +303,6 @@ def plot_grid(sim, ioutputs, nrows, ncols, plots=None, region=None, **kwargs):
             # ax.set_xlim(-6, 0)
 
     im = pp.im
-
 
     cbar_ax = fig.add_axes([0.85, 0.05, 0.03, 0.9])
     cb = fig.colorbar(im, cax=cbar_ax)

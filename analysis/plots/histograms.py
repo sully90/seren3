@@ -181,10 +181,10 @@ def hist2d(xo, yo, weights=None, mass=None, gridsize=(100, 100), nbins = None, m
 
     if isinstance(xo, SimArray):
         xs = SimArray(xs, xo.units)
-        xs.set_latex(xo.get_field_latex())
+        xs.set_field_latex(xo.get_field_latex())
     if isinstance(yo, SimArray):
         ys = SimArray(ys, yo.units)
-        ys.set_latex(yo.get_field_latex())
+        ys.set_field_latex(yo.get_field_latex())
     hist = np.flipud(hist)
     if density:
         return hist / len(xo), xs, ys

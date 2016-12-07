@@ -34,8 +34,12 @@ class Quantity(object):
         dx = boxsize/N
 
         rhoc_unit = pm_mass/dx**3
+        rho = rho.reshape((N, N, N)) * rhoc_unit
 
-        return rho.reshape((N, N, N)) * rhoc_unit
+        # Low-level C I/O routines assemble data as a contiguous, C-ordered (nvars, twotondim, ngrids) numpy.ndarray
+        # Swap data => shape : (ngrids, twotondim, nvars)
+        ####### WARNING : must keep C-ordered contiguity !!! #######
+        return np.ascontiguousarray(np.swapaxes(rho, 0, 2))
 
     @property
     def deltac(self):
@@ -44,9 +48,9 @@ class Quantity(object):
         '''
         from seren3.cosmology import rho_mean_z
 
+        cosmo = self.base.cosmo
         omega0 = cosmo['omega_M_0'] - cosmo['omega_b_0']
 
-        cosmo = self.base.cosmo
         rho_mean = rho_mean_z(omega0, **cosmo)
 
         rhoc = self.rhoc

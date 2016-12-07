@@ -57,7 +57,7 @@ class SimArray(np.ndarray):
         self._name = None
         np.ndarray.__setstate__(self, args[1:])
 
-    def __new__(subtype, data, units=None, snapshot=None, **kwargs):
+    def __new__(subtype, data, units=None, latex=None, snapshot=None, **kwargs):
         if isinstance(data, pymses_Unit):
             units = data._decompose_base_units().replace("^", "**").replace(".", " ")
             data = data.coeff
@@ -96,7 +96,7 @@ class SimArray(np.ndarray):
             # will generate a weakref automatically
 
         new._name = None
-        new._latex = None
+        new._latex = latex
 
         return new
 
@@ -140,11 +140,17 @@ class SimArray(np.ndarray):
 
     @property
     def latex(self):
-        if hasattr(self, "_latex") and ( ("[" in self._latex) and "]" in self._latex ):
-            return r"%s" % self._latex
-        return r"%s [$%s$]" % (self._latex, self.units.latex())
+        from pynbody.units import NoUnit
 
-    def set_latex(self, latex):
+        if hasattr(self, "_latex") and (self._latex is not None):
+            f_latex = self.get_field_latex()
+            if self.units == NoUnit() or ( ("[" in f_latex) and "]" in f_latex ):
+                return r"%s" % f_latex
+            else:
+                return r"%s [$%s$]" % (f_latex, self.units.latex())
+        return None
+
+    def set_field_latex(self, latex):
         self._latex = latex
 
     def get_field_latex(self):

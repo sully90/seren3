@@ -107,6 +107,35 @@ class Halo(object):
     def camera(self, **kwargs):
         return self.subsnap.camera(**kwargs)
 
+    def annotate_rvir(self, proj, color="lightsteelblue", facecolor="none", alpha=1, ax=None):
+        '''
+        Draw the virial radius on a projection plot
+        '''
+        import matplotlib.pylab as plt
+        from matplotlib.patches import Circle
+
+        if ax is None:
+            ax = plt.gca()
+
+        camera = proj.camera
+        region_size = camera.region_size[0]  # code length
+        map_max_size = camera.map_max_size  # projection size in pixels
+
+        unit_l = self.base.array(self.base.info["unit_length"])
+        rvir = self.rvir.in_units(unit_l)
+
+        rvir_pixels = (rvir/region_size) * map_max_size
+        xy = (map_max_size/2, map_max_size/2)
+        e = Circle(xy=xy, radius=rvir_pixels)
+
+        ax.add_artist(e)
+        e.set_clip_box(ax.bbox)
+        e.set_edgecolor( color )
+        e.set_facecolor( facecolor )  # "none" not None
+        e.set_alpha( alpha )
+
+        return e
+
     @property
     def Vc(self):
         '''
@@ -272,7 +301,7 @@ class HaloCatalogue(object):
         '''
         Returns iterable which can be scattered/gathered
         '''
-        halo_spheres = np.array( [ {'id' : h.hid, 'reg' : h.sphere, 'mvir' : h['mvir'].v} for h in self ] )
+        halo_spheres = np.array( [ {'id' : h.hid, 'reg' : h.sphere, 'mvir' : h['mvir']} for h in self ] )
         return halo_spheres
 
     def _halo_generator(self):

@@ -136,6 +136,7 @@ class AHFCatalogue(HaloCatalogue):
         import subprocess, os
         from seren3.utils.sge import ncpu
         from seren3.utils import which
+        
         r2g = which("ramses2gadget")
         ahf = which("AHF-v1.0-084")
 

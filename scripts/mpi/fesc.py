@@ -128,9 +128,9 @@ def load(path, iout, finder):
     return tot_mass, fesc
 
 
-def main(path, iout, finder):
+def main(path, iout, finder, pickle_path):
     import seren3
-    from seren3.analysis import fesc
+    from seren3.analysis.escape_fraction import fesc
     from seren3.analysis.parallel import mpi
     from seren3.exceptions import NoParticlesException
     import pickle, os
@@ -154,18 +154,18 @@ def main(path, iout, finder):
             tot_mass = subsnap.p["mass"].f.sum() + subsnap.g["mass"].f.sum()
 
             sto.idx = h["id"]
-            h_fesc = 0.
 
             try:
-                h_fesc = fesc(subsnap, nside=2**4)
+                h_fesc = fesc(subsnap, nside=2**3)
+                sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass}
             except NoParticlesException as e:
                 mpi.msg(e.message)
             except IndexError:
                 mpi.msg("Index error - skipping")
-            sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass}
 
     if mpi.host:
-        pickle_path = "%s/pickle/%s/" % (path, halos.finder.lower())
+        if pickle_path is None:
+            pickle_path = "%s/pickle/%s/" % (path, halos.finder.lower())
         # pickle_path = "%s/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
@@ -179,14 +179,17 @@ if __name__ == "__main__":
     iout = int(sys.argv[2])
 
     finder = config.get("halo", "default_finder")
-    if len(sys.argv) == 4:
+    pickle_path = None
+    if len(sys.argv) > 3:
         finder = sys.argv[3]
+    if len(sys.argv) > 4:
+        pickle_path = sys.argv[4]
 
-    # main(path, iout, finder)
+    main(path, iout, finder, pickle_path)
 
-    try:
-        main(path, iout, finder)
-    except Exception as e:
-        from seren3.analysis.parallel import mpi
-        print 'Caught exception: ', e
-        mpi.terminate(500, e=e)
+    # try:
+    #     main(path, iout, finder, pickle_path)
+    # except Exception as e:
+    #     from seren3.analysis.parallel import mpi
+    #     print 'Caught exception: ', e
+    #     mpi.terminate(500, e=e)

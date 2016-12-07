@@ -49,11 +49,7 @@ class Snapshot(object):
 
     def array(self, array, units=None, **kwargs):
         from seren3.array import SimArray
-        return SimArray(array, units, snapshot=self)
-
-    @abc.abstractmethod
-    def get_source(self, family, fields):
-        return
+        return SimArray(array, units, snapshot=self, **kwargs)
 
     @abc.abstractmethod
     def ro(self):
@@ -76,11 +72,7 @@ class Snapshot(object):
         return
 
     @abc.abstractmethod
-    def gmc(self):
-        return
-
-    @abc.abstractmethod
-    def get_source(self, family):
+    def get_io_source(self, family):
         return
 
     @abc.abstractmethod
@@ -136,6 +128,20 @@ class Snapshot(object):
         if self._friedmann is None:
             self._friedmann = self.integrate_friedmann()
         return self._friedmann
+
+
+    def detect_rt_module(self):
+        '''
+        Checks if RAMSES-RT or RAMSES-CUDATON simulation.
+        Retuns string 'rt' or 'cudaton'
+        '''
+        import os
+        if os.path.isfile(self.info_rt_fname):
+            return 'rt'
+        elif os.path.isfile("%s/output_%05i/rad_%05i.out00001" % (self.path, self.ioutout, self.ioutout)):
+            return 'cudaton'
+        else:
+            return 'ramses'
     
 
     @property
@@ -165,8 +171,9 @@ class Snapshot(object):
         '''
         Expose RT info API
         '''
-        fname = self.info_rt_fname
         from pymses.sources.ramses import info
+        
+        fname = self.info_rt_fname
         return info.read_ramses_rt_info_file(fname)
 
     @property
@@ -270,7 +277,7 @@ class Snapshot(object):
         return friedmann
 
     def pynbody_snapshot(self, **kwargs):
-        raise NotImplementedError("Not implemented conversion for base snapshot")
+        raise NotImplementedError("Conversion not implemented for base snapshot")
 
 class Family(object):
     """
@@ -280,6 +287,7 @@ class Family(object):
         import weakref
         self._base = weakref.ref(snapshot)
         self.family = family.lower()
+        self.C = snapshot.C
 
     def __str__(self):
         return "Family<%s>" % self.family
@@ -299,9 +307,24 @@ class Family(object):
     def ro(self):
         return self.base.ro
 
+    def array(self, *args, **kwargs):
+        return self.base.array(*args, **kwargs)
+
     @property
     def info(self):
         return self.base.info
+
+    @property
+    def cosmo(self):
+        return self.base.cosmo
+
+    @property
+    def friedmann(self):
+        return self.base.friedmann
+
+    @property
+    def patch(self):
+        return self.base.patch
 
     @property
     def nml(self):
@@ -363,9 +386,9 @@ class Family(object):
 
         source = None
         if "dx" in required_fields or "pos" in required_fields:
-            source = self.base.get_source(self.family, [r for r in required_fields if r != "dx" and r != "pos"])
+            source = self.base.get_io_source(self.family, [r for r in required_fields if r != "dx" and r != "pos"])
         else:
-            source = self.base.get_source(self.family, required_fields)
+            source = self.base.get_io_source(self.family, required_fields)
         if return_required_fields:
             return source, required_fields
         return source
@@ -388,16 +411,15 @@ class Family(object):
         if hasattr(self.base, "region"):
             from pymses.filters import RegionFilter
             source = RegionFilter(self.base.region, source)
-            cpu_list = self.base.cpu_list(self.base.region.get_bounding_box())
 
-        return SerenSource(self, source, required_fields, fields, cpu_list=cpu_list)
+        return SerenSource(self, source)
 
-    def bin_spherical(self, field, r_units='pc', prof_units=None, profile_func=None, center=None, r=None, nbins=200, divide_by_counts=False):
+    def bin_spherical(self, field, r_units='pc', ncell_per_dim=128, prof_units=None, profile_func=None, center=None, radius=None, nbins=200, divide_by_counts=True):
         '''
         Spherical binning function
         '''
         from seren3.array import SimArray
-        from seren3.utils.derived_utils import LambdaOperator, is_derived
+        from seren3.utils.derived_utils import LambdaOperator, is_derived, get_field_unit
         from seren3.analysis.profile_binners import SphericalProfileBinner
 
         if center is None:
@@ -406,9 +428,9 @@ class Family(object):
             else:
                 raise Exception("center not specified")
 
-        if r is None:
+        if radius is None:
             if hasattr(self.base, "region"):
-                r = self.base.region.radius
+                radius = self.base.region.radius
             else:
                 raise Exception("radius not specified")
 
@@ -418,11 +440,18 @@ class Family(object):
             else:
                 profile_func = lambda dset: dset[field]
 
-        r_bins = np.linspace(0., r, nbins)
+        _ = np.linspace(0., radius, nbins)
 
+        unit = get_field_unit(self, field)
         source = self[[field, "pos"]]
-        binner = SphericalProfileBinner(field, center, profile_func, r_bins, divide_by_counts)
-        prof = binner.process(source)
+        binner = SphericalProfileBinner(field, center, profile_func, _, divide_by_counts)
+        # prof = self.base.array(binner.process(source), unit)
+        prof = binner.process(source, ncell_per_dim)
+
+        if prof_units is not None:
+            prof = prof.in_units(prof_units)
+
+        r_bins = (_[1:] + _[:-1])/2.
         r_bins = SimArray(r_bins, self.info["unit_length"]).in_units(r_units)
 
-        return prof, r_bins[1:]
+        return prof, r_bins

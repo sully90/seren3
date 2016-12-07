@@ -4,15 +4,18 @@ of halos (or subsnaps in general).
 Uses the pynbody python module to create healpix maps
 '''
 
-def fesc(subsnap, do_multigroup=True, ret_flux_map=False, **kwargs):
+def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, **kwargs):
     '''
     Computes halo escape fraction of hydrogen ionising photons
     '''
     import numpy as np
     from seren3.array import SimArray
-    # from seren3.core.derived import star_Nion_d
+    from seren3.halos import Halo
     from seren3.utils import derived_utils
     from seren3.analysis.render import render_spherical
+
+    if isinstance(subsnap, Halo):
+        subsnap = subsnap.subsnap
 
     rvir = SimArray(subsnap.region.radius, subsnap.info["unit_length"])
     rt_c = SimArray(subsnap.info_rt["rt_c_frac"] * subsnap.C.c)
@@ -38,23 +41,22 @@ def fesc(subsnap, do_multigroup=True, ret_flux_map=False, **kwargs):
             nPhot += (Nion_d * mass).sum()
 
             # Compute integrated flux out of the virial sphere
-            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
+            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, units="s**-1 m**-2", ret_mag=False, filt=filt, **kwargs)
             integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir)# * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
     else:
         # Compute number of ionising photons from stars at time
         # t - rvir/rt_c (assuming halo is a point source)
         # dset = subsnap.s[["Nion_d", "mass", "age"]].flatten(group=1, dt=dt)
-        Nion_d = star_Nion_d(subsnap, dset, dt=dt, group=ii+1)
+        Nion_d = star_Nion_d(subsnap, dset, dt=dt, group=1)
         keep = np.where(dset["age"] - dt >= 0.)
         mass = dset["mass"][keep]
         nPhot += (Nion_d * mass).sum()
 
         # Compute integrated flux out of the virial sphere
-        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=False, **kwargs)
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=filt, **kwargs)
         integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir)# * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
 
-    # fesc = nPhot.sum() / integrated_flux
-    fesc = integrated_flux / nPhot.sum()
+    fesc = integrated_flux / nPhot
 
     # return the escape fraction
     if ret_flux_map:
