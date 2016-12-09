@@ -8,25 +8,32 @@ class DerivedDataset(object):
     '''
     Class to handle indexing/deriving of fields
     '''
-    def __init__(self, family, indexed_fields, **kwargs):
+    def __init__(self, family, dset, **kwargs):
+        self._dset = dset
         self.family = family
         self.kwargs = kwargs
 
         # Index RAMSES fields with unit information
         self.indexed_fields = {}
-        keys = indexed_fields.fields if hasattr(indexed_fields, "fields") else indexed_fields.keys()
+        # keys = indexed_fields.fields if hasattr(indexed_fields, "fields") else indexed_fields.keys()
+        keys = dset.fields
 
         for field in keys:
             if seren3.in_tracked_field_registry(field):
                 info_for_field = seren3.info_for_tracked_field(field)
                 unit_key = info_for_field["info_key"]
                 unit = self.family.info[unit_key]
-                self.indexed_fields[field] = SimArray(indexed_fields[field], unit)
+                self.indexed_fields[field] = SimArray(dset[field], unit)
 
                 if "default_unit" in info_for_field:
                     self.indexed_fields[field].convert_units(info_for_field["default_unit"])
             else:
-                self.indexed_fields[field] = SimArray(indexed_fields[field])
+                self.indexed_fields[field] = SimArray(dset[field])
+
+        # Setup position and dx fields
+        self["pos"] = SimArray(self._dset.points, family.info["unit_length"])
+        if self.family.family == "amr":
+            self["dx"] = SimArray(self._dset.get_sizes(), family.info["unit_length"])
 
     def __getitem__(self, field):
         if field not in self.indexed_fields:
@@ -42,32 +49,49 @@ class DerivedDataset(object):
         self.indexed_fields[item] = value
 
 
+    def __contains__(self, field):
+        return field in self.indexed_fields
+
+
+    @property
+    def points(self):
+        return self["pos"]
+
+
+    @property
+    def get_sizes(self):
+        if self.family.family == "amr":
+            return self["dx"]
+        else:
+            raise Exception("Field dx does not exist for family %s" % self.family.family)
+
+
     def derive_field(self, family, field, **kwargs):
         '''
         Recursively derives a field using the existing indexed fields
         '''
 
-        dset = self.indexed_fields.copy()  # dict to store non-indexed fields required to derive our field
+        # dset = self.indexed_fields.copy()  # dict to store non-indexed fields required to derive our field
 
         # First we must collect a list of known RAMSES fields which we require to derive field
         required = seren3.required_for_field(family, field)
 
         # Recursively Derive any required fields as necessary
         for r in required:
-            if r in dset:
+            if r in self:
                 continue
             elif (seren3.is_derived(family, r)):
-                dset[r] = self.derive_field(family, r)
-            elif r == "pos":
-                dset[r] = self.indexed_fields.points
-            elif (r == "dx") or (r == "size"):
-                dset[r] = self.indexed_fields.get_sizes()
+                self[r] = self.derive_field(family, r)
+            # elif r == "pos":
+            #     self[r] = self.indexed_fields.points
+            # elif (r == "dx") or (r == "size"):
+            #     self[r] = self.indexed_fields.get_sizes()
             else:
                 raise Exception("Field not indexed or can't derive: %s" % r)
 
         # dset contains everything we need
         fn = seren3.get_derived_field(family, field)
-        var = fn(self.family, dset, **kwargs)
+        var = fn(self.family, self, **kwargs)
 
         return var
 
@@ -121,6 +145,10 @@ class SerenSource(object):
     def get_domain_dset(self, idomain, **kwargs):
         dset = self.source.get_domain_dset(idomain)
         return DerivedDataset(self.family, dset, **kwargs)
+
+    @property
+    def f(self):
+        return self.flatten()
 
     def flatten(self, **kwargs):
         dset = self.source.flatten()

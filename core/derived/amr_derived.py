@@ -111,11 +111,9 @@ def amr_T2(context, dset):
     '''
     Gas Temperature in units of K/mu
     '''
-    rho = dset["rho"]
-    P = dset["P"]
     mH = SimArray(context.C.mH)
     kB = SimArray(context.C.kB)
-    T2 = (P/rho * (mH / kB)).in_units("K")
+    T2 = (dset["P"]/dset["rho"] * (mH / kB)).in_units("K")
     T2.set_field_latex("T$_{2}$")
     return T2
 
@@ -185,9 +183,9 @@ def amr_Gamma(context, dset, iIon=0):
     Gas photoionization rate in [s^-1]
     '''
     emi = 0.
-    for i in range(1, context.info_rt["nGroups"] + 1):
+    for i in range(1, context.info["nGroups"] + 1):
         Np = dset["Np%i" % i]
-        csn = SimArray(context.info_rt["group%i" % i]["csn"][iIon])
+        csn = SimArray(context.info["group%i" % i]["csn"][iIon])
         emi += Np * csn
 
     Gamma = emi.in_units("s**-1")
@@ -227,20 +225,20 @@ def amr_PHrate(context, dset):
     else:
         C = context.C
         Np_ndim = dset["Np1"].ndim
-        info_rt = context.info_rt
-        unit_Fp = info_rt['unit_photon_flux_density'].express(C.cm**-2 * C.s**-1)
+        info = context.info
+        unit_Fp = info['unit_photon_flux_density'].express(C.cm**-2 * C.s**-1)
 
-        for iGroup in range(1, info_rt['nGroups'] + 1):
+        for iGroup in range(1, info['nGroups'] + 1):
             for iIon in range(0, 3):
                 Np = dset["Np%d" % iGroup] * unit_Fp
 
                 emi = emi + nN[iIon] * Np \
-                    * (info_rt["group%d" % iGroup]["cse"][iIon].express(C.cm**2) * info_rt["group%d" % iGroup]["egy"][0].express(C.erg) \
-                    - info_rt["group%d" % iGroup]["csn"][iIon].express(C.cm**2) * (info_rt["photon_properties"]["groupL0"][iIon].express(C.erg)))
+                    * (info["group%d" % iGroup]["cse"][iIon].express(C.cm**2) * info["group%d" % iGroup]["egy"][0].express(C.erg) \
+                    - info["group%d" % iGroup]["csn"][iIon].express(C.cm**2) * (info["photon_properties"]["groupL0"][iIon].express(C.erg)))
 
                 # emi = emi + nN[iIon, :] * dset["Np%d" % iGroup] * unit_Fp \
-                #     * (info_rt["group%d" % iGroup]["cse"][iIon].express(C.cm**2) * info_rt["group%d" % iGroup]["egy"][0].express(C.erg) \
-                #     - info_rt["group%d" % iGroup]["csn"][iIon].express(C.cm**2) * (info_rt["photon_properties"]["groupL0"][iIon].express(C.erg)))
+                #     * (info["group%d" % iGroup]["cse"][iIon].express(C.cm**2) * info["group%d" % iGroup]["egy"][0].express(C.erg) \
+                #     - info["group%d" % iGroup]["csn"][iIon].express(C.cm**2) * (info["photon_properties"]["groupL0"][iIon].express(C.erg)))
 
     if emi.min() < 0:
         raise Exception("NEGATIVE EMI")

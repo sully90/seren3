@@ -412,7 +412,7 @@ class RockstarCatalogue(HaloCatalogue):
         idx_closest = (np.abs(aexp - base_aexp)).argmin()
 
         out_fname = "out_%i.list" % (out_num[idx_closest])
-        print 'RockstarCatalogue: matched to %s' % out_fname
+        #print 'RockstarCatalogue: matched to %s' % out_fname
         fname = "%s/%s" % (self.finder_base_dir, out_fname)
         return fname
 
@@ -430,7 +430,6 @@ class RockstarCatalogue(HaloCatalogue):
 
     def load(self, **kwargs):
         # Ensures file is closed at the end. If within_r is specified, it must be in code units
-        print self.filename
         with open(self.filename, 'r') as f:
             haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
 

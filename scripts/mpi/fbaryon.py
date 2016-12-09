@@ -119,22 +119,26 @@ def main(path, iout, pickle_path):
     import seren3
     import pickle, os
     from seren3.analysis.parallel import mpi
+    import random
 
     mpi.msg("Loading data")
     snap = seren3.load_snapshot(path, iout)
     snap.set_nproc(1)  # disbale multiprocessing
 
     halos = snap.halos(finder="rockstar")
-    mpi_halos = halos.mpi_spheres()
+    halo_ix = range(len(halos))
+    random.shuffle(halo_ix)
 
     dest = {}
-    for h, sto in mpi.piter(mpi_halos, storage=dest):
-        sphere = h["reg"]
-        subsnap = snap[sphere]
+    for i, sto in mpi.piter(halo_ix, storage=dest):
+        h = halos[i]
+        subsnap = h.subsnap
+
+        mpi.msg("Working on halo %i \t %i" % (i, h.hid))
 
         # part_dset = subsnap.p[["mass", "epoch", "id"]].f
-        part_mass = subsnap.p["mass"].f
-        gas_mass = subsnap.g["mass"].f
+        part_mass = subsnap.p["mass"].flatten()["mass"]
+        gas_mass = subsnap.g["mass"].flatten()["mass"]
 
         part_mass_tot = part_mass.in_units("Msol").sum()
         gas_mass_tot = gas_mass.in_units("Msol").sum()
@@ -142,7 +146,7 @@ def main(path, iout, pickle_path):
 
         fb = gas_mass_tot/tot_mass
         sto.idx = h["id"]
-        sto.result = {"fb" : fb, "tot_mass" : tot_mass}
+        sto.result = {"fb" : fb, "tot_mass" : tot_mass, "Mvir" : h["Mvir"]}
 
     if mpi.host:
         if pickle_path is None:
@@ -158,8 +162,8 @@ if __name__ == "__main__":
     pickle_path = None
     if len(sys.argv) > 3:
         pickle_path = sys.argv[3]
-    try:
-        main(path, iout, pickle_path)
-    except Exception as e:
-        from seren3.analysis.parallel import mpi
-        mpi.terminate(500, e=e)
+    # try:
+    main(path, iout, pickle_path)
+    # except Exception as e:
+    #     from seren3.analysis.parallel import mpi
+    #     mpi.terminate(500, e=e)

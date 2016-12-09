@@ -162,7 +162,7 @@ class Simulation(object):
                 return z[eor_idx], z, vw
             return z[eor_idx]
 
-    def write_rockstar_info(self):
+    def write_rockstar_info(self, out_path=None):
         '''
         If a rockstar directory exists, writes a rockstar_info.txt file
         with out_list numbers against aexp
@@ -171,11 +171,13 @@ class Simulation(object):
         from seren3 import config
         rockstar_base = config.get("halo", "rockstar_base")
 
-        if os.path.isdir("%s/%s/" % (self.path, rockstar_base)):
+        if out_path is None: out_path = "%s/%s/" % (self.path, rockstar_base)
+
+        if os.path.isdir("%s/" % (out_path)):
             import glob
 
             info = {}
-            files = glob.glob("%s/%s/out_*.list" % (self.path, rockstar_base))
+            files = glob.glob("%s/out_*.list" % (out_path))
             for fname in files:
                 out_num = int( filter(str.isdigit, fname.replace(rockstar_base, '')) )
                 with open(fname, "r") as f:
@@ -188,7 +190,7 @@ class Simulation(object):
                             break
             # Write to file
             keys = sorted(info.keys())
-            with open("%s/%s/info_rockstar.txt" % (self.path, rockstar_base), "w") as f:
+            with open("%s/info_rockstar.txt" % (out_path), "w") as f:
                 for i in keys:
                     line = "%i\t%f\n" % (i, info[i])
                     f.write(line)

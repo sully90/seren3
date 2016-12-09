@@ -66,7 +66,7 @@ class SimArray(np.ndarray):
 
         new = np.array(data, **kwargs).view(subtype)
         new._context = {}
-        if hasattr(data, 'units') and hasattr(data, 'snapshot') and units is None and sim is None:
+        if hasattr(data, 'units') and hasattr(data, 'snapshot') and units is None and snapshot is None:
             units = data.units
             snapshot = data.snapshot
 
@@ -90,7 +90,7 @@ class SimArray(np.ndarray):
         # the normal weak-reference system.
 
         if snapshot is not None:
-            new.snapshot = snapshot.ancestor
+            new.snapshot = snapshot
             new._context["h"] = snapshot.cosmo["h"]
             new._context["a"] = snapshot.cosmo["aexp"]
             # will generate a weakref automatically
