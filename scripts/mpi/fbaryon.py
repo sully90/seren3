@@ -6,11 +6,12 @@ def unpack(iout, path='./'):
     data = pickle.load( open(fname, "rb") )
 
     def _unpack(data):
-        tot_mass, fb = (np.zeros(len(data)), np.zeros(len(data)))
+        tot_mass, fb, pid = (np.zeros(len(data)), np.zeros(len(data)), np.zeros(len(data)))
         for i in range(len(data)):
             tot_mass[i] = data[i].result["tot_mass"]
             fb[i] = data[i].result["fb"]
-        return tot_mass, fb
+            pid = data[i].result["pid"]
+        return tot_mass, fb, pid
 
     return _unpack(data)    
 
@@ -26,11 +27,13 @@ def plot(paths, ioutputs, labels, cols=None, nbins=10, plot_scatter=True, label_
     from seren3.utils.plot_utils import ncols
 
     def _unpack(data):
-        tot_mass, fb = (np.zeros(len(data)), np.zeros(len(data)))
+        tot_mass, fb, np_dm, pid = (np.zeros(len(data)), np.zeros(len(data)), np.zeros(len(data)), np.zeros(len(data)))
         for i in range(len(data)):
             tot_mass[i] = data[i].result["tot_mass"]
             fb[i] = data[i].result["fb"]
-        return tot_mass, fb
+            pid[i] = data[i].result["pid"]
+            np_dm[i] = data[i].result["np_dm"]
+        return tot_mass, fb, np_dm, pid
 
     if cols == None:
         cols = ncols(len(paths), cmap=cmap)
@@ -40,7 +43,12 @@ def plot(paths, ioutputs, labels, cols=None, nbins=10, plot_scatter=True, label_
         cosmo = snap.cosmo
         fname = "%s/pickle/fbaryon_%05i.p" % (path, iout)
         data = pickle.load( open(fname, "rb") )
-        tot_mass, fb = _unpack(data)
+        tot_mass, fb, np_dm, pid = _unpack(data)
+
+        idx = np.where( np.logical_and(pid == -1, np_dm > 50.) )  # distinct halos
+        tot_mass = tot_mass[idx]
+        fb = fb[idx]
+
         # Put tot_mass in units of Msol/h
         h = cosmo["h"]
         tot_mass *= h
@@ -59,7 +67,7 @@ def plot(paths, ioutputs, labels, cols=None, nbins=10, plot_scatter=True, label_
         bin_centres, mean, std, n = plots.fit_scatter(log_tot_mass, fb_cosmic_mean, ret_n=True, nbins=nbins)
 
         sterr = std/np.sqrt(n)
-        plt.errorbar(bin_centres, mean, yerr=sterr, label=label, color=c, linewidth=1.5)
+        plt.errorbar(bin_centres, mean, yerr=sterr, label=label, color="k", linewidth=2.5)
 
     plt.xlabel(r"log$_{10}$(M$_{\mathrm{h}}$[M$_{\odot}$/h])")
     plt.ylabel(r"f$_{\mathrm{gas}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
@@ -85,7 +93,8 @@ def fit(snapshot):
             return f_bar * (1 + (2**(alpha/3.) - 1) * (Mh/Mc)**(-alpha))**(-3./alpha)
         return wrapped
 
-    tot_mass, fb = unpack(snapshot.ioutput, path=snapshot.path)
+    tot_mass, fb, pid = unpack(snapshot.ioutput, path=snapshot.path)
+
     log_tot_mass = np.log10(tot_mass)
 
     # Initial guess at fit
@@ -122,31 +131,52 @@ def main(path, iout, pickle_path):
     import random
 
     mpi.msg("Loading data")
-    snap = seren3.load_snapshot(path, iout)
+    sim = seren3.init(path)
+    # snap = seren3.load_snapshot(path, iout)
+    snap = sim.snapshot(iout)
+
+    # Age function and age now to compute time since last MM
+    age_fn = sim.age_func()
+    age_now = snap.age
+
     snap.set_nproc(1)  # disbale multiprocessing
 
-    halos = snap.halos(finder="rockstar")
-    halo_ix = range(len(halos))
-    random.shuffle(halo_ix)
+    halos = snap.halos(finder="ctrees")
+
+    halo_ix = None
+    if mpi.host:
+        halo_ix = range(len(halos))
+        random.shuffle(halo_ix)
 
     dest = {}
     for i, sto in mpi.piter(halo_ix, storage=dest):
         h = halos[i]
+
         subsnap = h.subsnap
 
         mpi.msg("Working on halo %i \t %i" % (i, h.hid))
 
         # part_dset = subsnap.p[["mass", "epoch", "id"]].f
-        part_mass = subsnap.p["mass"].flatten()["mass"]
-        gas_mass = subsnap.g["mass"].flatten()["mass"]
+        dm_mass = subsnap.d["mass"].flatten()["mass"]
 
-        part_mass_tot = part_mass.in_units("Msol").sum()
-        gas_mass_tot = gas_mass.in_units("Msol").sum()
+        # if len(dm_mass) > 50.:
+        part_mass_tot = subsnap.s["mass"].flatten()["mass"].sum() + dm_mass.sum()
+        gas_mass_tot = subsnap.g["mass"].flatten()["mass"].sum()
+
         tot_mass = part_mass_tot + gas_mass_tot
 
         fb = gas_mass_tot/tot_mass
         sto.idx = h["id"]
-        sto.result = {"fb" : fb, "tot_mass" : tot_mass, "Mvir" : h["Mvir"]}
+
+        pid = h["pid"]  # -1 if distinct halo
+        scale_of_last_MM = h["scale_of_last_mm"]  # aexp of last major merger
+        z_of_last_MM = (1./scale_of_last_MM)-1.
+        age_of_last_MM = age_fn(z_of_last_MM)
+
+        time_since_last_MM = age_now - age_of_last_MM
+        sto.result = {"fb" : fb, "tot_mass" : tot_mass,\
+                 "Mvir" : h["Mvir"], "pid" : pid, "np_dm" : len(dm_mass),\
+                 "scale_of_last_mm" : scale_of_last_MM, "time_since_last_MM" : time_since_last_MM}
 
     if mpi.host:
         if pickle_path is None:

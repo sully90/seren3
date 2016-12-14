@@ -91,8 +91,9 @@ class SimArray(np.ndarray):
 
         if snapshot is not None:
             new.snapshot = snapshot
-            new._context["h"] = snapshot.cosmo["h"]
-            new._context["a"] = snapshot.cosmo["aexp"]
+            new.set_context(new.snapshot)
+            # new._context["h"] = snapshot.cosmo["h"]
+            # new._context["a"] = snapshot.cosmo["aexp"]
             # will generate a weakref automatically
 
         new._name = None
@@ -272,6 +273,10 @@ class SimArray(np.ndarray):
             except AttributeError:
                 pass
         return self
+
+    def set_context(self, context):
+        self._context["h"] = context.cosmo["h"]
+        self._context["a"] = context.cosmo["aexp"]
 
     def conversion_context(self):
         if hasattr(self, "_context"):

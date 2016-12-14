@@ -52,10 +52,6 @@ class Snapshot(object):
         return SimArray(array, units, snapshot=self, **kwargs)
 
     @abc.abstractmethod
-    def ro(self):
-        return
-
-    @abc.abstractmethod
     def g(self):
         return
 

@@ -16,14 +16,17 @@ def main(path, pickle_path):
         snap.set_nproc(1)
         halos = snap.halos(finder="ctrees")
 
-        halo_ix = range(len(halos))
-        random.shuffle(halo_ix)
+        halo_ix = None
+        if mpi.host:
+            halo_ix = range(len(halos))
+            random.shuffle(halo_ix)
 
         dest = {}
         for i, sto in mpi.piter(halo_ix, storage=dest):
             h = halos[i]
 
-            age_delay = h.s["age"].f.in_units("Gyr") - h.dt.in_units("Gyr")
+            dset = h.s["age"].flatten()
+            age_delay = dset["age"].in_units("Gyr") - h.dt.in_units("Gyr")
 
             # Check if all values are below zero i.e no stars dt ago
             if len(age_delay) > 0 and any(age_delay >= 0.):

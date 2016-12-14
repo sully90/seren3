@@ -8,6 +8,8 @@ class DerivedDataset(object):
     '''
     Class to handle indexing/deriving of fields
     '''
+    INFO_KEY = "info_key"
+    DEFAULT_UNIT = "default_unit"
     def __init__(self, family, dset, **kwargs):
         self._dset = dset
         self.family = family
@@ -21,12 +23,12 @@ class DerivedDataset(object):
         for field in keys:
             if seren3.in_tracked_field_registry(field):
                 info_for_field = seren3.info_for_tracked_field(field)
-                unit_key = info_for_field["info_key"]
+                unit_key = info_for_field[self.INFO_KEY]
                 unit = self.family.info[unit_key]
                 self.indexed_fields[field] = SimArray(dset[field], unit)
 
-                if "default_unit" in info_for_field:
-                    self.indexed_fields[field].convert_units(info_for_field["default_unit"])
+                if self.DEFAULT_UNIT in info_for_field:
+                    self.indexed_fields[field].convert_units(info_for_field[self.DEFAULT_UNIT])
             else:
                 self.indexed_fields[field] = SimArray(dset[field])
 
@@ -82,12 +84,8 @@ class DerivedDataset(object):
                 continue
             elif (seren3.is_derived(family, r)):
                 self[r] = self.derive_field(family, r)
-            # elif r == "pos":
-            #     self[r] = self.indexed_fields.points
-            # elif (r == "dx") or (r == "size"):
-            #     self[r] = self.indexed_fields.get_sizes()
             else:
-                raise Exception("Field not indexed or can't derive: %s" % r)
+                raise Exception("Field not indexed or can't derive: (%s, %s)" % (self.family.family, r))
 
         # dset contains everything we need
         fn = seren3.get_derived_field(family, field)

@@ -457,7 +457,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
                           ('rs', 'f'),
                           ('vrms', 'f'),
                           ('mmp', np.int64),  # Bool - most massive progenitor
-                          ('scale_of_last_MM', 'f'),
+                          ('scale_of_last_mm', 'f'),
                           ('vmax', 'f'),
                           ('pos', 'f', 3),
                           ('vel', 'f', 3),
