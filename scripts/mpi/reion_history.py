@@ -1,6 +1,9 @@
 '''
 Computes the reionization history for a given simulation in MPI parallel
 '''
+
+MEM_OPT=False
+
 def ioutput_xHII(xHII, xHII_type="volume_weighted", table=None, **kwargs):
     '''
     Returns the snapshot number closest to this ionised fraction
@@ -57,8 +60,8 @@ def main(path, pickle_path):
         snap.set_nproc(1)  # disable multiprocessing on dset read
 
         z = snap.z
-        vw = snap.quantities.volume_weighted_average("xHII", mem_opt=True)
-        mw = snap.quantities.mass_weighted_average("xHII", mem_opt=True)
+        vw = snap.quantities.volume_weighted_average("xHII", mem_opt=MEM_OPT)
+        mw = snap.quantities.mass_weighted_average("xHII", mem_opt=MEM_OPT)
 
         sto.idx = i
         sto.result = {"z" : z, "volume_weighted" : vw, "mass_weighted" : mw}

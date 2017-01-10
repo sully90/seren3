@@ -1,5 +1,7 @@
 import numpy as np
 
+PLANCK_COSMO = {"omega_M_0" : 0.318, "omega_b_0" : 0.049, "h" : 0.671, "sigma_8" : 0.833,\
+        "n" : 0.9611, "omega_lambda_0" : 0.682, "omega_k_0" : 0.0, "omega_n_0": 0.0}
 
 def kmin(N, boxsize):
     return (2. * np.pi) / boxsize

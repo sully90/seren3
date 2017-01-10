@@ -14,9 +14,11 @@ class Quantity(object):
         Performs CIC interpolation to compute CDM density on the simulation coarse grid in units
         kg/m^3
         '''
+        from seren3.utils import deconvolve_cic
         from seren3.utils.cython import cic
-        pos = self.base.d["pos"].flatten()
-        x,y,z = pos.T
+
+        dset = self.base.d["pos"].flatten()
+        x,y,z = dset["pos"].T
         x = np.ascontiguousarray(x); y = np.ascontiguousarray(y); z = np.ascontiguousarray(z)
         npart = len(x)
         N = 2**self.base.info['levelmin']
@@ -26,6 +28,12 @@ class Quantity(object):
         rho = np.zeros(N**3)
         cic.cic(x,y,z,npart,L,N,rho)
 
+        rho = rho.reshape((N, N, N))
+        # Deconvolve CIC kernel
+        print "Deconvolving CIC kernel"
+        rho = deconvolve_cic(rho, N)
+        print "Done"
+
         # Compute units
         boxmass = self.box_mass(species='cdm').in_units("kg")
         pm_mass = boxmass/npart
@@ -34,7 +42,7 @@ class Quantity(object):
         dx = boxsize/N
 
         rhoc_unit = pm_mass/dx**3
-        rho = rho.reshape((N, N, N)) * rhoc_unit
+        rho *= rhoc_unit
 
         # Low-level C I/O routines assemble data as a contiguous, C-ordered (nvars, twotondim, ngrids) numpy.ndarray
         # Swap data => shape : (ngrids, twotondim, nvars)
@@ -119,3 +127,5 @@ class Quantity(object):
         else:
             dset = snap.g[[field, 'mass']].flatten()
             return np.sum(dset[field] * dset['mass']) / boxmass
+
+            

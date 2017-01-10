@@ -11,6 +11,9 @@ def derived_quantity():
         return fn
     return wrap
 
+def load_snapshot(path, level, **kwargs):
+    return GrafICSnapshot(path, level, **kwargs)
+
 class GrafICHeader(object):
     """
     Class to read/store header information
@@ -28,7 +31,7 @@ class GrafICHeader(object):
 
         self.dx *= self.cosmo['h']  # Mpccm/h
         self.dx = SimArray(self.dx, "Mpc a h**-1", snapshot=self)
-        self.boxsize = SimArray(self.N * self.dx, "Mpc a h**-1", snapshot=self)  # Mpccm/h
+        self.boxsize = SimArray(self.N * self.dx, self.dx.units, snapshot=self)  # Mpccm/h
         self.cosmo['z'] = (1. / self.cosmo["aexp"]) - 1.
 
     @staticmethod
@@ -99,17 +102,21 @@ class GrafICSnapshot(object):
             self.header.read_header(f)
 
             (np1, np2, NP3) = self.header.nn
-            field = np.zeros((NP3, np2, np1))
-            # field = np.zeros((np1, np2, NP3))
+            data = np.zeros((NP3, np2, np1))
+            # data = np.zeros((np1, np2, NP3))
 
             for i1 in range(np1):
                 # same ordering as CIC smoothed fields
-                field[i1, :, :] = f.readReals().reshape(np2, NP3)
+                data[i1, :, :] = f.readReals().reshape(np2, NP3)
 
                 # same ordering as header
                 # field[:, :, i3] = f.readReals().reshape(np1, np2)
 
-            return field
+            if "vel" in field:
+                data = SimArray(data, "km s**-1")
+            elif "rho" in field:
+                data = SimArray(data, "kg m**-3")
+            return data
         elif field in _derived_field_registry:
             print 'Deriving field %s' % field
             fn = _derived_field_registry[field]
@@ -136,11 +143,20 @@ class GrafICSnapshot(object):
         bytes_per_slice = long((np2 * np3) * 4)
 
         xx = 0
+        init_x = int(origin[0] % self.header.N)
+
+        # Seek to start
+        pos = long(header_size + ((bytes_per_slice + 8) * init_x))
+        ff.seek(pos)
         for i1 in range(origin[0], origin[0] + N):
             # Seek to slice
             x = int(i1 % self.header.N)
-            pos = long(header_size + ((bytes_per_slice + 8) * x))
-            ff.seek(pos)
+            if x < init_x:
+                # Wrapped around file, seek to new pos
+                pos = long(header_size + ((bytes_per_slice + 8) * x))
+                ff.seek(pos)
+            # else, read the next slice
+            init_x = x
 
             # Read the slice and place it in the subpatch
             slc = ff.readReals().reshape(np2, np3)
@@ -165,9 +181,9 @@ class GrafICSnapshot(object):
         cosmo = self.header.cosmo
 
         omega0 = 0.
-        if 'b' == species:
+        if ('b' == species) or ('baryons' == species):
             omega0 = cosmo['omega_b_0']
-        elif 'c' == species:
+        elif ('c' == species) or ('cdm' == species):
             omega0 = cosmo['omega_M_0'] - cosmo['omega_b_0']
         else:
             raise Exception("Unknown species: %s" % species)
@@ -185,6 +201,14 @@ class GrafICSnapshot(object):
         box_mass = rho_mean * boxsize**3  # kg
         return box_mass / float(self.header.N**3)
 
+    def field_exists_on_disk(self, field):
+        '''
+        Checks if field is written to disk
+        '''
+        import os
+        fname = self.field_fname(field)
+        return os.path.isfile(fname)
+
     @property
     def level_dir(self):
         return "%s/level_%03i/" % (self.path, self.level)
@@ -198,6 +222,86 @@ class GrafICSnapshot(object):
             self.header.N)
         fac = (2. * np.pi / self.boxsize)
         self.k = np.sqrt(self.kx ** 2. + self.ky ** 2. + self.kz ** 2.) * fac
+
+    def linear_velocity(self, delta=None, species='b', pad=0, reshape=True):
+        """
+        Computes velocities in km/s using the continuity equation
+        """
+        import scipy.fftpack as fft
+        from seren3.cosmology import _power_spectrum
+        from seren3.utils import is_power2
+
+        if delta is None:
+            delta = self['delta%s' % species]
+
+        if (pad == 0) and (is_power2(self.header.N) is False):
+            import math
+            from seren3.utils import next_greater_power_of_2
+            pad = int(
+                math.ceil((float(next_greater_power_of_2(self.header.N)) - float(self.header.N)) / 2.))
+            print 'Pad = %d' % pad
+
+        delta_k = None
+        if pad > 0:
+            # pad to next power of 2 for accuracy with FFT
+            delta_k = fft.fftn(np.pad(delta, pad, mode='constant'))
+        else:
+            delta_k = fft.fftn(delta)
+
+        cosmo = self.cosmo
+        # Approx. from Dodelson eqn. 9.19; dimensionless
+        f = cosmo['omega_M_0'] ** 0.6
+        H0 = cosmo['h'] * 100.  # km/s/Mpc
+
+        # Same ordering as field loading
+        kz, ky, kx = _power_spectrum.fft_sample_spacing_components(
+            delta_k.shape[0])  # cell units
+
+        fac = (2. * np.pi / self.boxsize) * cosmo['h']  # Mpc^-1
+        # Scale k, kx, ky, kz to Mpc^-1
+        kx *= fac
+        ky *= fac
+        kz *= fac
+        k = np.sqrt(kx ** 2. + ky ** 2. + kz ** 2.)
+        k2 = k ** 2.  # Mpc^2
+
+        # If the FFT has an even number of samples, the most negative frequency
+        # mode must have the same value as the most positive frequency mode.
+        # However, when multiplying by 'i', allowing this mode to have a
+        # non-zero real part makes it impossible to satisfy the reality
+        # conditions. As such, we can set the whole mode to be zero, make sure
+        # that it's pure imaginary, or use an odd number of samples. Different
+        # ways of dealing with this could change the answer!
+        if delta_k.shape[0] % 2 == 0:  # Even no. samples
+            # Set highest (negative) freq. to zero
+            mx = np.where(kx == np.min(kx))
+            my = np.where(ky == np.min(ky))
+            mz = np.where(kz == np.min(kz))
+            kx[mx] = 0.0
+            ky[my] = 0.0
+            kz[mz] = 0.0
+
+        unit = "km s**-1"
+        # H0 * (k_{i}/k^{2}) -> km/s/Mpc * (Mpc^{-1}/Mpc^{-2}) -> km/s
+        vx = 1j * f * H0 * delta_k * kx / k2
+        vy = 1j * f * H0 * delta_k * ky / k2
+        vz = 1j * f * H0 * delta_k * kz / k2
+
+        vx = np.nan_to_num(vx)
+        vy = np.nan_to_num(vy)
+        vz = np.nan_to_num(vz)
+
+        # IFFT to compute realspace velocities
+        vx, vy, vz = (fft.ifftn(vx).real, fft.ifftn(
+            vy).real, fft.ifftn(vz).real)
+
+        if reshape:
+            print 'Reshaping'
+            reshape = lambda arr: arr[pad:arr.shape[
+                0] - pad, pad:arr.shape[1] - pad, pad:arr.shape[2] - pad]
+            return SimArray(reshape(vx), unit), SimArray(reshape(vy), unit), SimArray(reshape(vz), unit)
+        # km/s
+        return SimArray(vx, unit), SimArray(vy, unit), SimArray(vz, unit)
 
 ################################## WRITING #################################################
 
@@ -219,19 +323,26 @@ class GrafICSnapshot(object):
                           cosmo['omega_lambda_0'], cosmo['h'] * 100.], dtype=f.ENDIAN + 'f').tostring())
         f._write_check(lbytes)
 
-    def write_field(self, data, field_name, **kwargs):
+    def write_field(self, data, field_name, out_dir=None, **kwargs):
         # Open file for writing
+        import os
         assert(all(data.shape == self.header.nn))
 
         fname = self.field_fname(field_name)
-        ff = FortranFile(fname, '@', 'i', 'w')
-        self._write_header(ff)
+        if out_dir is not None:
+            fname = "%s/ic_%s" % (out_dir, field_name)
 
-        # Write the field data
-        (np1, np2, np3) = data.shape
-        for i1 in range(np1):
-            tmp = data[i1, :, :].flatten()
-            ff.writeReals(tmp)
+        if (os.path.isfile(fname)):
+            raise Exception("Refusing to overwrite field %s." % field_name)
+        else:
+            ff = FortranFile(fname, '@', 'i', 'w')
+            self._write_header(ff)
+
+            # Write the field data
+            (np1, np2, np3) = data.shape
+            for i1 in range(np1):
+                tmp = data[i1, :, :].flatten()
+                ff.writeReals(tmp)
 
 
 ################################## grafIC derived fields ######################################
@@ -316,10 +427,15 @@ def deltac(ics):
     '''
     DM overdensity
     '''
+    from seren3.utils import deconvolve_cic
+
     rhoc = ics['rhoc']  # kg/m^3
     rho_mean = ics.rho_mean('c')  # kg/m^3
 
     delta = (rhoc - rho_mean) / rho_mean
+
+    # Deconvolve CIC kernel function
+    delta = deconvolve_cic(delta, delta.shape[0])
     return delta
 
 

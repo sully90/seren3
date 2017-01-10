@@ -3,6 +3,43 @@ import re
 
 heaviside = lambda x: 0.5 if x == 0 else 0 if x < 0 else 1  # step function
 
+def aout(zmin, zmax, noutput, zstep=0.001, **cosmo):
+    '''
+    Function which returns list of expansion factors to output at, evenly spaced in proper time
+    '''
+    import numpy as np
+    import cosmolopy.distance as cd
+    from seren3.array import SimArray
+
+    age_func = cd.quick_age_function(1000, 0, zstep, False, **cosmo)
+    z_func = cd.quick_redshift_age_function(1000, 0, zstep, **cosmo)
+
+    age_start = age_func(zmin)
+    age_end = age_func(zmax)
+
+    age_out = np.linspace(age_start, age_end, noutput)
+    z_out = z_func(age_out)
+    a_out = 1./(1.+z_out)
+
+    return a_out[::-1]
+
+
+def compute_ngpu_aton(ngridx, ngridy, ngridz, levelmin, do_print=True):
+    '''
+    Computes the number of gpus required for cudaton
+    '''
+    ngrid = 2**levelmin  # the RAMSES grid size
+
+    ngpu = 1
+    for i,n in zip('xyz', (ngridx, ngridy, ngridz)):
+        if (ngrid % n) != 0:
+            raise Exception("Incompatible grid dimensions for axis %s. %i %% %i != 0" % (i, ngrid, n))
+        ngpu *= ngrid/n
+    
+    if do_print:
+        print "%i GPUs required for domain (%i/%i/%i)" % (ngpu, ngridx, ngridy, ngridz)
+    return ngpu
+
 def flatten_nested_array(arr):
     import itertools, numpy as np
     return np.array( list(itertools.chain.from_iterable(arr)) )
@@ -35,6 +72,14 @@ def first_above(value, iterable):
     '''
     return next(x[0] for x in enumerate(iterable) if x[1] > value)
 
+def is_power2(num):
+    'states if a number is a power of two'
+
+    return num != 0 and ((num & (num - 1)) == 0)
+
+def next_greater_power_of_2(x):
+    ''' Return the next highest number which is divisible by 2**n '''
+    return 2 ** (x - 1).bit_length()
 
 def mass_sph(ilevel, ndim, **cosmo):
     '''
@@ -171,7 +216,7 @@ def vbc_pdf(v, sigma_vbc):
 def deconvolve(field, N, p):
     ''' Deconvolve CIC kernel from field
     N - grid size in cells '''
-    from seren2.cosmology import _power_spectrum
+    from seren3.cosmology import _power_spectrum
     W = _power_spectrum.window_function(N, p)
 
     import scipy.fftpack as fft
@@ -183,7 +228,7 @@ def deconvolve(field, N, p):
 def deconvolve_cic(field, N):
     ''' Deconvolve CIC kernel from field
     N - grid size in cells '''
-    from seren2.cosmology import _power_spectrum
+    from seren3.cosmology import _power_spectrum
     W = _power_spectrum.cic_window_function(N)
 
     import scipy.fftpack as fft
@@ -200,7 +245,6 @@ def ncols(n, cmap='rainbow'):
 
 def vec_mag(vec):
     return np.sqrt(vec[:, 0] * vec[:, 0] + vec[:, 1] * vec[:, 1] + vec[:, 2] * vec[:, 2])
-
 
 def cic(source, nn, field, gaussian_smooth=False, norm_pos=False, masked=False, mask_val=0.0, deconvolve=False, **kwargs):
     from cython import particle_utils as pu

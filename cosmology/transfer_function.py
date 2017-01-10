@@ -89,7 +89,7 @@ class PowerSpectrumCamb(object):
         self._load("%s_transfer_z%d_out.dat" % (_camb_fbase, self.cosmo['z']))
 
     def _normalise(self):
-        import cosmolopy.perturbation as cpt
+        # import cosmolopy.perturbation as cpt
         # sigma_8_now = cpt.sigma_r(
         #     8. / self.cosmo['h'], **self.cosmo)[0]
         sigma_8_now = self.cosmo["sigma_8"]

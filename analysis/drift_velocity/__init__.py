@@ -4,6 +4,15 @@ power spectrum k dependent bias. Contains routines to run CICsASS
 """
 import numpy as np
 
+def fft_sample_spacing(N, boxsize):
+    from seren3.cosmology import _power_spectrum
+    return _power_spectrum.fft_sample_spacing(N, boxsize)
+
+
+def fft_sample_spacing_components(N):
+    from seren3.cosmology import _power_spectrum
+    return _power_spectrum.fft_sample_spacing_components(N)
+
 def vbc_rms(vbc_field):
     '''
     Computes the rms vbc in the box
@@ -90,3 +99,73 @@ def compute_bias(ics, vbc):
     k_bias = SimArray(ps_vbcrecom[0] / ics.cosmo["h"], "h Mpc**-1")
 
     return k_bias, b_cdm, b_b
+
+def apply_density_bias(ics, k_bias, b, N, delta_x=None):
+    ''' Apply a bias to the realisations power spectrum, and recompute the 3D field.
+    Parameters:
+        b (array): bias to deconvolve with the delta_x field, such that:
+        delta_x = ifft(delta_k/b)
+    '''
+    import scipy.fftpack as fft
+    import scipy.interpolate as si
+
+    if delta_x is None:
+        delta_x = ics['deltab']
+
+    shape = delta_x.shape
+
+    boxsize = float(ics.boxsize) * \
+        (float(N) / float(ics.header.N))
+
+    # print "boxsize = ", boxsize, delta_x.shape[0]
+
+    k = None
+    if boxsize != ics.boxsize:
+        # Resample k as we may be using a subregion
+        k = fft_sample_spacing(delta_x.shape[0], boxsize).flatten()
+    else:
+        k = ics.k.flatten()
+    k[k == 0.] = (2. * np.pi) / boxsize
+
+    # Interpolate/extrapolate the bias to the 3D grid
+    def log_interp1d(xx, yy, kind='linear'):
+        logx = np.log10(xx)
+        logy = np.log10(yy)
+        lin_interp = si.InterpolatedUnivariateSpline(logx, logy)
+        log_interp = lambda zz: np.power(
+            10.0, lin_interp(np.log10(zz)))
+        return log_interp
+    f = log_interp1d(k_bias, b)
+    b = f(k)
+
+    delta_k = fft.fftn(delta_x)
+
+    # Apply the bias
+    delta_k *= np.sqrt(b.reshape(delta_k.shape))
+
+    # Inverse FFT to compute the realisation
+    delta_x = fft.ifftn(delta_k).real.reshape(shape)
+    return delta_x
+
+def cube_positions(ics, n, N=None):
+    cubes = []
+    if N is None:
+        N = ics.header.N
+
+    if (N % n != 0):
+        raise Exception(
+            "Cannot fit %d cubes into grid with size %d" % (n, self.N))
+
+    dx_cells = N / n
+
+    for i in range(n):
+        cen_i = dx_cells * (i + 0.5)
+
+        for j in range(n):
+            cen_j = dx_cells * (j + 0.5)
+
+            for k in range(n):
+                cen_k = dx_cells * (k + 0.5)
+                cubes.append([cen_i, cen_j, cen_k])
+
+    return cubes, dx_cells
