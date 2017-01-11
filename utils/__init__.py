@@ -24,6 +24,13 @@ def aout(zmin, zmax, noutput, zstep=0.001, **cosmo):
     return a_out[::-1]
 
 
+def log_error(y, y_err):
+    '''
+    Computes log error
+    '''
+    return 0.434 * (y_err/y)
+
+
 def compute_ngpu_aton(ngridx, ngridy, ngridz, levelmin, do_print=True):
     '''
     Computes the number of gpus required for cudaton
