@@ -3,6 +3,34 @@ import numpy as np
 # From Fan et al. -> compute neutral fraction from Gunn-Peterson optical depth and redshift
 xHI_fn = lambda tau, z, cosmo: tau / ( 1.8e5 * cosmo['h']**-1 * cosmo['omega_M_0']**1./2. * ( (cosmo['omega_b_0'] * cosmo['h']**2) / 0.02 ) * ( (1. + z) / 7. ) )
 
+def solve_photoionization_rate(redshift, transmitted_flux_ratio):
+    '''
+    Here we integrate eqn. 8 from Fan et al. 2006 to solve for the
+    (uniform) photoionization background
+    NB: tau_eff = -ln(transmitted_flux_ration)
+    '''
+    # First, get out IGM distribution function
+    from scipy import integrate
+    from scipy.optimize import fsolve
+
+    p = IGM_distribution_function(redshift)
+    # vol_p = lambda Del: Del * p(Del)
+
+    # tau as a function of overdensity
+    def tau_fn_Del(Del, Gamma):
+        tau0 = 82  # From McDonald & Miralda-Escude 2001
+        return tau0 * ((1. + redshift)/7.)**(4.5) * (0.05/Gamma) * Del**2.
+
+    def integrand(Gamma):
+        fn = lambda Del: np.exp(-1. * tau_fn_Del(Del, Gamma)) * p(Del)
+        T = integrate.quad(fn, 0., np.inf)
+        print T, transmitted_flux_ratio
+        return transmitted_flux_ratio - T
+
+    init_Gamma = 0.1
+    Gamma_sol = fsolve(integrand, init_Gamma)
+    return Gamma_sol
+
 # IGM distribution function
 def IGM_distribution_function(redshift):
     '''

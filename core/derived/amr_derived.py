@@ -95,6 +95,15 @@ def amr_xHI(context, dset):
     xHI.set_field_latex("$\\mathrm{x}_{\\mathrm{HI}}$")
     return xHI
 
+@seren3.derived_quantity(requires=["nH", "xHI"], unit=C.H_cc)
+def amr_nHI(context, dset):
+    '''
+    Neutral hydrogen number density
+    '''
+    nHI = SimArray(dset["nH"] * dset["xHI"], "cm**-3")
+    nHI.set_field_latex("n$_{\\mathrm{HI}}$")
+    return nHI
+
 @seren3.derived_quantity(requires=["P", "rho"], unit=C.m/C.s)
 def amr_cs(context, dset):
     '''
