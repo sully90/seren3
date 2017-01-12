@@ -39,7 +39,7 @@ def optical_depth_raytracing_process_task(idomain, amr_source, ramses_info, requ
 
         # Big AMR arrays
         igrids = np.empty(ngrids, "i")
-        icells = np.empty(ngrids, "ii")
+        icells = np.empty(ngrids, "i1")
         iactive_mask = np.array(active_mask, "i")
         sons = dset.amr_struct["son_indices"]
 
