@@ -138,7 +138,7 @@ class OpticalDepthTracer(DataProcessor):
     def __init__(self, seren_snapshot, verbose=None):
         source = seren_snapshot.g["nHI"].pymses_source
         ramses_output_info = seren_snapshot.ro.info
-        op = ScalarOperator(LambdaOperator(seren_snapshot.g, "nHI"), power=1, vol_weighted=False, seren_snapshot.C.H_cc)
+        op = ScalarOperator(LambdaOperator(seren_snapshot.g, "nHI", power=1, vol_weighted=False, seren_snapshot.C.H_cc))
         super(OpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
         self._ro_info = ramses_output_info
         self._cells_source = None
