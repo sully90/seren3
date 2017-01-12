@@ -181,7 +181,7 @@ class OpticalDepthTracer(DataProcessor):
         # Extended domain bounding box for big octree cells
         ext = 0.5 ** (self._ro_info["levelmin"])
         domain_bounding_box.min_coords = np.amax([domain_bounding_box.min_coords - ext, [0., 0., 0.]], axis=0)
-        domain_bounding_box.max_coords = np.amin([domain_bounding_box.max_coords + ext], [1., 1., 1.], axis=0)
+        domain_bounding_box.max_coords = np.amin([domain_bounding_box.max_coords + ext, [1., 1., 1.]], axis=0)
 
         # Data spatial filtering
         self._filtered_source = RegionFilter(domain_bounding_box, self._source)
