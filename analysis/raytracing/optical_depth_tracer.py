@@ -188,7 +188,7 @@ class OpticalDepthTracer(DataProcessor):
         cells_source = CellsToPoints(self._filtered_source).flatten(verbose)
         ncells = cells_source.npoints
         # Get rays info
-        self._rays = self._camera.get_rays(custom_origin=cells_source.points)
+        self._rays = self._camera.get_rays(custom_origins=cells_source.points)
         ntasks = self._filtered_source.ndataset
 
         # Maps initialisation
