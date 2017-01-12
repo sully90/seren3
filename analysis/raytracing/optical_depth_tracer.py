@@ -15,6 +15,8 @@ from pymses.sources.ramses.tree_utils import tree_search
 
 from seren3.utils.derived_utils import LambdaOperator
 
+sigma_alpha = 0.416 * (np.pi * (1.60217662e-19)**2)/(9.10938356e-31 * 3e8)  # cross-section to Lyalpha
+
 # Process task
 def optical_depth_raytracing_process_task(idomain, amr_source, ramses_info, required_level, operator, rays, verbose):
     # Get domain dataset
@@ -138,7 +140,7 @@ class OpticalDepthTracer(DataProcessor):
     def __init__(self, seren_snapshot, verbose=None):
         source = seren_snapshot.g["nHI"].pymses_source
         ramses_output_info = seren_snapshot.ro.info
-        op = ScalarOperator(lambda dset: dset["rho"] * (1. - dset["xHII"]), ramses_output_info["unit_density"])
+        op = ScalarOperator(lambda dset: dset["rho"] * (1. - dset["xHII"] * sigma_alpha), ramses_output_info["unit_density"])
         super(OpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
         self._ro_info = ramses_output_info
         self._cells_source = None
