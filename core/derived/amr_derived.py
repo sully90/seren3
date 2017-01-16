@@ -68,12 +68,13 @@ def amr_nH(context, dset):
     Return hydrogen number density
     '''
     rho = dset["rho"].in_units("kg m**-3")
-    mH = SimArray(context.C.mH)
+    mH = context.array(context.C.mH)
     X_fraction = context.info.get("X_fraction", 0.76)
-    H_frac = mH / X_fraction  # Hydrogen mass fraction
-    nH = (rho/H_frac).in_units("m**-3")
-    nH.set_field_latex("n$_{\\mathrm{H}}$")
-    return nH.in_units("cm**-3")
+    H_frac = mH/X_fraction
+
+    nH = rho/H_frac
+    nH.set_field_latex("$\mathrm{n}_{\mathrm{H}}$")
+    return nH.in_units("m**-3")
 
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nHe(context, dset):
@@ -83,7 +84,7 @@ def amr_nHe(context, dset):
     X_frac, Y_frac = (context.info['X_fraction'], context.info['Y_fraction'])
     nHe = 0.25 * amr_nH(context, dset) * (Y_frac/X_frac)
     nHe.set_field_latex("n$_{\\mathrm{He}}$")
-    return nHe.in_units("m**-3").in_units("cm**-3")
+    return nHe.in_units("m**-3")
 
 @seren3.derived_quantity(requires=["xHII"], unit=C.none)
 def amr_xHI(context, dset):
@@ -95,13 +96,22 @@ def amr_xHI(context, dset):
     xHI.set_field_latex("$\\mathrm{x}_{\\mathrm{HI}}$")
     return xHI
 
-@seren3.derived_quantity(requires=["nH", "xHI"], unit=C.H_cc)
+@seren3.derived_quantity(requires=["nH", "xHII"], unit=C.H_cc)
 def amr_nHI(context, dset):
     '''
     Neutral hydrogen number density
     '''
-    nHI = SimArray(dset["nH"] * dset["xHI"], dset["nH"].units)
+    nHI = SimArray(dset["nH"] * (1. - dset["xHII"]), dset["nH"].units)
     nHI.set_field_latex("n$_{\\mathrm{HI}}$")
+    return nHI
+
+@seren3.derived_quantity(requires=["nH", "xHII"], unit=C.H_cc)
+def amr_nHII(context, dset):
+    '''
+    Neutral hydrogen number density
+    '''
+    nHII = SimArray(dset["nH"] * dset["xHII"], dset["nH"].units)
+    nHII.set_field_latex("n$_{\\mathrm{HII}}$")
     return nHI
 
 @seren3.derived_quantity(requires=["P", "rho"], unit=C.m/C.s)
