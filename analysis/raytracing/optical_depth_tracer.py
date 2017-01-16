@@ -144,9 +144,9 @@ class OpticalDepthTracer(DataProcessor):
         ramses_output_info = seren_snapshot.ro.info
 
         nH_fn = derived_utils.get_derived_field("amr", "nH")
-        nHI_fn = lambda dset: nHI_fn(seren_snapshot, dset).in_units("m**-3") * (1. - dset["xHII"])
+        nHI_fn = lambda dset: nH_fn(seren_snapshot, dset).in_units("m**-3") * (1. - dset["xHII"])
 
-        op = ScalarOperator(lambda dset: sigma_alpha * nH_fn(dset), seren_snapshot.C.m**-3)
+        op = ScalarOperator(lambda dset: sigma_alpha * nHI_fn(dset), seren_snapshot.C.m**-3)
         super(OpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
         self._ro_info = ramses_output_info
         self._cells_source = None
