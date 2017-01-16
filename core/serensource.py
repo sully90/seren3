@@ -35,7 +35,7 @@ class DerivedDataset(object):
         # Setup position and dx fields
         if hasattr(self._dset, "points"):
             self["pos"] = SimArray(self._dset.points, family.info["unit_length"])
-        if hasattr(self._dset, "get_sizes")
+        if hasattr(self._dset, "get_sizes"):
             self["dx"] = SimArray(self._dset.get_sizes(), family.info["unit_length"])
 
     def __getitem__(self, field):
