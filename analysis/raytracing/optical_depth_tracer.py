@@ -122,7 +122,7 @@ class OpticalDepthTracingProcess(DataProcess):
         res = (self.tau, self.ray_length_cells)
         return res
 
-class OpticalDepthTracer(DataProcessor):
+class GunnPetersonOpticalDepthTracer(DataProcessor):
     r"""
     Optical depth tracer processing class
 
@@ -153,7 +153,7 @@ class OpticalDepthTracer(DataProcessor):
         nHI_fn = lambda dset: nH_fn(seren_snapshot.g, dset).in_units("m**-3") * (1. - dset["xHII"])
         op = ScalarOperator(lambda dset: sigma_alpha * fact * nHI_fn(dset), seren_snapshot.C.m**-3)
 
-        super(OpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
+        super(GunnPetersonOpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
         self._ro_info = ramses_output_info
         self._cells_source = None
         self._camera = None
