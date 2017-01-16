@@ -147,16 +147,16 @@ class GunnPetersonOpticalDepthTracer(DataProcessor):
 
         source = seren_snapshot.g["nHI"].pymses_source
         ramses_output_info = seren_snapshot.ro.info
-        mH = seren_snapshot.C.mH.coeff
-        X_fraction = seren_snapshot.info.get("X_fraction", 0.76)
-        H_frac = mH / X_fraction  # Hydrogen mass fraction
-        unit_d = ramses_output_info["unit_density"].coeff
-        lambda_alpha = 1216.e-10
+        # mH = seren_snapshot.C.mH.coeff
+        # X_fraction = seren_snapshot.info.get("X_fraction", 0.76)
+        # H_frac = mH / X_fraction  # Hydrogen mass fraction
+        # unit_d = ramses_output_info["unit_density"].coeff
+        # lambda_alpha = 1216.e-10
         # nHI_func = lambda dset: (dset["rho"]*unit_d)/H_frac * (1. - dset["xHII"])
         nH_func = derived_utils.get_derived_field(seren_snapshot.g.family, "nH")
-        nHI_func = lambda dset: nH_func(seren_snapshot.g, dset) * (1. - dset["xHII"])
+        nHI_func = lambda dset: nH_func(seren_snapshot.g, dset).in_units("m**-3") * (1. - dset["xHII"])
 
-        op = ScalarOperator(lambda dset: sigma_alpha * nHI_func(dset), seren_snapshot.C.cm**-3)
+        op = ScalarOperator(lambda dset: sigma_alpha * nHI_func(dset), seren_snapshot.C.m**-3)
         super(GunnPetersonOpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
 
         self._ro_info = ramses_output_info
