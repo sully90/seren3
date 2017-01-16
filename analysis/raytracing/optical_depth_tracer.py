@@ -122,7 +122,7 @@ class OpticalDepthTracingProcess(DataProcess):
         res = (self.tau, self.ray_length_cells)
         return res
 
-class GunnPetersonOpticalDepthTracer(DataProcessor):
+class OpticalDepthTracer(DataProcessor):
     r"""
     Optical depth tracer processing class
 
@@ -139,21 +139,15 @@ class GunnPetersonOpticalDepthTracer(DataProcessor):
     """
     def __init__(self, seren_snapshot, verbose=None):
         from seren3.utils import derived_utils
-        from seren3 import cosmology
 
         source = seren_snapshot.g["nHI"].pymses_source
         ramses_output_info = seren_snapshot.ro.info
 
-        cosmo = seren_snapshot.cosmo
-        del cosmo["z"]
-        z = seren_snapshot.z
-        fact = seren_snapshot.C.c.coeff * cosmology.Hubble_z(z, **cosmo)**-1
-
         nH_fn = derived_utils.get_derived_field("amr", "nH")
-        nHI_fn = lambda dset: nH_fn(seren_snapshot.g, dset).in_units("m**-3") * (1. - dset["xHII"])
-        op = ScalarOperator(lambda dset: sigma_alpha * fact * nHI_fn(dset), seren_snapshot.C.m**-3)
+        nHI_fn = lambda dset: nH_fn(seren_snapshot, dset).in_units("m**-3") * (1. - dset["xHII"])
 
-        super(GunnPetersonOpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
+        op = ScalarOperator(lambda dset: sigma_alpha * nH_fn(dset), seren_snapshot.C.m**-3)
+        super(OpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
         self._ro_info = ramses_output_info
         self._cells_source = None
         self._camera = None

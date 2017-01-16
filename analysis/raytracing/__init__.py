@@ -3,7 +3,7 @@ r"""
 ===============================================================
 
 """
-from optical_depth_tracer import GunnPetersonOpticalDepthTracer
+from optical_depth_tracer import OpticalDepthTracer
 
 def generate_tau_map(snap, show=False):
     '''
@@ -12,7 +12,7 @@ def generate_tau_map(snap, show=False):
     import numpy as np
     from pymses.analysis.splatting.map_bin2d import histo2D
 
-    odt = GunnPetersonOpticalDepthTracer(snap)
+    odt = OpticalDepthTracer(snap)
     cam = snap.camera()
     cells = odt.process(cam)
 
