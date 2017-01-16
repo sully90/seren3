@@ -33,7 +33,8 @@ class DerivedDataset(object):
                 self.indexed_fields[field] = SimArray(dset[field])
 
         # Setup position and dx fields
-        self["pos"] = SimArray(self._dset.points, family.info["unit_length"])
+        if hasattr(self._dset, "points"):
+            self["pos"] = SimArray(self._dset.points, family.info["unit_length"])
         if self.family.family == "amr":
             self["dx"] = SimArray(self._dset.get_sizes(), family.info["unit_length"])
 
