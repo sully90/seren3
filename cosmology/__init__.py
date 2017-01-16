@@ -148,9 +148,11 @@ def omega_z(omega0, z):
     return omega0 / (omega0 + (1. / (1. + z)) ** 3 * (1 - omega0))
 
 
-def Hubble_z(z, omega_m, H0):
-    aexp = 1. / (1. + z)
-    return ((omega_m / aexp ** 3) + (1 - omega_m)) ** 0.5 * H0
+def Hubble_z(z, **cosmo):
+    H0 = cosmo['h'] * (1000. / 3.08e22)
+    Hz = lambda z: H0 * np.sqrt((cosmo['omega_M_0']
+                                 * (1. + z) ** 3.) + cosmo['omega_lambda_0'])
+    return Hz(z)
 
 
 def del_c(z, omega_m):

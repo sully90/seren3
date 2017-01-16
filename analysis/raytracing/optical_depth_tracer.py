@@ -122,7 +122,7 @@ class OpticalDepthTracingProcess(DataProcess):
         res = (self.tau, self.ray_length_cells)
         return res
 
-class OpticalDepthTracer(DataProcessor):
+class GunnPetersonOpticalDepthTracer(DataProcessor):
     r"""
     Optical depth tracer processing class
 
@@ -138,10 +138,24 @@ class OpticalDepthTracer(DataProcessor):
         verbosity boolean flag. Default None.
     """
     def __init__(self, seren_snapshot, verbose=None):
+        from seren3 import cosmology
+
+        cosmo = seren_snapshot.cosmo
+        del cosmo['z']
+        Hz = cosmology.Hubble_z(seren_snapshot.z, **cosmo)
+
         source = seren_snapshot.g["nHI"].pymses_source
         ramses_output_info = seren_snapshot.ro.info
-        op = ScalarOperator(lambda dset: dset["rho"] * (1. - dset["xHII"] * sigma_alpha), ramses_output_info["unit_density"].express(seren_snapshot.C.H_cc))
-        super(OpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
+        mH = seren_snapshot.C.mH.coeff
+        X_fraction = seren_snapshot.info.get("X_fraction", 0.76)
+        H_frac = mH / X_fraction  # Hydrogen mass fraction
+        unit_d = ramses_output_info["unit_density"].coeff
+        lambda_alpha = 1216.e-10
+        nHI_func = lambda dset: (dset["rho"]*unit_d)/H_frac * (1. - dset["xHII"])
+
+        op = ScalarOperator(lambda dset: sigma_alpha * lambda_alpha * Hz**-1 * nHI_func(dset), seren_snapshot.C.cm**-3)
+        super(LyAlphaOpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
+
         self._ro_info = ramses_output_info
         self._cells_source = None
         self._camera = None

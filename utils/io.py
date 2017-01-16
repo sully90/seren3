@@ -101,3 +101,39 @@ def read_binary_map(fname, reshape=False, unformatted=True, astype=None):
         if reshape:
             data = np.reshape(data, [nx, ny])
         return nx, ny, data
+
+def read_fan06():
+    '''
+    Reads the Fan et al. 2006 quasar observations for optical depth
+    '''
+    import csv
+    from seren3 import config
+
+    data_dir = config.get("data", "data_dir")
+    lyalpha_fname = "%s/obs/fan06_lyalpha.csv" % data_dir
+    #lybeta_fname = "%s/fan06_lybeta.csv" % data_dir
+    #lygamma_fname = "%s/fan06_lygamma.csv" % data_dir
+
+    # TODO - Make sure to apply Fan et al. 06 beta/gamma conversion factors
+
+    # fnames = [lyalpha_fname, lybeta_fname, lygamma_fname]
+    with open(lyalpha_fname, "rb") as csvfile:
+        reader = csv.reader(csvfile)
+        rows = []
+        for row in reader:
+            rows.append(row)
+
+    quasars = {}
+    key = None
+    for row in rows:
+        if row[0].startswith("J"):
+            key = row[0]
+        if key in quasars:
+            # quasars[key]["zem"].append(float(row[1]))
+            quasars[key]["zabs"].append(float(row[2]))
+            quasars[key]["T"].append(float(row[3]))
+            quasars[key]["sigma"].append(float(row[4]))
+        elif key:
+            quasars[key] = {"zem" : float(row[1]), "zabs" : [], "T" : [], "sigma" : []}
+
+    return quasars
