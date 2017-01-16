@@ -139,6 +139,7 @@ class GunnPetersonOpticalDepthTracer(DataProcessor):
     """
     def __init__(self, seren_snapshot, verbose=None):
         from seren3 import cosmology
+        from seren3.utils import derived_utils
 
         cosmo = seren_snapshot.cosmo
         del cosmo['z']
@@ -151,7 +152,9 @@ class GunnPetersonOpticalDepthTracer(DataProcessor):
         H_frac = mH / X_fraction  # Hydrogen mass fraction
         unit_d = ramses_output_info["unit_density"].coeff
         lambda_alpha = 1216.e-10
-        nHI_func = lambda dset: (dset["rho"]*unit_d)/H_frac * (1. - dset["xHII"])
+        # nHI_func = lambda dset: (dset["rho"]*unit_d)/H_frac * (1. - dset["xHII"])
+        nH_func = derived_utils.get_derived_field(seren_snapshot.g.family, "nH")
+        nHI_func = lambda dset: nH_func(dset) * (1. - dset["xHII"])
 
         op = ScalarOperator(lambda dset: sigma_alpha * lambda_alpha * Hz**-1 * nHI_func(dset), seren_snapshot.C.m**-3)
         super(GunnPetersonOpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
