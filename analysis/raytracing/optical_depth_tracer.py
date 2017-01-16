@@ -147,7 +147,7 @@ class GunnPetersonOpticalDepthTracer(DataProcessor):
         cosmo = seren_snapshot.cosmo
         del cosmo["z"]
         z = seren_snapshot.z
-        fact = snap.C.c.coeff * cosmology.Hubble_z(z, **cosmo)**-1
+        fact = seren_snapshot.C.c.coeff * cosmology.Hubble_z(z, **cosmo)**-1
 
         nH_fn = derived_utils.get_derived_field("amr", "nH")
         nHI_fn = lambda dset: nH_fn(seren_snapshot.g, dset).in_units("m**-3") * (1. - dset["xHII"])
