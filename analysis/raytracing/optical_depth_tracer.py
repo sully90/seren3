@@ -156,7 +156,7 @@ class GunnPetersonOpticalDepthTracer(DataProcessor):
         nH_func = derived_utils.get_derived_field(seren_snapshot.g.family, "nH")
         nHI_func = lambda dset: nH_func(seren_snapshot.g, dset) * (1. - dset["xHII"])
 
-        op = ScalarOperator(lambda dset: sigma_alpha * lambda_alpha * Hz**-1 * nHI_func(dset), seren_snapshot.C.m**-3)
+        op = ScalarOperator(lambda dset: sigma_alpha * nHI_func(dset), seren_snapshot.C.cm**-3)
         super(GunnPetersonOpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
 
         self._ro_info = ramses_output_info
