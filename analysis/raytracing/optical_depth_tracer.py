@@ -153,7 +153,7 @@ class GunnPetersonOpticalDepthTracer(DataProcessor):
         lambda_alpha = 1216.e-10
         nHI_func = lambda dset: (dset["rho"]*unit_d)/H_frac * (1. - dset["xHII"])
 
-        op = ScalarOperator(lambda dset: sigma_alpha * lambda_alpha * Hz**-1 * nHI_func(dset), seren_snapshot.C.cm**-3)
+        op = ScalarOperator(lambda dset: sigma_alpha * lambda_alpha * Hz**-1 * nHI_func(dset), seren_snapshot.C.m**-3)
         super(GunnPetersonOpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
 
         self._ro_info = ramses_output_info

@@ -52,7 +52,7 @@ def amr_deltab(context, dset):
 
     return db
 
-@seren3.derived_quantity(requires=["nH", "xHII", "nHe", "xHeII", "xHeIII"], unit=C.H_cc)
+@seren3.derived_quantity(requires=["nH", "xHII", "nHe", "xHeII", "xHeIII"], unit=C.cm**-3)
 def amr_ne(context, dset):
     '''
     Returns number density of electrons in each cell
@@ -60,7 +60,7 @@ def amr_ne(context, dset):
     ne = dset["nH"] * dset["xHII"]  # num. den. of electrons from ionised hydrogen
     ne += dset["nHe"] * (dset["xHeII"] + dset["xHeIII"])  # " " from ionised Helium
     ne.set_field_latex("n$_{\\mathrm{e}}")
-    return context.array(ne, "cm**-3")
+    return context.array(ne, "m**-3").in_units("cm**-3")
 
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nH(context, dset):
@@ -71,9 +71,9 @@ def amr_nH(context, dset):
     mH = SimArray(context.C.mH)
     X_fraction = context.info.get("X_fraction", 0.76)
     H_frac = mH / X_fraction  # Hydrogen mass fraction
-    nH = (rho/H_frac).in_units("cm**-3")
+    nH = (rho/H_frac).in_units("m**-3")
     nH.set_field_latex("n$_{\\mathrm{H}}$")
-    return nH
+    return nH.in_units("cm**-3")
 
 @seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
 def amr_nHe(context, dset):
@@ -83,7 +83,7 @@ def amr_nHe(context, dset):
     X_frac, Y_frac = (context.info['X_fraction'], context.info['Y_fraction'])
     nHe = 0.25 * amr_nH(context, dset) * (Y_frac/X_frac)
     nHe.set_field_latex("n$_{\\mathrm{He}}$")
-    return nHe.in_units("cm**-3")
+    return nHe.in_units("m**-3").in_units("cm**-3")
 
 @seren3.derived_quantity(requires=["xHII"], unit=C.none)
 def amr_xHI(context, dset):
@@ -100,7 +100,7 @@ def amr_nHI(context, dset):
     '''
     Neutral hydrogen number density
     '''
-    nHI = SimArray(dset["nH"] * dset["xHI"], "cm**-3")
+    nHI = SimArray(dset["nH"] * dset["xHI"], dset["nH"].units)
     nHI.set_field_latex("n$_{\\mathrm{HI}}$")
     return nHI
 
