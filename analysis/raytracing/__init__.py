@@ -5,16 +5,16 @@ r"""
 """
 from optical_depth_tracer import OpticalDepthTracer
 
-def generate_tau_map(snap, show=False):
+def generate_tau_map(cells, cam, show=False):
     '''
     Ray-traces optical depth and plots as a 2D map
     '''
     import numpy as np
     from pymses.analysis.splatting.map_bin2d import histo2D
 
-    odt = OpticalDepthTracer(snap)
-    cam = snap.camera()
-    cells = odt.process(cam)
+    # odt = OpticalDepthTracer(snap)
+    # cam = snap.camera()
+    # cells = odt.process(camera)
 
     tau = cells["tau"]
     pts = np.zeros_like(cells.points)

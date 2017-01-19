@@ -17,6 +17,25 @@ from seren3.utils.derived_utils import LambdaOperator
 
 sigma_alpha = 0.416 * (np.pi * (1.60217662e-19)**2)/(9.10938356e-31 * 3e8)  # cross-section to Lyalpha
 
+def _generate_rays(nrays, useed=1234):
+    import random
+    random.seed(a=useed)
+
+    xi = np.array([random.uniform(0., 1.) for i in range(nrays)])
+    yi = np.array([random.uniform(0., 1.) for i in range(nrays)])
+    zi = np.array([random.uniform(0., 1.) for i in range(nrays)])
+    ray_origins = np.array([xi,yi,zi]).T
+
+    xt = np.array([random.uniform(0., 1.) for i in range(nrays)])
+    yt = np.array([random.uniform(0., 1.) for i in range(nrays)])
+    zt = np.array([random.uniform(0., 1.) for i in range(nrays)])
+    ray_terminals = np.array([xt,yt,zt]).T
+
+    ray_vectors = ray_terminals - ray_origins
+    ray_lengths = np.sqrt( (xt-xi)**2 + (yt-yi)**2 + (zt-zi)**2 )
+
+    return ray_vectors, ray_origins, ray_lengths
+
 # Process task
 def optical_depth_raytracing_process_task(idomain, amr_source, ramses_info, required_level, operator, rays, verbose):
     # Get domain dataset
@@ -146,7 +165,7 @@ class OpticalDepthTracer(DataProcessor):
         nH_fn = derived_utils.get_derived_field("amr", "nH")
         nHI_fn = lambda dset: nH_fn(seren_snapshot, dset).in_units("m**-3") * (1. - dset["xHII"])
 
-        op = ScalarOperator(lambda dset: sigma_alpha * nHI_fn(dset), seren_snapshot.C.m**-3)
+        op = ScalarOperator(lambda dset: nHI_fn(dset), seren_snapshot.C.m**-3)
         super(OpticalDepthTracer, self).__init__(source, op, amr_mandatory=True, verbose=verbose)
         self._ro_info = ramses_output_info
         self._cells_source = None
@@ -157,7 +176,7 @@ class OpticalDepthTracer(DataProcessor):
         return OpticalDepthTracingProcess((tasks_queue, results_queue), self._filtered_source, self._ro_info, \
                     self._camera, self._operator, self._rays, verbosity)
 
-    def process(self, camera, verbose=True):
+    def process(self, camera, nrays, verbose=True):
         r"""
         Map processing method : ray-tracing through data cube
 
@@ -196,12 +215,14 @@ class OpticalDepthTracer(DataProcessor):
         cells_source = CellsToPoints(self._filtered_source).flatten(verbose)
         ncells = cells_source.npoints
         # Get rays info
-        self._rays = self._camera.get_rays(custom_origins=cells_source.points)
+        # self._rays = self._camera.get_rays(custom_origins=cells_source.points)
+        # Generate random start/end points and compute ray_vectors and ray_lenghts
+        self._rays = _generate_rays(nrays)
         ntasks = self._filtered_source.ndataset
 
         # Maps initialisation
-        tau = np.zeros(ncells, dtype="d")
-        ray_length_cells = np.zeros(ncells, "d")
+        tau = np.zeros(nrays, dtype="d")
+        ray_length_cells = np.zeros(nrays, "d")
 
         if isinstance(self._source, CameraOctreeDataset):
             # In this case there is only one dataset to process so:
@@ -216,6 +237,7 @@ class OpticalDepthTracer(DataProcessor):
                 self.enqueue_task(idomain)
 
             for res in self.get_results():
+                print len(res[0])
                 if res[0] is not None:
                     tau += res[0]
                 if res[1] is not None:
