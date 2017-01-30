@@ -49,7 +49,8 @@ def FractionOperator(family, field, vol_weighted):
     op = FractonOp(up_fn, down_fn, unit, vol_weighted=vol_weighted)
     return op
 
-def Projection(family, field, mode='fft', camera=None, op=None, **kwargs):
+def Projection(family, field, mode='fft', camera=None, op=None,\
+         vol_weighted=False, **kwargs):
     '''
     Takes a projection of the supplied family
     '''
@@ -58,7 +59,6 @@ def Projection(family, field, mode='fft', camera=None, op=None, **kwargs):
     if not isinstance(family, Family):
         raise Exception("Require Family specific snapshot, got %s. Use snap.g, .d or .s" % family)    
 
-    vol_weighted = kwargs.pop("vol_weighted", False)
     if camera is None:
         camera = family.camera()
     if op is None:
