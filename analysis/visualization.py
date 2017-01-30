@@ -58,6 +58,7 @@ def Projection(family, field, mode='fft', camera=None, op=None, **kwargs):
     if not isinstance(family, Family):
         raise Exception("Require Family specific snapshot, got %s. Use snap.g, .d or .s" % family)    
 
+    vol_weighted = kwargs.pop("vol_weighted", False)
     if camera is None:
         camera = family.camera()
     if op is None:
@@ -65,8 +66,6 @@ def Projection(family, field, mode='fft', camera=None, op=None, **kwargs):
             op = FractionOperator(family, field, vol_weighted)
         else:
             op = ScalarOperator(family, field)
-
-    vol_weighted = kwargs.pop("vol_weighted", False)
 
     process = None
     if mode == "fft":
