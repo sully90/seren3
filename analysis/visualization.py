@@ -72,7 +72,7 @@ def Projection(family, field, mode='fft', camera=None, op=None,\
         if (vol_weighted):
             op = FractionOperator(family, field, vol_weighted)
         else:
-            op = ScalarOperator(family, field)
+            op = ScalarOperator(family, field, vol_weighted)
 
     fields = [field, "dx"] if vol_weighted else [field]
     process = None
