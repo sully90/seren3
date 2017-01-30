@@ -13,7 +13,7 @@ def find_galaxy_axis(subsnap, camera=None, nbSample=2000):
             number of max massive points to use to compute the axis through cross product
     '''
 
-    point_dset_source = subsnap.g["rho"].point_dset_source
+    point_dset_source = subsnap.g["rho"].source
     camera = subsnap.camera() if camera is None else camera
     return _find_galaxy_axis(point_dset_source, camera, nbSample)
 
@@ -68,7 +68,7 @@ def find_center_of_mass(subsnap, camera=None, nbSample=2000):
             number of max massive points to use to compute the axis through cross product
     '''
 
-    point_dset_source = subsnap.g["rho"].point_dset_source
+    point_dset_source = subsnap.g["rho"].source
     camera = subsnap.camera() if camera is None else camera
     return _find_center_of_mass(point_dset_source, camera, nbSample)
 
@@ -105,7 +105,7 @@ def find_los(subsnap, camera=None, nbSample=2000):
             number of max massive points to use to compute the axis through cross product
     '''
 
-    point_dset_source = subsnap.g[["rho", "vel"]].point_dset_source
+    point_dset_source = subsnap.g[["rho", "vel"]].source
     camera = subsnap.camera() if camera is None else camera
     return _find_los(point_dset_source, camera, nbSample)
 
