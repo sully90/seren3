@@ -74,7 +74,7 @@ def Projection(family, field, mode='fft', camera=None, op=None,\
         else:
             op = ScalarOperator(family, field)
 
-    field = [field, "dx"] if vol_weighted else [field]
+    fields = [field, "dx"] if vol_weighted else [field]
     process = None
     if mode == "fft":
         from pymses.analysis import splatting
