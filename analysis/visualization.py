@@ -5,7 +5,6 @@ def lambda_function(family, field, vol_weighted, power):
     Returns a lambda function to derive this field for projections
     '''
     from seren3.core.serensource import DerivedDataset
-    derived_dset = DerivedDataset(family, dset)
 
     def _fn(family, field, vol_weighted, power, dset):
         with DerivedDataset(family, dset) as derived_dset:
