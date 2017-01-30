@@ -1,14 +1,18 @@
 import seren3
 
-def lambda_function(family, field, power=1):
+def lambda_function(family, field, vol_weighted, power):
     '''
     Returns a lambda function to derive this field for projections
     '''
     from seren3.core.serensource import DerivedDataset
+    derived_dset = DerivedDataset(family, dset)
 
-    return lambda dset: DerivedDataset(family, dset)[field]**power
+    if vol_weighted:
+        return lambda dset: derived_dset[field]**power * derived_dset["dx"]**3
+    else:
+        return lambda dset: derived_dset[field]**power
 
-def ScalarOperator(family, field):
+def ScalarOperator(family, field, vol_weighted):
     '''
     Returns a projection operator for scalar fields
     '''
@@ -24,7 +28,7 @@ def ScalarOperator(family, field):
         info_key = field_info["info_key"]
         unit = family.info[info_key]
 
-    fn = lambda_function(family, field)
+    fn = lambda_function(family, field, vol_weighted, 1)
     op = ScalarOp(fn, unit)
     return op
 
@@ -44,9 +48,9 @@ def FractionOperator(family, field, vol_weighted):
         info_key = field_info["info_key"]
         unit = family.info[info_key]
 
-    up_fn = lambda_function(family, field, power=2)
-    down_fn = lambda_function(family, field)
-    op = FractonOp(up_fn, down_fn, unit, vol_weighted=vol_weighted)
+    up_fn = lambda_function(family, field, vol_weighted, 2)
+    down_fn = lambda_function(family, field, vol_weighted, 1)
+    op = FractonOp(up_fn, down_fn, unit)
     return op
 
 def Projection(family, field, mode='fft', camera=None, op=None,\
@@ -67,10 +71,11 @@ def Projection(family, field, mode='fft', camera=None, op=None,\
         else:
             op = ScalarOperator(family, field)
 
+    field = [field, "dx"] if vol_weighted else [field]
     process = None
     if mode == "fft":
         from pymses.analysis import splatting
-        sp = splatting.SplatterProcessor(family[field].pymses_source, family.info, op)
+        sp = splatting.SplatterProcessor(family[fields].pymses_source, family.info, op)
         process = sp.process
     else:
         raise Exception("Unknown mode: %s" % mode)
