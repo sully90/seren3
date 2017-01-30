@@ -89,7 +89,7 @@ class PymsesSnapshot(Snapshot):
 
     def camera(self, **kwargs):
         from pymses.analysis import Camera
-        if map_max_size not in kwargs:
+        if "map_max_size not" in kwargs:
             kwargs["map_max_size"] = 2**self.info["levelmin"]
         return Camera(**kwargs)
 
