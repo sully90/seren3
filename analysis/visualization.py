@@ -7,11 +7,11 @@ def lambda_function(family, field, vol_weighted, power):
     from seren3.core.serensource import DerivedDataset
 
     def _fn(family, field, vol_weighted, power, dset):
-        with DerivedDataset(family, dset) as derived_dset:
-            if vol_weighted:
-                return derived_dset[field]**power * derived_dset["dx"]**3
-            else:
-                return derived_dset[field]**power
+        derived_dset = DerivedDataset(family, dset) as derived_dset:
+        if vol_weighted:
+            return derived_dset[field]**power * derived_dset["dx"]**3
+        else:
+            return derived_dset[field]**power
 
     return lambda dset: _fn(family, field, vol_weighted, power, dset)
 
