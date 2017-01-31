@@ -207,7 +207,7 @@ def amr_Gamma(context, dset, iIon=0):
         csn = SimArray(context.info["group%i" % i]["csn"][iIon])
         emi += Np * csn
 
-    Gamma = emi.in_units("s**-1")
+    Gamma = context.array(emi, "s**-1")
     Gamma.set_field_latex("$\Gamma$")
     return Gamma
 

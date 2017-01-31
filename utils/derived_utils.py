@@ -65,6 +65,8 @@ def in_tracked_field_registry(field):
 
 
 def info_for_tracked_field(field):
+    if field[-1].isdigit():
+        return _tracked_field_unit_registry[field[:-1]]
     return _tracked_field_unit_registry[field]
 
 def derived_quantity(requires, unit):
