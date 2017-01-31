@@ -31,6 +31,8 @@ def ScalarOperator(family, field, vol_weighted):
         info_key = field_info["info_key"]
         unit = family.info[info_key]
 
+    print unit
+
     fn = lambda_function(family, field, vol_weighted, 1)
     op = ScalarOp(fn, unit)
     return op
