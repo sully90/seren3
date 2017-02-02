@@ -293,7 +293,7 @@ class Family(object):
         return self.__str__()
 
     def __len__(self):
-        dset = self["pos"].f
+        dset = self["pos"].flatten()["pos"]
         return len(dset)
 
     @property
