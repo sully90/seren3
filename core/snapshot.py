@@ -282,6 +282,8 @@ class Family(object):
     def __init__(self, snapshot, family):
         import weakref
         self._base = weakref.ref(snapshot)
+        self.path = snapshot.path
+        self.ioutput = snapshot.ioutput
         self.quantities = snapshot.quantities
         self.family = family.lower()
         self.C = snapshot.C
