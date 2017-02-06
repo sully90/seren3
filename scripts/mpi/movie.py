@@ -38,6 +38,7 @@ def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
                 if verbose:
                     mpi.msg("Image %i/%i" % (i, len(families)))
                 family = families[i]
+                print family.get_nproc()
                 cam = camera_func(family)
 
                 proj = visualization.Projection(family, field, camera=cam, **kwargs)
