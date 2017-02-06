@@ -86,8 +86,11 @@ def make_movie(families, out_fname, field="rho", camera_func=None, mpi=True, **k
 
 def test(path, istart, iend):
     import seren3
+    import numpy as np
+
     sim = seren3.init(path)
     families = [sim[i].g for i in range(istart, iend+1)]
+    camera_func = lambda family: family.camera(region_size=np.array([.5, .5]), distance=.5, far_cut_depth=.5)
     return make_movie(families, "output.avi")
 
 if __name__ == "__main__":
