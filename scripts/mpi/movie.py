@@ -88,7 +88,7 @@ def test(path, istart, iend):
     import seren3
     sim = seren3.init(path)
     families = [sim[i].g for i in range(istart, iend+1)]
-    return make_movie(families)
+    return make_movie(families, "output.avi")
 
 if __name__ == "__main__":
     import sys
