@@ -4,7 +4,7 @@ def _get_fname(family, field):
     _IMAGE_DIR = config.get("data", "movie_img_dir")
     return "%s/_tmp_%s_%s_%05i.png" % (_IMAGE_DIR, family.family, field, family.ioutput)
 
-def run(families, field="rho", camera_func=None, mpi=True, **kwargs):
+def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
     '''
         Parameters
         ----------
@@ -60,3 +60,17 @@ def run(families, field="rho", camera_func=None, mpi=True, **kwargs):
     except Exception as e:
         return e
     return 0
+
+def test(path, istart, iend):
+    import seren3
+    sim = seren3.init(path)
+    families = [sim[i].g for i in range(istart, iend+1)]
+    return make_movie(families)
+
+if __name__ == "__main__":
+    import sys
+    path = sys.argv[1]
+    istart = int(sys.argv[2])
+    iend = int(sys.argv[3])
+
+    print test(path, istart, iend)
