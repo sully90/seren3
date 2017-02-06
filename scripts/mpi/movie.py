@@ -1,15 +1,14 @@
 from seren3 import config
+_IMAGE_DIR = config.get("data", "movie_img_dir")
 
 def _get_fname(family, field):
-    _IMAGE_DIR = config.get("data", "movie_img_dir")
     return "%s/_tmp_%s_%s_%05i.png" % (_IMAGE_DIR, family.family, field, family.ioutput)
 
-def cleanup():
+def _cleanup():
     import os
-    _IMAGE_DIR = config.get("data", "movie_img_dir")
     os.system("rm %s/_tmp*.png" % _IMAGE_DIR)
 
-def _run_mencoder(out_dir, out_fname, fps, remove_files=True):
+def _run_mencoder(out_fname, fps, remove_files=True):
     from seren3.utils import which
     import os
     mencoder = which("mencoder")
@@ -17,14 +16,14 @@ def _run_mencoder(out_dir, out_fname, fps, remove_files=True):
 
     # Make the movie
     exe = "{mencoder} mf:{out_dir}/_tmp*.png {args} -o {out_dir}/{out_fname}".format(mencoder=mencoder, \
-             out_dir=out_dir, args=args, out_fname=out_fname)
+             out_dir=_IMAGE_DIR, args=args, out_fname=out_fname)
     os.system(exe)
 
     # Remove _tmp files
     if remove_files:
-        cleanup()
+        _cleanup()
 
-def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
+def make_movie(families, out_fname, field="rho", camera_func=None, mpi=True, **kwargs):
     '''
         Parameters
         ----------
@@ -47,6 +46,7 @@ def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
     fraction = kwargs.pop("fraction", 0.01)
     cmap = kwargs.pop("cmap", "Viridis")
     verbose = kwargs.pop("verbose", config.get("general", "verbose"))
+    fps = kwargs.pop("fps", 25)
 
     try:
         if mpi:
@@ -75,11 +75,12 @@ def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
                 fname = _get_fname(family, field)
                 proj.save_PNG(img_fname=fname, fraction=fraction, cmap=cmap)
                 fnames.append(fname)
+        _run_mencoder(out_fname, fps)
     except Exception as e:
-        cleanup()
+        _cleanup()
         return e
     except KeyboardInterrupt:
-        cleanup()
+        _cleanup()
         sys.exit()
     return 0
 
