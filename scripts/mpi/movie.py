@@ -75,7 +75,9 @@ def make_movie(families, out_fname, field="rho", camera_func=None, mpi=True, **k
                 fname = _get_fname(family, field)
                 proj.save_PNG(img_fname=fname, fraction=fraction, cmap=cmap)
                 fnames.append(fname)
-        _run_mencoder(out_fname, fps)
+
+        if host:
+            _run_mencoder(out_fname, fps)
     except Exception as e:
         _cleanup()
         return e
