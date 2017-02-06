@@ -43,7 +43,7 @@ def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
                 proj = visualization.Projection(family, field, camera=cam, **kwargs)
                 fname = _get_fname(family, field)
                 proj.save_PNG(img_fname=fname)
-                sto.result = fname
+                sto.result = {"fname" : fname}
             dset = mpi.unpack(dset)
             print dset
         else:
