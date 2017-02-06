@@ -27,32 +27,36 @@ def run(families, field="rho", camera_func=None, mpi=True, **kwargs):
     cmap = kwargs.pop("cmap", "Viridis")
     verbose = config.get("general", "verbose")
 
-    if mpi:
-        import pymses
-        from seren3.analysis.parallel import mpi
+    try:
+        if mpi:
+            import pymses
+            from seren3.analysis.parallel import mpi
 
-        pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT = 1  # disable multiprocessing
-        dest = {}
-        for i, sto in mpi.piter(range(len(families)), storage=dest):
-            if verbose:
-                mpi.msg("Image %i/%i" % (i, len(families)))
-            family = families[i]
-            cam = camera_func(family)
+            pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT = 1  # disable multiprocessing
+            dest = {}
+            for i, sto in mpi.piter(range(len(families)), storage=dest):
+                if verbose:
+                    mpi.msg("Image %i/%i" % (i, len(families)))
+                family = families[i]
+                cam = camera_func(family)
 
-            proj = visualization.Projection(family, field, camera=cam, **kwargs)
-            fname = _get_fname(family, field)
-            proj.save_PNG(img_fname=fname)
-            fnames.append(fname)
-    else:
-        fnames = []
-        for i in range(len(families)):
-            if verbose:
-                print "Image %i/%i" % (i, len(families))
+                proj = visualization.Projection(family, field, camera=cam, **kwargs)
+                fname = _get_fname(family, field)
+                proj.save_PNG(img_fname=fname)
+                fnames.append(fname)
+        else:
+            fnames = []
+            for i in range(len(families)):
+                if verbose:
+                    print "Image %i/%i" % (i, len(families))
 
-            family = families[i]
-            cam = camera_func(family)
-            
-            proj = visualization.Projection(family, field, camera=cam, **kwargs)
-            fname = _get_fname(family, field)
-            proj.save_PNG(img_fname=fname)
-            fnames.append(fname)
+                family = families[i]
+                cam = camera_func(family)
+                
+                proj = visualization.Projection(family, field, camera=cam, **kwargs)
+                fname = _get_fname(family, field)
+                proj.save_PNG(img_fname=fname)
+                fnames.append(fname)
+    except Exception as e:
+        return e
+    return 0
