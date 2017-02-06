@@ -59,7 +59,7 @@ def FractionOperator(family, field, vol_weighted):
     return op
 
 def Projection(family, field, mode='fft', camera=None, op=None,\
-         vol_weighted=False, **kwargs):
+         fraction=False, **kwargs):
     '''
     Takes a projection of the supplied family
     '''
@@ -70,8 +70,10 @@ def Projection(family, field, mode='fft', camera=None, op=None,\
 
     if camera is None:
         camera = family.camera()
+
+    vol_weighted = kwargs.pop("vol_weighted", False)
     if op is None:
-        if (vol_weighted):
+        if fraction:
             op = FractionOperator(family, field, vol_weighted)
         else:
             op = ScalarOperator(family, field, vol_weighted)

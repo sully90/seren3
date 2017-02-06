@@ -452,3 +452,10 @@ class Family(object):
         r_bins = SimArray(r_bins, self.info["unit_length"]).in_units(r_units)
 
         return prof, r_bins
+
+    def projection(self, field, **kwargs):
+        from seren3.analysis import visualization
+
+        cam = self.camera()
+        proj = visualization.Projection(self, field, camera=cam, **kwargs)
+        return proj
