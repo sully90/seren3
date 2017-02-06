@@ -38,6 +38,8 @@ def load_nml(snapshot):
                 block = line[1:]
                 nml_dict[block] = {}
             else:
+                if '!' in line:
+                    line = line.split('!')[0]
                 if '=' in line:
                     # Param
                     try:
