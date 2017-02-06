@@ -3,6 +3,7 @@ verbose = False
 
 [data]
 data_dir = /home/d/ds/ds381/seren3/data/
+movie_img_dir = /lustre/scratch/astro/ds381/Movies/tmp/
 
 [halo]
 default_finder = ctrees
