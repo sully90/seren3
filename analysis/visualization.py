@@ -59,7 +59,7 @@ def FractionOperator(family, field, vol_weighted):
     return op
 
 def Projection(family, field, mode='fft', camera=None, op=None,\
-         fraction=False, **kwargs):
+         fraction=False, multi_processing=True, **kwargs):
     '''
     Takes a projection of the supplied family
     '''
@@ -83,6 +83,10 @@ def Projection(family, field, mode='fft', camera=None, op=None,\
     if mode == "fft":
         from pymses.analysis import splatting
         sp = splatting.SplatterProcessor(family[fields].pymses_source, family.info, op)
+        if multi_processing:
+            sp.use_multiprocessing()
+        else:
+            sp.disable_multiprocessing()
         process = sp.process
     else:
         raise Exception("Unknown mode: %s" % mode)

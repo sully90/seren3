@@ -4,6 +4,26 @@ def _get_fname(family, field):
     _IMAGE_DIR = config.get("data", "movie_img_dir")
     return "%s/_tmp_%s_%s_%05i.png" % (_IMAGE_DIR, family.family, field, family.ioutput)
 
+def cleanup():
+    import os
+    _IMAGE_DIR = config.get("data", "movie_img_dir")
+    os.system("rm %s/_tmp*.png" % _IMAGE_DIR)
+
+def _run_mencoder(out_dir, out_fname, fps, remove_files=True):
+    from seren3.utils import which
+    import os
+    mencoder = which("mencoder")
+    args = "-mf w=800:h=600:fps=%i:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy" % fps
+
+    # Make the movie
+    exe = "{mencoder} mf:{out_dir}/_tmp*.png {args} -o {out_dir}/{out_fname}".format(mencoder=mencoder, \
+             out_dir=out_dir, args=args, out_fname=out_fname)
+    os.system(exe)
+
+    # Remove _tmp files
+    if remove_files:
+        cleanup()
+
 def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
     '''
         Parameters
@@ -19,33 +39,29 @@ def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
         -------
         TODO
     '''
+    import os, sys
     from seren3.analysis import visualization
 
     if camera_func is None:
         camera_func = lambda family: family.camera()
     fraction = kwargs.pop("fraction", 0.01)
     cmap = kwargs.pop("cmap", "Viridis")
-    verbose = config.get("general", "verbose")
+    verbose = kwargs.pop("verbose", config.get("general", "verbose"))
 
     try:
         if mpi:
             import pymses
             from seren3.analysis.parallel import mpi
 
-            pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT = 1  # disable multiprocessing
-            dest = {}
-            for i, sto in mpi.piter(range(len(families)), storage=dest):
+            for i in mpi.piter(range(len(families))):
                 if verbose:
                     mpi.msg("Image %i/%i" % (i, len(families)))
                 family = families[i]
-                print family.get_nproc()
                 cam = camera_func(family)
 
-                proj = visualization.Projection(family, field, camera=cam, **kwargs)
+                proj = visualization.Projection(family, field, camera=cam, multi_processing=False, **kwargs)
                 fname = _get_fname(family, field)
-                proj.save_PNG(img_fname=fname)
-            dset = mpi.unpack(dset)
-            print dset
+                proj.save_PNG(img_fname=fname, fraction=fraction, cmap=cmap)
         else:
             fnames = []
             for i in range(len(families)):
@@ -55,12 +71,16 @@ def make_movie(families, field="rho", camera_func=None, mpi=True, **kwargs):
                 family = families[i]
                 cam = camera_func(family)
                 
-                proj = visualization.Projection(family, field, camera=cam, **kwargs)
+                proj = visualization.Projection(family, field, camera=cam, multi_processing=True, **kwargs)
                 fname = _get_fname(family, field)
-                proj.save_PNG(img_fname=fname)
+                proj.save_PNG(img_fname=fname, fraction=fraction, cmap=cmap)
                 fnames.append(fname)
     except Exception as e:
+        cleanup()
         return e
+    except KeyboardInterrupt:
+        cleanup()
+        sys.exit()
     return 0
 
 def test(path, istart, iend):
