@@ -27,7 +27,9 @@ class Snapshot(object):
         # Load the namelist file
         self.nml = load_nml(self)
         # Tracking metals?
-        self.metals = self.nml[NML.PHYSICS_PARAMS]['metal'] == '.true.' or kwargs.pop("metal", False)
+        self.metals = False
+        if 'metal' in self.nml[NML.PHYSICS_PARAMS]:
+            self.metals = self.nml[NML.PHYSICS_PARAMS]['metal'] == '.true.' or kwargs.pop("metal", False)
         if self.metals:
             self.particle_field_list.append("metal")
         # Patch?

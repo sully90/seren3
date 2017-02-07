@@ -10,14 +10,15 @@ def _cleanup():
 
 def _run_mencoder(out_fname, fps, remove_files=True):
     from seren3.utils import which
-    import os
+    import subprocess, os
     mencoder = which("mencoder")
     args = "-mf w=800:h=600:fps=%i:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy" % fps
 
     # Make the movie
-    exe = "{mencoder} mf:{out_dir}/_tmp*.png {args} -o {out_dir}/{out_fname}".format(mencoder=mencoder, \
+    os.chdir(_IMAGE_DIR)
+    exe = "{mencoder} mf://_tmp*.png {args} -o {out_dir}/{out_fname}".format(mencoder=mencoder, \
              out_dir=_IMAGE_DIR, args=args, out_fname=out_fname)
-    os.system(exe)
+    p = subprocess.check_output(exe, shell=True)
 
     # Remove _tmp files
     if remove_files:
@@ -62,6 +63,8 @@ def make_movie(families, out_fname, field="rho", camera_func=None, mpi=True, **k
                 proj = visualization.Projection(family, field, camera=cam, multi_processing=False, **kwargs)
                 fname = _get_fname(family, field)
                 proj.save_PNG(img_fname=fname, fraction=fraction, cmap=cmap)
+            if mpi.host:
+                _run_mencoder(out_fname, fps)
         else:
             fnames = []
             for i in range(len(families)):
@@ -75,9 +78,8 @@ def make_movie(families, out_fname, field="rho", camera_func=None, mpi=True, **k
                 fname = _get_fname(family, field)
                 proj.save_PNG(img_fname=fname, fraction=fraction, cmap=cmap)
                 fnames.append(fname)
-
-        if mpi.host:
             _run_mencoder(out_fname, fps)
+
     except Exception as e:
         _cleanup()
         return e
