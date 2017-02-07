@@ -21,10 +21,10 @@ def rho_T_hist2d(snap, xo=None, yo=None, mass=None, den_field='nH', temp_field='
     h /= totmass
 
     xs = SimArray(xs, dset[den_field].units)
-    xs.set_latex(dset[den_field].get_field_latex())
+    #xs.set_latex(dset[den_field].get_field_latex())
 
     ys = SimArray(ys, dset[temp_field].units)
-    ys.set_latex(dset[temp_field].get_field_latex())
+    #ys.set_latex(dset[temp_field].get_field_latex())
 
     if plot:
         cmap = kwargs.get('cmap', 'coolwarm')
