@@ -39,7 +39,9 @@ def read_dimensions(f):
 
 
 def read_binary_cube(fname, vector=False, reshape=False, unformatted=True, astype=None):
-
+    '''
+    Reads binary cubes produced by amr2cube.f90
+    '''
     with open(fname, 'rb') as f:
         # Read the header
         if(unformatted):
@@ -73,9 +75,17 @@ def read_binary_cube(fname, vector=False, reshape=False, unformatted=True, astyp
 
 
 def read_binary_map(fname, reshape=False, unformatted=True, astype=None):
-
+    '''
+    Reads binary maps produced by amr2map.f90
+    '''
     with open(fname, 'rb') as f:
         # Read the header
+        if(unformatted):
+            skip(f)
+        dummy = np.fromfile(file=f, dtype=np.float64, count=4)
+        if(unformatted):
+            skip(f)
+
         if (unformatted):
             skip(f)
         nn = np.fromfile(file=f, dtype=np.int32, count=2)

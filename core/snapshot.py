@@ -353,10 +353,10 @@ class Family(object):
         known_fields = set()
 
         def _get_rules(field):
-            if derived.is_derived(self.family, field):
-                required_fields = [r for r in derived.required_for_field(self.family, field)]
+            if derived.is_derived(self, field):
+                required_fields = [r for r in derived.required_for_field(self, field)]
                 for r in required_fields:
-                    if derived.is_derived(self.family, r):
+                    if derived.is_derived(self, r):
                         _get_rules(r)
                     else:
                         known_fields.add(r)
@@ -420,7 +420,7 @@ class Family(object):
         Spherical binning function
         '''
         from seren3.array import SimArray
-        from seren3.utils.derived_utils import LambdaOperator, is_derived, get_field_unit
+        from seren3.utils.derived_utils import is_derived, get_derived_field, get_field_unit
         from seren3.analysis.profile_binners import SphericalProfileBinner
 
         if center is None:
@@ -437,7 +437,8 @@ class Family(object):
 
         if profile_func is None:
             if is_derived(self, field):
-                profile_func = LambdaOperator(self, field)
+                fn = get_derived_field(self, field)
+                profile_func = lambda dset: fn(self, dset)
             else:
                 profile_func = lambda dset: dset[field]
 
@@ -458,8 +459,8 @@ class Family(object):
         return prof, r_bins
 
     def projection(self, field, **kwargs):
-        from seren3.analysis import visualization
+        from seren3.analysis.visualization import Projection
 
         cam = self.camera()
-        proj = visualization.Projection(self, field, camera=cam, **kwargs)
-        return proj
+        return Projection(self, field, **kwargs)
+        

@@ -3,7 +3,7 @@ from seren3.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 
-@seren3.derived_quantity(requires=["pos"], unit=C.Msun)
+@seren3.derived_quantity(requires=["pos"])
 def amr_r(context, dset, center=None):
     '''
     Radial position
@@ -14,45 +14,45 @@ def amr_r(context, dset, center=None):
         pos -= center
     return ((pos ** 2).sum(axis=1)) ** (1,2)
 
-@seren3.derived_quantity(requires=["rho", "dx"], unit=C.Msun)
+@seren3.derived_quantity(requires=["rho", "dx"])
 def amr_mass(context, dset):
     '''
     Return cell mass in solar masses
     '''
-    rho = dset["rho"].in_units("Msol pc**-3")
-    dx = dset["dx"].in_units("pc")
+    rho = dset["rho"]
+    dx = dset["dx"]
     mass = rho * (dx**3)
     mass.set_field_latex("$\\mathrm{M}$")
     return mass
 
-@seren3.derived_quantity(requires=["rho"], unit=C.none)
+@seren3.derived_quantity(requires=["rho"])
 def amr_baryon_overdensity(context, dset):
     '''
     Return baryon overdensity: rho/rho_mean
     '''
     units = "kg m**-3"
-    rho_mean = context.quantities.rho_mean(species='b').in_units(units)
-    rho = dset["rho"].in_units(units)
+    rho_mean = context.quantities.rho_mean(species='b')
+    rho = dset["rho"]
 
     overdensity = context.array(rho/rho_mean)
     overdensity.set_field_latex("$\Delta_{\mathrm{b}}$")
     return overdensity
 
-@seren3.derived_quantity(requires=["rho"], unit=C.none)
+@seren3.derived_quantity(requires=["rho"])
 def amr_deltab(context, dset):
     '''
     Returns dimensionless density contrast
     '''
     units = "kg m**-3"
-    rho_mean = context.quantities.rho_mean(species="b").in_units(units)
-    rho = dset["rho"].in_units(units)
+    rho_mean = context.quantities.rho_mean(species="b")
+    rho = dset["rho"]
 
     db = context.array((rho-rho_mean)/rho_mean)
     db.set_field_latex("$\delta_{\mathrm{b}}$")
 
     return db
 
-@seren3.derived_quantity(requires=["nH", "xHII", "nHe", "xHeII", "xHeIII"], unit=C.cm**-3)
+@seren3.derived_quantity(requires=["nH", "xHII", "nHe", "xHeII", "xHeIII"])
 def amr_ne(context, dset):
     '''
     Returns number density of electrons in each cell
@@ -60,23 +60,23 @@ def amr_ne(context, dset):
     ne = dset["nH"] * dset["xHII"]  # num. den. of electrons from ionised hydrogen
     ne += dset["nHe"] * (dset["xHeII"] + dset["xHeIII"])  # " " from ionised Helium
     ne.set_field_latex("n$_{\\mathrm{e}}")
-    return context.array(ne, "m**-3").in_units("cm**-3")
+    return context.array(ne, "m**-3")
 
-@seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
+@seren3.derived_quantity(requires=["rho"])
 def amr_nH(context, dset):
     '''
     Return hydrogen number density
     '''
-    rho = dset["rho"].in_units("kg m**-3")
+    rho = dset["rho"]
     mH = context.array(context.C.mH)
     X_fraction = context.info.get("X_fraction", 0.76)
     H_frac = mH/X_fraction
 
     nH = rho/H_frac
     nH.set_field_latex("$\mathrm{n}_{\mathrm{H}}$")
-    return nH.in_units("m**-3")
+    return nH
 
-@seren3.derived_quantity(requires=["rho"], unit=C.H_cc)
+@seren3.derived_quantity(requires=["rho"])
 def amr_nHe(context, dset):
     '''
     Return Helium number density
@@ -84,9 +84,9 @@ def amr_nHe(context, dset):
     X_frac, Y_frac = (context.info['X_fraction'], context.info['Y_fraction'])
     nHe = 0.25 * amr_nH(context, dset) * (Y_frac/X_frac)
     nHe.set_field_latex("n$_{\\mathrm{He}}$")
-    return nHe.in_units("m**-3")
+    return nHe
 
-@seren3.derived_quantity(requires=["xHII"], unit=C.none)
+@seren3.derived_quantity(requires=["xHII"])
 def amr_xHI(context, dset):
     '''
     Hydrogen neutral fraction
@@ -96,7 +96,7 @@ def amr_xHI(context, dset):
     xHI.set_field_latex("$\\mathrm{x}_{\\mathrm{HI}}$")
     return xHI
 
-@seren3.derived_quantity(requires=["nH", "xHII"], unit=C.H_cc)
+@seren3.derived_quantity(requires=["nH", "xHII"])
 def amr_nHI(context, dset):
     '''
     Neutral hydrogen number density
@@ -105,7 +105,7 @@ def amr_nHI(context, dset):
     nHI.set_field_latex("n$_{\\mathrm{HI}}$")
     return nHI
 
-@seren3.derived_quantity(requires=["nH", "xHII"], unit=C.H_cc)
+@seren3.derived_quantity(requires=["nH", "xHII"])
 def amr_nHII(context, dset):
     '''
     Neutral hydrogen number density
@@ -114,67 +114,67 @@ def amr_nHII(context, dset):
     nHII.set_field_latex("n$_{\\mathrm{HII}}$")
     return nHI
 
-@seren3.derived_quantity(requires=["P", "rho"], unit=C.m/C.s)
+@seren3.derived_quantity(requires=["P", "rho"])
 def amr_cs(context, dset):
     '''
     Gas sound speed in m/s (units are convertabke)
     '''
     rho = dset["rho"]
     P = dset["P"]
-    cs = np.sqrt(1.66667 * P / rho).in_units("m s**-1")
+    cs = np.sqrt(1.66667 * P / rho)
     cs.set_field_latex("$\\mathrm{c}_{s}$")
-    return cs.in_units("m s**-1")
+    return cs
 
-@seren3.derived_quantity(requires=["P", "rho"], unit=C.K)
+@seren3.derived_quantity(requires=["P", "rho"])
 def amr_T2(context, dset):
     '''
     Gas Temperature in units of K/mu
     '''
     mH = SimArray(context.C.mH)
     kB = SimArray(context.C.kB)
-    T2 = (dset["P"]/dset["rho"] * (mH / kB)).in_units("K")
+    T2 = (dset["P"]/dset["rho"] * (mH / kB))
     T2.set_field_latex("T$_{2}$")
     return T2
 
-@seren3.derived_quantity(requires=["xHII", "xHeII", "xHeIII"], unit=C.none)
+@seren3.derived_quantity(requires=["xHII", "xHeII", "xHeIII"])
 def amr_mu(context, dset):
     X_frac, Y_frac = (context.info['X_fraction'], context.info['Y_fraction'])
     mu = 1. / ( X_frac*(1. + dset["xHII"]) + 0.25 * Y_frac * (1. + dset["xHeII"] + 2. * dset["xHeIII"]) )
     mu.set_field_latex("$\mu$")
     return mu
 
-@seren3.derived_quantity(requires=["T2", "mu"], unit=C.K)
+@seren3.derived_quantity(requires=["T2", "mu"])
 def amr_T(context, dset):
-    T = dset["T2"].in_units("K")/dset["mu"]
+    T = dset["T2"]/dset["mu"]
     T.set_field_latex("$\\mathrm{T}$")
     return context.array(T, "K")
 
-@seren3.derived_quantity(requires=["ne", "alpha_A"], unit=C.year)
+@seren3.derived_quantity(requires=["ne", "alpha_A"])
 def amr_trec(context, dset):
     '''
     Returns recombination time scale of each cell in seconds
     '''
-    trec = 1./( dset["ne"].in_units("cm**-3") * dset["alpha_A"].in_units("cm**3 s**-1") )
-    return trec.in_units("yr")
+    trec = 1./( dset["ne"] * dset["alpha_A"] )
+    return trec
 
-@seren3.derived_quantity(requires=["T"], unit=C.cm**3 * C.s**-1)
+@seren3.derived_quantity(requires=["T"])
 def amr_alpha_A(context, dset):
     '''
     Returns case A rec. coefficient [cm3 s-1] for HII (Hui&Gnedin'97)
     '''
-    T = dset["T"].in_units("K")
+    T = dset["T"]
     lambda_T = 315614./T
     alpha_A = context.array(1.269e-13 * lambda_T**1.503 / ( ( 1.0+(lambda_T/0.522)**0.47 )**1.923 ),\
              "cm**3 s**-1", latex="$\alpha_{\mathrm{A}}$")
     return alpha_A
 
 
-@seren3.derived_quantity(requires=["T"], unit=C.cm**3 * C.s**-1)
+@seren3.derived_quantity(requires=["T"])
 def amr_alpha_B(context, dset):
     '''
     Returns case B rec. coefficient [cm3 s-1] for HII (Hui&Gnedin'97)
     '''
-    T = dset["T"].in_units("K")
+    T = dset["T"]
     lambda_T = 315614./T
     alpha_B = context.array(2.753e-14 * lambda_T**1.5 / ( (1.0+(lambda_T/2.74)**0.407)**2.242 ),\
              "cm**3 s**-1", latex="$\alpha_{\mathrm{B}}$")
@@ -183,20 +183,8 @@ def amr_alpha_B(context, dset):
     
 ############################################### RAMSES-RT ###############################################
 
-@seren3.derived_quantity(requires=[], unit=C.m**-2 * C.s**-1)
-def amr_Flux_Mag(context, dset, group=1):
-    '''
-    Computes magnitude of photon flux for each cell
-    Note: does not specify required fields as we don't know which group
-    to use until we get here
-    '''
-    flux = context.g["Fp%i" % group].flatten()
-    x,y,z = flux.T
 
-    return np.sqrt(x**2 + y**2 + z**2)
-
-
-@seren3.derived_quantity(requires=["Np1", "Np2", "Np3"], unit=1./C.s)
+@seren3.derived_quantity(requires=["Np1", "Np2", "Np3"])
 def amr_Gamma(context, dset, iIon=0):
     '''
     Gas photoionization rate in [s^-1]
@@ -211,7 +199,7 @@ def amr_Gamma(context, dset, iIon=0):
     Gamma.set_field_latex("$\Gamma$")
     return Gamma
 
-@seren3.derived_quantity(requires=["nH", "xHII", "xHeII", "xHeIII", "Np1", "Np2", "Np3"], unit=C.erg * C.cm**-3 * C.s**-1)
+@seren3.derived_quantity(requires=["nH", "xHII", "xHeII", "xHeIII", "Np1", "Np2", "Np3"])
 def amr_PHrate(context, dset):
     """ Photoheating rate """
     from seren3.utils import vec_mag as mag
@@ -220,7 +208,7 @@ def amr_PHrate(context, dset):
     # unit_nH = X_frac * (context.info['unit_density'].express(context.C.g_cc)) / mH
 
     homPHrates = [4.719772E-24, 7.311075E-24, 8.531654E-26]  # From Joki's ramses_info.f90
-    nH = dset["nH"].in_units("cm**-3")
+    nH = dset["nH"]
     # nH = dset['rho'] * unit_nH
 
     nHI = nH * (1. - dset['xHII'])  # nHI

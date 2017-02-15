@@ -16,3 +16,7 @@ class CatalogueNotFoundException(Exception):
 
     def __init__(self, message):
         super(CatalogueNotFoundException, self).__init__(message)
+
+class IncompatibleUnitException(Exception):
+    def __init__(self, message):
+        super(IncompatibleUnitException, self).__init__(message)

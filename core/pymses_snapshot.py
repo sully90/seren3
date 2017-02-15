@@ -8,11 +8,14 @@ class PymsesSnapshot(Snapshot):
     """
     def __init__(self, path, ioutput, ro=None, verbose=False, **kwargs):
         super(PymsesSnapshot, self).__init__(path, ioutput, **kwargs)
+
+        from pymses import rcConfig as pymsesrc
         self.verbose = verbose
         if ro is None:
             self._ro = pymses.RamsesOutput(path, ioutput, metals=self.metals, verbose=self.verbose, **kwargs)
         else:
             self._ro = ro
+        self._nproc_multiprocessing = pymsesrc.multiprocessing_max_nproc
 
     def __getitem__(self, item):
         if hasattr(item, '__module__') and (item.__module__ == 'pymses.utils.regions'):
@@ -94,10 +97,10 @@ class PymsesSnapshot(Snapshot):
         return Camera(**kwargs)
 
     def get_nproc(self):
-        return pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT
+        return self._nproc_multiprocessing
 
     def set_nproc(self, nproc):
-        pymses.utils.misc.NUMBER_OF_PROCESSES_LIMIT = nproc
+        self._nproc_multiprocessing = nproc
         return self.get_nproc()
 
 class PymsesSubSnapshot(PymsesSnapshot):
@@ -105,6 +108,10 @@ class PymsesSubSnapshot(PymsesSnapshot):
         super(PymsesSubSnapshot, self).__init__(pymses_snapshot.path, pymses_snapshot.ioutput, ro=pymses_snapshot.ro)
         self._base = pymses_snapshot
         self.region = region
+
+    @property
+    def info(self):
+        return self._base.info
 
     @property
     def friedmann(self):
@@ -119,7 +126,9 @@ class PymsesSubSnapshot(PymsesSnapshot):
         region_size = [2*radius, 2*radius]
         distance = 2*radius
         far_cut_depth = 2*radius
-        map_max_size = kwargs.pop("map_max_size", 1024)
+
+
+        map_max_size = kwargs.pop("map_max_size", min(2**self.info["levelmax"], 1024))
 
         return Camera(center=center, region_size=region_size, \
                 distance=distance, far_cut_depth=far_cut_depth, \

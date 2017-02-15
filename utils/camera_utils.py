@@ -22,7 +22,7 @@ def _find_galaxy_axis(points_dset_source, camera, nbSample):
     If a galaxy disk is centered in the camera box, this function should
     return a galaxy disk othogonal axis.
 
-    from pymses.analysis import find_galaxy_axis
+    from seren3.utils.camera_utils import find_galaxy_axis
 
     Parameters
     ----------
@@ -73,25 +73,25 @@ def find_center_of_mass(subsnap, camera=None, nbSample=2000):
     return _find_center_of_mass(point_dset_source, camera, nbSample)
 
 def _find_center_of_mass(points_dset_source, camera, nbSample):
-        r"""
-        Find the center of mass in the camera box
+    r"""
+    Find the center of mass in the camera box
 
-        Parameters
-        ----------
-        points_dset_source : :ref:`PointDataSource`
-                fields "rho" and "size" needed
+    Parameters
+    ----------
+    points_dset_source : :ref:`PointDataSource`
+            fields "rho" and "size" needed
 
-        camera : pymses camera box definition restriction
+    camera : pymses camera box definition restriction
 
-        nbSample : int (default=2000)
-                not working yet : may speed up if random sampling ?
-        """
-        filtered_points_dset_source = RegionFilter(camera.get_bounding_box(), points_dset_source)
-        filtered_points_dset = filtered_points_dset_source.flatten() # multiprocessing data reading and filtering
-        d = filtered_points_dset.fields["rho"]*(filtered_points_dset.fields["size"]**3)
-        mass=np.sum(d)
-        cm=np.sum(d[:,np.newaxis]*filtered_points_dset.points,axis=0)/mass
-        return cm
+    nbSample : int (default=2000)
+            not working yet : may speed up if random sampling ?
+    """
+    filtered_points_dset_source = RegionFilter(camera.get_bounding_box(), points_dset_source)
+    filtered_points_dset = filtered_points_dset_source.flatten() # multiprocessing data reading and filtering
+    d = filtered_points_dset.fields["rho"]*(filtered_points_dset.fields["size"]**3)
+    mass=np.sum(d)
+    cm=np.sum(d[:,np.newaxis]*filtered_points_dset.points,axis=0)/mass
+    return cm
 
 def find_los(subsnap, camera=None, nbSample=2000):
     '''
@@ -110,27 +110,27 @@ def find_los(subsnap, camera=None, nbSample=2000):
     return _find_los(point_dset_source, camera, nbSample)
 
 def _find_los(points_dset_source, camera, nbSample):
-        r"""
-        Find the line of sight axis which is along the angular momentum of the gas inside the camera box
+    r"""
+    Find the line of sight axis which is along the angular momentum of the gas inside the camera box
 
-        Parameters
-        ----------
-        points_dset_source : :ref:`PointDataSource`
-                fields "vel", "rho" and "size" needed
+    Parameters
+    ----------
+    points_dset_source : :ref:`PointDataSource`
+            fields "vel", "rho" and "size" needed
 
-        camera : pymses camera box definition restriction
+    camera : pymses camera box definition restriction
 
-        nbSample : int (default=2000)
-                not working yet : may speed up if random sampling ?
-        """
-        filtered_points_dset_source = RegionFilter(camera.get_bounding_box(), points_dset_source)
-        filtered_points_dset = filtered_points_dset_source.flatten() # multiprocessing data reading and filtering
-        d = filtered_points_dset.fields["rho"]*(filtered_points_dset.fields["size"]**3)
-        v=filtered_points_dset["vel"]
-        JJ=np.zeros_like(v)
-        p=d[:,np.newaxis]*v
-        JJ[:]=np.cross((filtered_points_dset.points[:]-camera.center),p[:])
-        J=np.sum(JJ,axis=0)
-        result_vect = J/sum(J**2)
-        result_vect = result_vect/np.linalg.norm(result_vect,2)
-        return result_vect
+    nbSample : int (default=2000)
+            not working yet : may speed up if random sampling ?
+    """
+    filtered_points_dset_source = RegionFilter(camera.get_bounding_box(), points_dset_source)
+    filtered_points_dset = filtered_points_dset_source.flatten() # multiprocessing data reading and filtering
+    d = filtered_points_dset.fields["rho"]*(filtered_points_dset.fields["size"]**3)
+    v=filtered_points_dset["vel"]
+    JJ=np.zeros_like(v)
+    p=d[:,np.newaxis]*v
+    JJ[:]=np.cross((filtered_points_dset.points[:]-camera.center),p[:])
+    J=np.sum(JJ,axis=0)
+    result_vect = J/sum(J**2)
+    result_vect = result_vect/np.linalg.norm(result_vect,2)
+    return result_vect

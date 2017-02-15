@@ -5,6 +5,19 @@ from matplotlib.colors import LinearSegmentedColormap as lsc
 # from numpy import array
 import numpy as np
 
+
+def velocity_plot(s, width='15 kpc', cmap1='hot', cmap2='viridis', stream=False):
+    import pynbody
+    import pynbody.plot.sph as sph
+    import matplotlib.pylab as plt
+    f, axs = plt.subplots(1,2,figsize=(14,6))
+    pynbody.analysis.angmom.faceon(s.g)
+    sph.velocity_image(s.g, qty='temp', width=width, cmap=cmap1, vector_color='cyan', denoise=True, vector_resolution=20, subplot=axs[0], show_cbar=False)
+
+    mode = 'stream' if stream else 'quiver'
+    pynbody.analysis.angmom.faceon(s.g)
+    sph.velocity_image(s.g, width=width, cmap=cmap2, vector_color='black', denoise=True, units='Msol kpc^-2', mode=mode, vector_resolution=20, subplot=axs[1], show_cbar=False)
+
 # def cmap_map(function, cmap):
 #     """ Applies function (which should operate on vectors of shape 3:
 #     [r, g, b], on colormap cmap. This routine will break any discontinuous     points in a colormap.
@@ -94,9 +107,5 @@ def ncols(n, cmap='rainbow'):
     import matplotlib.pylab as plt
     cmap = plt.get_cmap(cmap)
     return cmap(np.linspace(0, 1, n))
-
-
-def save_eps(fig, fname, dpi=1000):
-    fig.savefig(fname, format='eps', dpi=dpi)
 
     

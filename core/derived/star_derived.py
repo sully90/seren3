@@ -3,12 +3,12 @@ from .part_derived import *
 import numpy as np
 from pymses.utils import constants as C
 
-@seren3.derived_quantity(requires=["epoch"], unit=C.Gyr)
+@seren3.derived_quantity(requires=["epoch"])
 def star_age(context, dset, **kwargs):
     return part_age(context, dset, **kwargs)
 
 
-@seren3.derived_quantity(requires=["age", "metal"], unit=C.s**-1 * C.Msun**-1)
+@seren3.derived_quantity(requires=["age", "metal"])
 def star_Nion_d(context, dset, dt=0., group=1):
     '''
     Computes the number of ionisiing photons produced by a stellar population per solar mass per second
@@ -60,7 +60,7 @@ def star_Nion_d(context, dset, dt=0., group=1):
     Nion_d.set_field_latex("$\\dot{N_{\\mathrm{ion}}}$")
     return Nion_d
 
-@seren3.derived_quantity(requires=["age", "mass"], unit=1./C.Gyr)
+@seren3.derived_quantity(requires=["age", "mass"])
 def star_sSFR(context, dset, nbins=100, **kwargs):
     from seren3.exceptions import NoParticlesException
 
@@ -98,7 +98,7 @@ def star_sSFR(context, dset, nbins=100, **kwargs):
 
     return {'sSFR' : sSFR, 'lookback-time' : binmps, 'binsize' : binsize}  # sSFR [Gyr^-1], Lookback Time [Gyr], binsize [Gyr]
 
-@seren3.derived_quantity(requires=["age", "mass"], unit=C.Msun/C.Gyr)
+@seren3.derived_quantity(requires=["age", "mass"])
 def star_SFR(context, dset, nbins=100, **kwargs):
     from seren3.exceptions import NoParticlesException
 

@@ -6,7 +6,7 @@ def _get_fname(family, field):
 
 def _cleanup():
     import os
-    os.system("rm %s/_tmp*.png" % _IMAGE_DIR)
+    #os.system("rm %s/_tmp*.png" % _IMAGE_DIR)
 
 def _run_mencoder(out_fname, fps, remove_files=True):
     from seren3.utils import which
@@ -45,7 +45,7 @@ def make_movie(families, out_fname, field="rho", camera_func=None, mpi=True, **k
     if camera_func is None:
         camera_func = lambda family: family.camera()
     fraction = kwargs.pop("fraction", 0.01)
-    cmap = kwargs.pop("cmap", "Viridis")
+    cmap = kwargs.pop("cmap", "YlOrRd")
     verbose = kwargs.pop("verbose", config.get("general", "verbose"))
     fps = kwargs.pop("fps", 25)
 
@@ -60,9 +60,11 @@ def make_movie(families, out_fname, field="rho", camera_func=None, mpi=True, **k
                 family = families[i]
                 cam = camera_func(family)
 
-                proj = visualization.Projection(family, field, camera=cam, multi_processing=False, **kwargs)
+                proj = visualization.Projection(family, field, camera=cam, multi_processing=False, fraction=True, vol_weighted=True, **kwargs)
                 fname = _get_fname(family, field)
                 proj.save_PNG(img_fname=fname, fraction=fraction, cmap=cmap)
+
+            mpi.comm.barrier()
             if mpi.host:
                 _run_mencoder(out_fname, fps)
         else:
@@ -94,8 +96,9 @@ def test(path, istart, iend):
 
     sim = seren3.init(path)
     families = [sim[i].g for i in range(istart, iend+1)]
-    camera_func = lambda family: family.camera(region_size=np.array([.5, .5]), distance=.5, far_cut_depth=.5)
-    return make_movie(families, "output.avi")
+    camera_func = lambda family: family.camera(region_size=np.array([.05, .05]), distance=.05, far_cut_depth=.05)
+    print camera_func(families[0]).__dict__
+    return make_movie(families, "output.avi", camera_func=camera_func)
 
 if __name__ == "__main__":
     import sys
