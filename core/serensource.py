@@ -180,6 +180,11 @@ class SerenSource(object):
         for idomain in cpu_list:
             yield self.get_domain_dset(idomain)
 
+    def get_cpu_list(self):
+        if self._cpu_list is None:
+            return range(1, self.family.info["ncpu"]+1)
+        return self._cpu_list
+
     @property
     def pymses_source(self):
         '''

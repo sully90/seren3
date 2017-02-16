@@ -27,7 +27,9 @@ class ProjectionEngine(object):
         Load a single domain so we can collect full unit information
         '''
         unit_dict = {}
-        dset = self.family[self.field].get_domain_dset(1)
+        source = self.family[self.field]
+        iout = source.get_cpu_list()[0]
+        dset = source.get_domain_dset(iout)
         unit_dict[self.field] = dset[self.field].units
 
         for key in dset.keys():
@@ -100,6 +102,16 @@ class RayTraceEngine(ProjectionEngine):
 
         rt = raytracing.RayTracer(source, self.info, op)
         return rt.process
+
+    def get_operator(self):
+        '''
+        Return a simple scalar operator for this field, provided it is intensive
+        '''
+        from pymses.analysis import ScalarOperator
+
+        op = ScalarOperator( lambda dset: self.get_field(dset, self.field), self.get_map_unit() )
+        op._max_alos = True
+        return op
 
 
 class RayTraceMaxLevelEngine(RayTraceEngine):

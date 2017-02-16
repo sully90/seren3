@@ -1,6 +1,9 @@
 def Projection(family, field, mode="fft", camera=None, **kwargs):
     '''
-    Performs a basic projection using either the stock raytracing or splatter engine
+    Performs a basic projection using either the stock raytracing or splatter engine.
+
+    TODO
+        Insert come logic for intensive/extensive variables and when to use mass-weighting
     '''
     import engines
 
