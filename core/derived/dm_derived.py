@@ -8,7 +8,7 @@ def dm_age(context, dset, **kwargs):
 
 
 @seren3.derived_quantity(requires=["pos"])
-def dm_rho(context, dset, **kwargs):
+def dm_rho(context, dset, deconv_kernel=False, **kwargs):
     '''
     CIC dm density
     '''
@@ -51,4 +51,11 @@ def dm_rho(context, dset, **kwargs):
     # Swap data => shape : (ngrids, twotondim, nvars)
     ####### WARNING : must keep C-ordered contiguity !!! #######
     rho = np.ascontiguousarray(np.swapaxes(rho.reshape((N,N,N)), 0, 2))
+
+    if deconv_kernel:
+        from seren3.utils import deconvolve_cic
+        print "Deconvolving CIC kernel"
+        rho = deconvolve_cic(rho, N)
+        # Correct for negaitve densities
+        rho[np.where(rho < 0.)] = 0.
     return context.array(rho, "kg m**-3")

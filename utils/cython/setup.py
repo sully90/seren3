@@ -3,15 +3,9 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 from Cython.Build import cythonize
 
-# setup(ext_modules = cythonize(
-#                 "sample_points.pyx",                 # our Cython source
-#                 extra_compile_args=['-fopenmp'],
-#                 extra_link_args=['-fopenmp'],
-#                 sources=["c_cic.cpp"],  # additional source file(s)
-#                 language="c++",             # generate C++ code
-#                 ))
-
-
+'''
+Setup.py for c_cic.cpp and python wrappers with openmp enabled
+'''
 
 ext_module = Extension(
     "cic",
@@ -22,7 +16,7 @@ ext_module = Extension(
 )
 
 setup(
-    name = 'seren2_cython',
+    name = 'seren3_cython',
     cmdclass = {'build_ext': build_ext},
     ext_modules = [ext_module],
 )
