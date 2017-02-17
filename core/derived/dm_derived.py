@@ -10,7 +10,7 @@ def dm_age(context, dset, **kwargs):
 @seren3.derived_quantity(requires=["pos"])
 def dm_rho(context, dset, deconv_kernel=False, **kwargs):
     '''
-    CIC dm density
+    CIC dm density. Warning - do not use this field for visualizations
     '''
     from seren3.utils.cython import cic
 
@@ -59,3 +59,18 @@ def dm_rho(context, dset, deconv_kernel=False, **kwargs):
         # Correct for negaitve densities
         rho[np.where(rho < 0.)] = 0.
     return context.array(rho, "kg m**-3")
+
+@seren3.derived_quantity(requires=["pos"])
+def dm_delta(context, dset, **kwargs):
+    from seren3.cosmology import rho_mean_z
+    
+    rhoc = dm_rho(context, dset, **kwargs)
+
+    cosmo = context.cosmo
+    omega0 = cosmo['omega_M_0'] - cosmo['omega_b_0']
+
+    rho_mean = rho_mean_z(omega0, **cosmo)
+
+    delta = (rhoc - rho_mean) / rho_mean
+
+    return delta

@@ -19,7 +19,7 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, **kwargs):
 
     rvir = SimArray(subsnap.region.radius, subsnap.info["unit_length"])
     rt_c = SimArray(subsnap.info_rt["rt_c_frac"] * subsnap.C.c)
-    dt = rvir / rt_c
+    dt = (rvir / rt_c).in_units("s")
 
     nIons = subsnap.info_rt["nIons"]
 
@@ -30,7 +30,7 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, **kwargs):
     keep = np.where(dset["age"].in_units("Gyr") - dt.in_units("Gyr") >= 0.)
     mass = dset["mass"][keep]
 
-    star_Nion_d = derived_utils.get_derived_field("star", "Nion_d")
+    star_Nion_d = derived_utils.get_derived_field(subsnap.s, "Nion_d")
 
     if do_multigroup:
         for ii in range(nIons):
@@ -56,7 +56,7 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, **kwargs):
         flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=filt, **kwargs)
         integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir)# * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
 
-    fesc = integrated_flux / nPhot
+    fesc = integrated_flux.in_units("s**-1") / nPhot.in_units("s**-1")
 
     # return the escape fraction
     if ret_flux_map:
