@@ -1,3 +1,15 @@
+/*
+Cloud in cell kernel originally written by Alexander Eggemeier and used with his permission,
+@author Alexander Eggemeier
+@author David Sullivan
+
+Version history
+========================================================================================
+Original kernel - Alex
+OpenMP support - David
+Python wrappers - David
+*/
+
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
