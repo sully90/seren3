@@ -1,11 +1,18 @@
 '''
-Collection of projection engines. Raytracing requires intensive variables, splatter (FFT) requires
-extensive variables. The MassWeightedDensitySplatterEngine shows how to make projections of intensive
-variables with the splatter engine.
+Collection of projection engines. Raytracing supports INTENSIVE amr variables, splatter (FFT) supports
+EXTENSIVE variables, but can be used to make projections of intensive variables
+(see MassWeightedDensitySplatterEngine example).
 
-The stock RayTraceEngine and SplatterEngine can analyse any quantity (raytracing for AMR only), but
+The stock RayTraceEngine and SplatterEngine can process any quantity (raytracing for AMR only), but
 do not ensure the variables are intensive/extensive respectively. They use simple ScalarOperators,
 but derive all fields and units.
+
+The ProjectionEngine class is abstract and cannot be instantiated, but provides the base logic for 
+visualizations. Typically one would create an engine and call process with a camera object:
+from seren3.analysis.visualization import engines
+engine = engines.RayTraceEngine(snapshot.g, "rho")
+projection = engine.process(snapshot.camera())
+It is down to the desired engine to provide the correct AMR source and operator.
 '''
 import abc
 from seren3.core.serensource import DerivedDataset
@@ -28,6 +35,7 @@ class ProjectionEngine(object):
         '''
         unit_dict = {}
         source = self.family[self.field]
+
         iout = source.get_cpu_list()[0]
         dset = source.get_domain_dset(iout)
         unit_dict[self.field] = dset[self.field].units
@@ -51,10 +59,15 @@ class ProjectionEngine(object):
         """
         Returns the correct unit for this field
         """
+        from seren3.array import units
         from seren3.utils import derived_utils
-        units = self._units()
-        unit = str(units[self.field])
-        return derived_utils.pymses_units(unit)
+
+        unit_dict = self._units()
+        unit = unit_dict[self.field]
+
+        if unit == units.NoUnit():
+            return self.family.C.none
+        return derived_utils.pymses_units(str(unit))
 
     def get_field(self, dset, field):
         dset_gen = lambda dset: DerivedDataset(self.family, dset)
@@ -67,18 +80,28 @@ class ProjectionEngine(object):
         '''
         from pymses.analysis import ScalarOperator
 
-        op = ScalarOperator( lambda dset: self.get_field(dset, self.field), self.get_map_unit() )
+        is_max_alos = self.IsMaxAlos()
+        op = ScalarOperator( lambda dset: self.get_field(dset, self.field), self.get_map_unit(), is_max_alos=is_max_alos)
         return op
 
 
     def process(self, camera, **kwargs):
-        process_func = self.get_process()
+        processor = self.get_process()
+
+        # Always ensure we respect the IsMaxAlos property of a visualization engine
+        if processor._operator.is_max_alos() != self.IsMaxAlos():
+            processor._operator._max_alos = self.IsMaxAlos()
+
         if "surf_qty" not in kwargs:
             kwargs["surf_qty"] = self.IsSurfQuantity()
-        return process_func(camera, **kwargs)
+        return processor.process(camera, **kwargs)
 
 
     def IsSurfQuantity(self):
+        return False
+
+
+    def IsMaxAlos(self):
         return False
 
         
@@ -101,17 +124,14 @@ class RayTraceEngine(ProjectionEngine):
         source = self.get_source()
 
         rt = raytracing.RayTracer(source, self.info, op)
-        return rt.process
+        return rt
 
-    def get_operator(self):
-        '''
-        Return a simple scalar operator for this field, provided it is intensive
-        '''
-        from pymses.analysis import ScalarOperator
 
-        op = ScalarOperator( lambda dset: self.get_field(dset, self.field), self.get_map_unit() )
-        op._max_alos = True
-        return op
+    def IsMaxAlos(self):
+        '''
+        True for raytracers
+        '''
+        return True
 
 
 class RayTraceMaxLevelEngine(RayTraceEngine):
@@ -178,7 +198,7 @@ class SplatterEngine(ProjectionEngine):
         source = self.get_source()
 
         sp = splatting.SplatterProcessor(source, self.info, op)
-        return sp.process
+        return sp
 
 
 class MassWeightedSplatterEngine(SplatterEngine):

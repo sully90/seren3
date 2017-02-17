@@ -4,6 +4,7 @@ This example shows how to easily make images of a given halo
 
 def main(path, iout, finder):
     import seren3
+    from seren3.analysis.visualization import EngineMode
 
     # First we load a Simulation object which stores the path to the dataset and provides functions to load a snapshot
     simulation = seren3.init(path)
@@ -17,8 +18,8 @@ def main(path, iout, finder):
     halo = sorted_halos[0]
 
     # Now lets make some projections. We can use raytracing of FFT convolutions over the AMR levels (splatting)
-    amr_nH = halo.g.projection('nH', mode='rt')
-    dm_mass = halo.d.projection('mass', mode='fft')
+    amr_nH = halo.g.projection('nH', mode=EngineMode.RAYTRACING)
+    dm_mass = halo.d.projection('mass', mode=EngineMode.SPLATTER)
 
     # Show the plots
     amr_nH.save_plot().show()
