@@ -4,7 +4,7 @@ of halos (or subsnaps in general).
 Uses the pynbody python module to create healpix maps
 '''
 
-def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, **kwargs):
+def fesc(subsnap, filt=False, do_multigroup=False, ret_flux_map=False, **kwargs):
     '''
     Computes halo escape fraction of hydrogen ionising photons
     '''

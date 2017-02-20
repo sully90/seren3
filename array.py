@@ -90,8 +90,8 @@ class SimArray(np.ndarray):
         # the normal weak-reference system.
 
         if snapshot is not None:
-            new.snapshot = snapshot
-            new.set_context(new.snapshot)
+            new._sim = weakref.ref(snapshot)
+            new.set_context(new.sim)
             # new._context["h"] = snapshot.cosmo["h"]
             # new._context["a"] = snapshot.cosmo["aexp"]
             # will generate a weakref automatically
@@ -127,6 +127,8 @@ class SimArray(np.ndarray):
             n_array.units = output_units
             n_array.sim = self.sim
             n_array._name = self._name
+            if hasattr(self, "_context"):
+                n_array._context = self._context
             return n_array
         except (KeyError, units.UnitsException):
             return array
@@ -223,7 +225,10 @@ class SimArray(np.ndarray):
             x.units = x.units * rhs
             return x
         else:
-            return np.ndarray.__mul__(self, rhs)
+            res = np.ndarray.__mul__(self, rhs)
+            # if isinstance(res, SimArray):
+            #     res._context = self._context
+            return res
 
     def __div__(self, rhs):
         if isinstance(rhs, _units.UnitBase):
@@ -231,7 +236,10 @@ class SimArray(np.ndarray):
             x.units = x.units / rhs
             return x
         else:
-            return np.ndarray.__div__(self, rhs)
+            res = np.ndarray.__div__(self, rhs)
+            # if isinstance(res, SimArray):
+            #     res._context = self._context
+            return res
 
     def __truediv__(self, rhs):
         if isinstance(rhs, _units.UnitBase):
@@ -239,7 +247,10 @@ class SimArray(np.ndarray):
             x.units = x.units / rhs
             return x
         else:
-            return np.ndarray.__truediv__(self, rhs)
+            res = np.ndarray.__truediv__(self, rhs)
+            # if isinstance(res, SimArray):
+            #     res._context = self._context
+            return res
 
     def __imul__(self, rhs):
         if isinstance(rhs, _units.UnitBase):

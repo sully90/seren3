@@ -133,7 +133,8 @@ def main(path, iout, finder, pickle_path):
     from seren3.analysis.escape_fraction import fesc
     from seren3.analysis.parallel import mpi
     from seren3.exceptions import NoParticlesException
-    import pickle, os
+    from pynbody.units import UnitsException
+    import pickle, os, random
 
     mpi.msg("Loading snapshot")
     snap = seren3.load_snapshot(path, iout)
@@ -141,27 +142,34 @@ def main(path, iout, finder, pickle_path):
     halos = None
 
     mpi.msg("Using halo finder: %s" % finder)
-    mpi_spheres = None
+    halos = snap.halos(finder=finder)
+    halo_ix = None
     if mpi.host:
-        halos = snap.halos(finder=finder)
-        mpi_spheres = halos.mpi_spheres()
+        halo_ix = range(len(halos))
+        # random.shuffle(halo_ix)
 
     dest = {}
-    for h, sto in mpi.piter(mpi_spheres, storage=dest):
-        sph = h["reg"]
-        subsnap = snap[sph]
-        if len(subsnap.s) > 0:
-            tot_mass = subsnap.p["mass"].f.sum() + subsnap.g["mass"].f.sum()
-
-            sto.idx = h["id"]
-
+    for i, sto in mpi.piter(halo_ix, storage=dest):
+        h = halos[i]
+        if len(h.s) > 0:
+            sto.idx = h.hid
+            mpi.msg("%i" % h.hid)
             try:
-                h_fesc = fesc(subsnap, nside=2**3)
+                pdset = h.p["mass"].flatten()
+                gdset = h.g["mass"].flatten()
+
+                tot_mass = pdset["mass"].in_units("Msol h**-1").sum()\
+                                 + gdset["mass"].in_units("Msol h**-1").sum()
+
+                h_fesc = fesc(h.subsnap, nside=2**3)
                 sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass}
             except NoParticlesException as e:
                 mpi.msg(e.message)
             except IndexError:
                 mpi.msg("Index error - skipping")
+            except UnitsException as e:
+                print pdset['mass'].conversion_context(), h.hid
+                mpi.terminate(500, e=e)
 
     if mpi.host:
         if pickle_path is None:

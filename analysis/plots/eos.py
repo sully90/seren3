@@ -1,6 +1,7 @@
 import seren3
 import numpy as np
 import matplotlib.pylab as plt
+import weakref
 from seren3.utils.plot_utils import add_colorbar
 
 class PhasePlot(object):
@@ -16,7 +17,7 @@ class PhasePlot(object):
         else:
             snapshot.set_nproc(nthreads)
 
-        self.snapshot = snapshot
+        self._snapshot = weakref.ref(snapshot)
         self.den_field = den_field
         self.temp_field = temp_field
 
@@ -59,6 +60,12 @@ class PhasePlot(object):
         self.h, self.xs, self.ys = self._profile(**kwargs)
 
         if self.verbose: print 'Done'
+
+    @property
+    def snapshot(self):
+        if self._snapshot is None:
+            raise Exception("Lost reference to base snapshot")
+        return self._snapshot()
 
     def _profile(self, **kwargs):
         from seren3.analysis.plots import histograms

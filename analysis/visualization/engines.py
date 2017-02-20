@@ -14,7 +14,7 @@ engine = engines.RayTraceEngine(snapshot.g, "rho")
 projection = engine.process(snapshot.camera())
 It is down to the desired engine to provide the correct AMR source and operator.
 '''
-import abc
+import abc, weakref
 from seren3.core.serensource import DerivedDataset
 from seren3.exceptions import IncompatibleUnitException
 
@@ -24,9 +24,16 @@ class ProjectionEngine(object):
         """
             Base class for collecting necessary information to make visualizations of quantities
         """
-        self.family = family
+        self._family = weakref.ref(family)
         self.field = field
         self.info = self.family.base.ro.info
+
+
+    @property
+    def family(self):
+        if self._family is None:
+            raise Exception("Lost reference to base family")
+        return self._family()
 
 
     def _units(self):

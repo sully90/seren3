@@ -12,6 +12,7 @@ import numpy as np
 import logging
 import abc
 import sys
+import weakref
 
 verbose = config.get("general", "verbose")
 logger = logging.getLogger('seren3.halos.halos')
@@ -23,10 +24,10 @@ class Halo(object):
     def __init__(self, properties, snapshot, units, boxsize):
         self.hid = properties["id"]
         self.properties = properties
-        self.base = snapshot
         self.units = units
         self.boxsize = boxsize
 
+        self._base = weakref.ref(snapshot)
         self._subsnap = None
 
     def __str__(self):
@@ -45,6 +46,10 @@ class Halo(object):
         if item in unit_dict:
             unit = unit_dict[item]
         return self.base.array(self.properties[item], unit)
+
+    @property
+    def base(self):
+        return self._base()
 
     @property
     def info(self):
@@ -196,7 +201,7 @@ class HaloCatalogue(object):
     def __init__(self, pymses_snapshot, finder, filename=None, **kwargs):
         # import weakref
         # self._base = weakref.ref(pymses_snapshot)
-        self.base = pymses_snapshot
+        self._base = weakref.ref(pymses_snapshot)
         self.finder = finder
         self.finder_base_dir = "%s/%s" % (self.base.path, config.get("halo", "%s_base" % self.finder.lower()))
 
@@ -232,9 +237,9 @@ class HaloCatalogue(object):
     def __getitem__(self, item):
         return self._get_halo(item)
 
-    # @property
-    # def base(self):
-    #     return self._base()
+    @property
+    def base(self):
+        return self._base()
 
     @abc.abstractmethod
     def get_boxsize(self, **kwargs):
@@ -341,31 +346,8 @@ class HaloCatalogue(object):
         return found
 
     def from_id(self, hid):
-        for h in self:
-            if h.hid == hid:
-                return h
-        return None
-
-    # def with_id(self, ids):
-    #     '''
-    #     Returns halo(s) with the desired id.
-    #     Slow, but preserves id order
-    #     '''
-    #     # halos = []
-    #     # for i in id:
-    #     #     ix = np.where(self._haloprops[:]['id'] == i)
-    #     #     halos.append(self[ix])
-    #     # return halos
-    #     if hasattr(ids, "__iter__"):
-    #         keep = []
-    #         for h in self:
-    #             if h['id'] in ids:
-    #                 keep.append(h)
-    #         return keep
-    #     else:
-    #         func = lambda h: h['id'] == id
-    #         idx = np.where(func(self._haloprops))[0][0]
-    #         return self[idx]
+        idx = np.where(self._haloprops[:]["id"] == hid)
+        return self[idx]
 
     def closest_halos(self, point, n_halos=1):
         '''
@@ -376,11 +358,6 @@ class HaloCatalogue(object):
         T = self.kdtree()
         neighbours = T.query(point, n_halos)
         return neighbours
-
-    def from_id(self, hid):
-        for h in self:
-            if h.hid == hid:
-                return h
 
     def from_indicies(self, idx):
         '''

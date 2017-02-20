@@ -3,7 +3,7 @@ Module to handle implementation of derived fields and I/O
 '''
 import seren3
 from seren3 import config
-from seren3.array import SimArray, units
+from seren3.array import units
 from pynbody.units import UnitsException
 
 _tracked_field_unit_registry = {"rho" : "unit_density",\
@@ -48,15 +48,15 @@ class DerivedDataset(object):
         for field in dset.fields:
             if is_tracked(field):
                 unit = get_tracked_field_unit(self.family, field)
-                self.indexed_fields[field] = SimArray(dset[field], unit)
+                self.indexed_fields[field] = self.family.array(dset[field], unit)
             else:
-                self.indexed_fields[field] = SimArray(dset[field])
+                self.indexed_fields[field] = self.family.array(dset[field])
 
         if hasattr(dset, "points"):
-            self["pos"] = SimArray(dset.points, get_tracked_field_unit(self.family, "pos"))
+            self["pos"] = self.family.array(dset.points, get_tracked_field_unit(self.family, "pos"))
 
         if hasattr(dset, "get_sizes"):
-            self["dx"] = SimArray(dset.get_sizes(), get_tracked_field_unit(self.family, "dx"))
+            self["dx"] = self.family.array(dset.get_sizes(), get_tracked_field_unit(self.family, "dx"))
 
         # Set units
         self.original_units()
