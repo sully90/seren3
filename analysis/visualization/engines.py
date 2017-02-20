@@ -24,16 +24,9 @@ class ProjectionEngine(object):
         """
             Base class for collecting necessary information to make visualizations of quantities
         """
-        self._family = weakref.ref(family)
+        self.family = family
         self.field = field
         self.info = self.family.base.ro.info
-
-
-    @property
-    def family(self):
-        if self._family is None:
-            raise Exception("Lost reference to base family")
-        return self._family()
 
 
     def _units(self):

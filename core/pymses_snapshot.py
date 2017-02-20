@@ -92,8 +92,11 @@ class PymsesSnapshot(Snapshot):
 
     def camera(self, **kwargs):
         from pymses.analysis import Camera
-        if "map_max_size not" in kwargs:
+        if "map_max_size" not in kwargs:
             kwargs["map_max_size"] = 2**self.info["levelmin"]
+        if "size_unit" not in kwargs:
+            kwargs["size_unit"] = self.info["unit_length"]
+
         return Camera(**kwargs)
 
     def get_nproc(self):
@@ -120,19 +123,23 @@ class PymsesSubSnapshot(PymsesSnapshot):
     def camera(self, **kwargs):
         from pymses.analysis import Camera
 
-        center = self.region.center
-        radius = self.region.radius
+        radius = kwargs.pop("radius", self.region.radius)
 
-        region_size = [2*radius, 2*radius]
-        distance = 2*radius
-        far_cut_depth = 2*radius
+        kwargs["center"] = self.region.center
+        if "region_size" not in kwargs:
+            kwargs["region_size"] = [2*radius, 2*radius]
+        if "distance" not in kwargs:
+            kwargs["distance"] = 2*radius
+        if "far_cut_depth" not in kwargs:
+            kwargs["far_cut_depth"] = 2*radius
+        if "map_max_size" not in kwargs:
+            kwargs["map_max_size"] = min(2**self.info["levelmax"], 1024)
 
+        return super(PymsesSubSnapshot, self).camera(**kwargs)
 
-        map_max_size = kwargs.pop("map_max_size", min(2**self.info["levelmax"], 1024))
-
-        return Camera(center=center, region_size=region_size, \
-                distance=distance, far_cut_depth=far_cut_depth, \
-                map_max_size=map_max_size, **kwargs)
+        # return Camera(center=center, region_size=region_size, \
+        #         distance=distance, far_cut_depth=far_cut_depth, \
+        #         map_max_size=map_max_size, **kwargs)
 
     def pynbody_snapshot(self, filt=False, remove_gmc=True):
         '''

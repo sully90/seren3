@@ -44,8 +44,8 @@ def amr_deltab(context, dset):
     Returns dimensionless density contrast
     '''
     units = "kg m**-3"
-    rho_mean = context.quantities.rho_mean(species="b")
-    rho = dset["rho"]
+    rho_mean = context.quantities.rho_mean(species="b").in_units(units)
+    rho = dset["rho"].in_units(units)
 
     db = context.array((rho-rho_mean)/rho_mean)
     db.set_field_latex("$\delta_{\mathrm{b}}$")

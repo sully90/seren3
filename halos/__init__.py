@@ -302,6 +302,18 @@ class HaloCatalogue(object):
         sigma = np.sqrt(var)
         return sigma, mvir
 
+    def halo_ix(self, shuffle=False):
+        '''
+        Return list of indicies to halos, which can be scattered with MPI
+        shuffle (bool) - whether to shuffle the array
+        '''
+
+        halo_ix = range(len(self))
+        if shuffle:
+            import random
+            random.shuffle(halo_ix)
+        return halo_ix
+
     def mpi_spheres(self):
         '''
         Returns iterable which can be scattered/gathered

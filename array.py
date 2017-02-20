@@ -1,3 +1,7 @@
+'''
+Originally part of the pynbody package. Modified to support pymses units
+'''
+
 import numpy as np
 import weakref
 import os

@@ -145,8 +145,7 @@ def main(path, iout, finder, pickle_path):
     halos = snap.halos(finder=finder)
     halo_ix = None
     if mpi.host:
-        halo_ix = range(len(halos))
-        # random.shuffle(halo_ix)
+        halo_ix = halos.halo_ix(shuffle=True)
 
     dest = {}
     for i, sto in mpi.piter(halo_ix, storage=dest):
@@ -177,7 +176,7 @@ def main(path, iout, finder, pickle_path):
         # pickle_path = "%s/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
-        pickle.dump( mpi.unpack(dest), open( "%s/fesc_%05i.p" % (pickle_path, iout), "wb" ) )
+        pickle.dump( mpi.unpack(dest), open( "%s/fesc_test_%05i.p" % (pickle_path, iout), "wb" ) )
 
 if __name__ == "__main__":
     import sys
