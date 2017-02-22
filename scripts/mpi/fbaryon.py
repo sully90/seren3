@@ -109,6 +109,51 @@ def interp_Okamoto_Mc(z):
     fn = interpolate.interp1d(ok_z, ok_Mc)
     return fn(z)
 
+def plot_fits(Mc_amr, Mc_cudaton, **cosmo):
+    import numpy as np
+    import matplotlib.pylab as plt
+    import matplotlib.gridspec as gridspec
+
+    Mc_okamoto = interp_Okamoto_Mc(cosmo["z"])
+    print "Okamoto 08 Mc(z=%1.1f) = %e" % (cosmo["z"], Mc_okamoto)
+
+    fig = plt.figure()
+    gs = gridspec.GridSpec(3,3,wspace=0.,hspace=0.)
+
+    ax1 = fig.add_subplot(gs[1:,:])
+    ax2 = fig.add_subplot(gs[:1,:], sharex=ax1)
+    plt.setp(ax2.get_xticklabels(), visible=False)
+
+    cosmic_mean = cosmo['omega_b_0']/cosmo['omega_M_0']
+
+    mass = np.linspace(1e6, 1e10, 1000)
+    fb_amr = fbaryon.gnedin_fitting_func(mass, Mc_amr, 2., **cosmo)/cosmic_mean
+    fb_cudaton = fbaryon.gnedin_fitting_func(mass, Mc_cudaton, 2., **cosmo)/cosmic_mean
+    fb_okamoto = fbaryon.gnedin_fitting_func(mass, Mc_okamoto, 2., **cosmo)/cosmic_mean
+
+    diff = fb_amr - fb_cudaton
+
+    ax1.plot(mass, fb_amr, linewidth=2., color='r', label='AMR')
+    ax1.plot(mass, fb_cudaton, linewidth=2., color='b', label='CUDATON')
+    ax1.plot(mass, fb_okamoto, linewidth=2., color='k', label='Okamoto 08', linestyle='-.')
+    ax1.hlines(0.5, mass.min(), mass.max(), linestyle='--', linewidth=2.,\
+             label=r"$\frac{1}{2}$ $\frac{\Omega_{\mathrm{b}}}{\Omega_{\mathrm{M}}}$")
+    ax1.legend(loc="upper left")
+
+    ax2.plot(mass, diff, linewidth=2., color='k')
+
+    ax1.set_xscale('log')
+    ax2.set_xscale('log')
+
+    ax1.set_title("z = %1.1f" % cosmo["z"])
+    ax1.set_xlabel(r"log$_{10}$(M$_{\mathrm{h}}$[M$_{\odot}$/h])")
+    ax1.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
+    ax2.set_ylabel("Difference")
+
+    plt.show()
+
+    return fb_amr, fb_cudaton
+
 
 def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, ncell_cutoff=1, nbins=12):
     '''
@@ -196,8 +241,8 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, nce
         # ax1.plot(x, y_cosmic_mean, color='k', linewidth=2.)
 
         Mc_okamoto = interp_Okamoto_Mc(cosmo["z"])
-        ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean, color='k', linewidth=2., label="Okamoto08")
-        ax1.plot(x, gnedin_fitting_func(x, Mc, 2., **cosmo)/cosmic_mean, color='r', linewidth=2., label="Fit")
+        ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean, color='k', linewidth=2., label=r"Okamoto08 Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_okamoto))
+        ax1.plot(x, gnedin_fitting_func(x, Mc, 2., **cosmo)/cosmic_mean, color='r', linewidth=2., label=r"Fit Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc))
         # ax1.plot(x, gnedin_fitting_func(x, Mc, 1., **cosmo)/cosmic_mean, color='b', linewidth=2.)
         # ax1.plot(bc, mean/cosmic_mean, linewidth=3., color='b', linestyle='-')
         ax1.set_xscale("log")
