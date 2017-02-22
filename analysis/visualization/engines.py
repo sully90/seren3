@@ -94,10 +94,18 @@ class ProjectionEngine(object):
 
         if "surf_qty" not in kwargs:
             kwargs["surf_qty"] = self.IsSurfQuantity()
+
+        if ("random_shift" not in kwargs) and (self.DoRandomShift()):
+            kwargs["random_shift"] = self.DoRandomShift()
+
         return processor.process(camera, **kwargs)
 
 
     def IsSurfQuantity(self):
+        return False
+
+
+    def DoRandomShift(self):
         return False
 
 
@@ -199,6 +207,10 @@ class SplatterEngine(ProjectionEngine):
 
         sp = splatting.SplatterProcessor(source, self.info, op)
         return sp
+
+
+    def DoRandomShift(self):
+        return True
 
 
 class MassWeightedSplatterEngine(SplatterEngine):

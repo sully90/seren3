@@ -33,6 +33,7 @@ class Result(object):
 def is_host():
     return host
 
+
 def piter(iterable, storage=None, keep_None=False, print_stats=False):
     '''
     Embarrassingly parallel MPI for loop
@@ -107,6 +108,7 @@ def piter(iterable, storage=None, keep_None=False, print_stats=False):
                 local_results = results[irank]
                 storage[irank] = local_results
 
+
 def unpack(dest):
     '''
     Flatten the dictionary from piter (keys are mpi rank)
@@ -117,11 +119,14 @@ def unpack(dest):
             result.append(item)
     return result
 
+
 def msg(message):
     print '[rank %d   ]: %s' % (rank, message)
+
 
 def terminate(code, e=None):
     if e:
         msg("Caught exception: %s" % e)
     msg("Terminating")
     comm.Abort(code)
+

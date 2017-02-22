@@ -160,7 +160,7 @@ def main(path, iout, finder, pickle_path):
                 tot_mass = pdset["mass"].in_units("Msol h**-1").sum()\
                                  + gdset["mass"].in_units("Msol h**-1").sum()
 
-                h_fesc = fesc(h.subsnap, nside=2**3)
+                h_fesc = fesc(h.subsnap, nside=2**5, filt=True, do_multigroup=False)
                 sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass}
             except NoParticlesException as e:
                 mpi.msg(e.message)
@@ -176,7 +176,7 @@ def main(path, iout, finder, pickle_path):
         # pickle_path = "%s/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
-        pickle.dump( mpi.unpack(dest), open( "%s/fesc_test_%05i.p" % (pickle_path, iout), "wb" ) )
+        pickle.dump( mpi.unpack(dest), open( "%s/fesc_filt_%05i.p" % (pickle_path, iout), "wb" ) )
 
 if __name__ == "__main__":
     import sys

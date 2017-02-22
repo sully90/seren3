@@ -4,7 +4,11 @@ class EngineMode(Enum):
     SPLATTER = 1
     RAYTRACING = 2
 
-def Projection(family, field, mode=EngineMode.RAYTRACING, camera=None, **kwargs):
+class GalaxyAxis(Enum):
+    FACEON = 1
+    ANGMOM = 2
+
+def Projection(family, field, camera=None, mode=EngineMode.SPLATTER, gal_axis=None, **kwargs):
     '''
     Performs a basic projection using either the stock raytracing or splatter engine.
 
@@ -12,7 +16,7 @@ def Projection(family, field, mode=EngineMode.RAYTRACING, camera=None, **kwargs)
     =================================================================================
         family (seren3.core.snapshot.Family) - The family specific dataset for the desired field
         field (string) - the field to visualise
-        mode (EngineMode) - projection mode (default RayTracing)
+        mode (EngineMode) - projection mode (default Splatter)
         camera (pymses.analysis.Camera) - the camera object specifying the image domain
 
     TODO
@@ -22,6 +26,18 @@ def Projection(family, field, mode=EngineMode.RAYTRACING, camera=None, **kwargs)
 
     if camera is None:
         camera = family.camera()
+
+    if gal_axis is not None:
+        if isinstance(gal_axis, GalaxyAxis):
+            from seren3.utils import camera_utils
+            gal_los = None
+            if gal_axis == GalaxyAxis.FACEON:
+                gal_los = camera_utils.find_galaxy_axis(family.base, camera)
+            elif gal_axis == GalaxyAxis.ANGMOM:
+                gal_los = camera_utils.find_los(family.base, camera)
+            camera.los_axis = gal_los
+        else:
+            raise Exception("Must choose from GalaxyAxis enum to set gal_axis")
 
     engine = None
     if mode == EngineMode.SPLATTER:
