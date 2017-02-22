@@ -98,7 +98,19 @@ def plot_compare_distinct(path, ioutput, fname, last_MM_limit, colors, linestyle
         plt.show()
 
 
-def plot(snapshot, fname, time_since_last_MM_cutoff=0., dm_particle_cutoff=100, ncell_cutoff=1, nbins=12):
+def interp_Okamoto_Mc(z):
+    from seren3 import config
+    from scipy import interpolate
+
+    fname = "%s/Mc_Okamoto08.txt" % config.get('data', 'data_dir')
+    data = np.loadtxt(fname)
+    ok_a, ok_z, ok_Mc = data.T
+
+    fn = interpolate.interp1d(ok_z, ok_Mc)
+    return fn(z)
+
+
+def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, ncell_cutoff=1, nbins=12):
     '''
     Plot and fit the halo baryon fraction
     '''
@@ -134,7 +146,7 @@ def plot(snapshot, fname, time_since_last_MM_cutoff=0., dm_particle_cutoff=100, 
 
         for i in range(nrecords):
             res = data[i].result
-            mass[i] = res["tot_mass"]; fb[i] = res["fb"]; pid[i] = res["pid"]
+            mass[i] = res["hprops"]["mvir"]; fb[i] = res["fb"]; pid[i] = res["pid"]
             time_since_last_MM[i] = res["time_since_last_MM"]; np_dm[i] = res["np_dm"]
             ncell[i] = res["ncell"]
             tidal_force_tdyn[i] = res["hprops"]["tidal_force_tdyn"]
@@ -157,7 +169,7 @@ def plot(snapshot, fname, time_since_last_MM_cutoff=0., dm_particle_cutoff=100, 
         # mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
         # Apply tidal force limit
-        idx = np.where(tidal_force_tdyn <= time_since_last_MM_cutoff)
+        idx = np.where(tidal_force_tdyn <= tidal_force_cutoff)
         mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
         bc, mean, std = fit_scatter(np.log10(mass), fb, nbins=nbins)
@@ -176,14 +188,17 @@ def plot(snapshot, fname, time_since_last_MM_cutoff=0., dm_particle_cutoff=100, 
 
         # X,Y,Z = grid(mass, fb_cosmic_mean, np.log10(1. + tidal_force_tdyn))
         # ax1.contour(X, Y, Z)
-        
+
         p = ax1.scatter(mass, fb_cosmic_mean, s=_SIZE, alpha=1., c=np.log10(1.+tidal_force_tdyn), cmap="jet_black")
         cbar = plt.colorbar(p, ax=ax1)
         # cbar.set_label(r"Time Since Last MM [Gyr]")
         cbar.set_label(r"Tidal Force (Av. over dyn time)")
-        ax1.plot(x, y_cosmic_mean, color='k', linewidth=2.)
-        ax1.plot(x, gnedin_fitting_func(x, Mc, 2., **cosmo)/cosmic_mean, color='r', linewidth=2.)
-        ax1.plot(x, gnedin_fitting_func(x, Mc, 1., **cosmo)/cosmic_mean, color='b', linewidth=2.)
+        # ax1.plot(x, y_cosmic_mean, color='k', linewidth=2.)
+
+        Mc_okamoto = interp_Okamoto_Mc(cosmo["z"])
+        ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean, color='k', linewidth=2., label="Okamoto08")
+        ax1.plot(x, gnedin_fitting_func(x, Mc, 2., **cosmo)/cosmic_mean, color='r', linewidth=2., label="Fit")
+        # ax1.plot(x, gnedin_fitting_func(x, Mc, 1., **cosmo)/cosmic_mean, color='b', linewidth=2.)
         # ax1.plot(bc, mean/cosmic_mean, linewidth=3., color='b', linestyle='-')
         ax1.set_xscale("log")
 
@@ -192,7 +207,7 @@ def plot(snapshot, fname, time_since_last_MM_cutoff=0., dm_particle_cutoff=100, 
         ax1.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
         ax1.hlines(0.5, mass.min(), mass.max(), linestyle='--', linewidth=2.,\
                  label=r"$\frac{1}{2}$ $\frac{\Omega_{\mathrm{b}}}{\Omega_{\mathrm{M}}}$")
-        plt.legend(loc='upper right')
+        plt.legend(loc='upper left')
         # plt.ylim(0., 1.5)
 
         plt.show()
@@ -238,7 +253,33 @@ def fit(tot_mass, fb, **cosmo):
     # return popt, pcov
 
 
-def main(path, iout, pickle_path):
+def estimate_unresolved(snapshot, halo):
+    '''
+    For halos whos rvir is unresolved, we reset the radius to have the minimum cell width
+    and estimate the enclosed mass.
+    Warning: these halos are completely unresolved objects, and this function is used at the
+    users discretion.
+    '''
+    dx = snapshot.array(snapshot.info["boxlen"]/2**snapshot.info["levelmax"],\
+                     snapshot.info["unit_length"])
+    sphere = halo.sphere
+    rvir = sphere.radius  # code units
+    sphere.radius = dx
+
+    subsnap = snapshot[sphere]
+    gas_dset = subsnap.g["mass"].flatten()
+    # print len(gas_dset['mass']), gas_dset['mass'].units
+
+    ncell = len(gas_dset["mass"])
+    print ncell
+    fact = rvir.in_units(dx.units)/sphere.radius
+    # print rvir, fact
+
+    gas_mass_tot = gas_dset["mass"].in_units(_MASS_UNIT).sum()
+    return gas_mass_tot * fact
+
+
+def main(path, iout, pickle_path, allow_estimation=False):
     import seren3
     import pickle, os
     from seren3.analysis.parallel import mpi
@@ -277,10 +318,17 @@ def main(path, iout, pickle_path):
         # if np_dm > 50.:
         gas_dset = h.g["mass"].flatten()
         ncell = len(gas_dset["mass"])
+        gas_mass_tot = 0.
+        if ncell == 0 and allow_estimation:
+            mpi.msg("Estimating gas mass for halo %s" % h["id"])
+            gas_mass_tot = estimate_unresolved(snap, h)
+            ncell = 1
+        else:
+            gas_mass_tot = gas_dset["mass"].in_units(_MASS_UNIT).sum()
 
         part_mass_tot = part_dset["mass"].in_units(_MASS_UNIT).sum()
         star_mass_tot = part_dset["mass"].in_units(_MASS_UNIT)[ix_stars].sum()
-        gas_mass_tot = gas_dset["mass"].in_units(_MASS_UNIT).sum()
+        # gas_mass_tot = gas_dset["mass"].in_units(_MASS_UNIT).sum()
 
         tot_mass = part_mass_tot + gas_mass_tot
 
@@ -305,7 +353,10 @@ def main(path, iout, pickle_path):
             pickle_path = "%s/pickle/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
-        pickle.dump( mpi.unpack(dest), open( "%s/fbaryon_mm_%05i.p" % (pickle_path, iout), "wb" ) )
+        fname = "%s/fbaryon_mm_%05i.p" % (pickle_path, iout)
+        if allow_estimation:
+            fname = "%s/fbaryon_mm_gdset_est_%05i.p" % (pickle_path, iout)
+        pickle.dump( mpi.unpack(dest), open( fname, "wb" ) )
 
 if __name__ == "__main__":
     import sys
