@@ -191,7 +191,7 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, nce
 
         for i in range(nrecords):
             res = data[i].result
-            mass[i] = res["hprops"]["mvir"]; fb[i] = res["fb"]; pid[i] = res["pid"]
+            mass[i] = res["tot_mass"]; fb[i] = res["fb"]; pid[i] = res["pid"]
             time_since_last_MM[i] = res["time_since_last_MM"]; np_dm[i] = res["np_dm"]
             ncell[i] = res["ncell"]
             tidal_force_tdyn[i] = res["hprops"]["tidal_force_tdyn"]
