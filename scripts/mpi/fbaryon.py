@@ -28,8 +28,8 @@ def interp_Okamoto_Mc(z):
     ok_a, ok_z, ok_Mc = data.T
 
     # fn = extrap1d( interpolate.interp1d(ok_z, ok_Mc) )
-    fn = interpolate.InterpolatedUnivariateSpline(ok_z, ok_Mc, k=1)
-    return fn(z)
+    fn = interpolate.InterpolatedUnivariateSpline(ok_z, np.log10(ok_Mc), k=1)  # interpolate on log mass
+    return 10**fn(z)
 
 
 def plot_fits(Mc_amr, Mc_cudaton, **cosmo):
