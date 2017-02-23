@@ -17,97 +17,19 @@ def unpack(fname):
 
     return _unpack(data)
 
-def plot_compare_distinct(path, ioutput, fname, last_MM_limit, colors, linestyles, np_dm_thresh, ncell_thresh):
-    import pickle
-    import seren3
-    import matplotlib.pylab as plt
-    import matplotlib.gridspec as gridspec
-
-    #Plot alpha and Mc against redshift
-    fig = plt.figure()
-    #ax1 = fig.add_subplot(111)
-    #ax2 = ax1.twinx()
-    gs = gridspec.GridSpec(3,3,wspace=0.,hspace=0.)
-
-    ax1 = fig.add_subplot(gs[1:,:])
-    ax2 = fig.add_subplot(gs[:1,:], sharex=ax1)
-    plt.setp(ax2.get_xticklabels(), visible=False)
-
-    _SIZE = 12
-
-    def _filter_npart_dm(mass, fb, pid, time_since_last_MM, np_dm, ncell, dm_thresh, cell_thresh):
-        good = np.where(np.logical_and(np_dm >= dm_thresh, ncell >= cell_thresh))
-        return mass[good], fb[good], pid[good], time_since_last_MM[good]
-
-    snap = seren3.load_snapshot(path, ioutput)
-    with open(fname, 'rb') as f:
-        data = pickle.load(f)
-
-        nrecords = len(data)
-        mass = np.zeros(nrecords)
-        fb = np.zeros(nrecords)
-        pid = np.zeros(nrecords)
-        time_since_last_MM = np.zeros(nrecords)
-        np_dm = np.zeros(nrecords)
-        ncell = np.zeros(nrecords)
-
-        for i in range(nrecords):
-            res = data[i].result
-            mass[i] = res["tot_mass"]
-            fb[i] = res["fb"]
-            pid[i] = res["pid"]
-            time_since_last_MM[i] = res["time_since_last_MM"]
-            np_dm[i] = res["np_dm"]
-            ncell[i] = res["ncell"]
-            del res
-
-        mass, fb, pid, time_since_last_MM = _filter_npart_dm(mass, fb, pid, time_since_last_MM, np_dm, ncell, np_dm_thresh, ncell_thresh)
-
-
-        log_mass = np.log10(mass)
-        ix_pid = np.where(pid==-1)
-
-        cosmo = snap.cosmo
-        cosmic_mean = cosmo["omega_b_0"] / cosmo["omega_M_0"]
-        fb_cosmic_mean = fb/cosmic_mean
-
-        (Mc_fit_all, sigma_Mc_all), (alpha_fit_all, sigma_alpha_all), corr_all = fit(mass, fb, **cosmo)
-        print Mc_fit_all, alpha_fit_all
-        x = np.linspace(mass.min(), mass.max(), 1000)
-        y = gnedin_fitting_func(x, Mc_fit_all, alpha_fit_all, **cosmo)
-        ax2.plot(np.log10(x), y, linewidth=2., color='k', label='All', linestyle='-')
-
-        ax1.scatter(log_mass, fb_cosmic_mean, color='b', s=_SIZE, label='All')
-        ax1.scatter(log_mass[ix_pid], fb_cosmic_mean[ix_pid], color='r', s=_SIZE, label='Distinct')
-
-        for last_MM, c, ls in zip(last_MM_limit, colors, linestyles):
-            # alpha=1. - last_MM
-            alpha = 1.
-            ix_last_MM = np.where( np.logical_and(pid == -1, time_since_last_MM >= last_MM) )  # Last MM >= last_MM_limit*1000. Myr ago
-            (Mc_fit, sigma_Mc), (alpha_fit, sigma_alpha), corr = fit(mass[ix_last_MM], fb[ix_last_MM], **cosmo)
-            y = gnedin_fitting_func(mass[ix_last_MM], Mc_fit, alpha_fit, **cosmo)
-            # ax2.plot(log_mass[ix_last_MM], y, linewidth=2., color='k', linestyle=ls)
-
-            ax1.scatter(log_mass[ix_last_MM], fb_cosmic_mean[ix_last_MM], alpha=alpha, color=c, s=_SIZE, label='Last MM > %f Myr' % (last_MM*1000.))
-
-        ax1.set_xlabel(r"log$_{10}$(M$_{\mathrm{h}}$[M$_{\odot}$/h])")
-        ax1.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
-        # plt.legend(loc='upper right')
-        plt.xlim(7., 10.5)
-
-        plt.show()
-
 
 def interp_Okamoto_Mc(z):
     from seren3 import config
     from scipy import interpolate
+    from seren3.analysis.interpolate import extrap1d
 
     fname = "%s/Mc_Okamoto08.txt" % config.get('data', 'data_dir')
     data = np.loadtxt(fname)
     ok_a, ok_z, ok_Mc = data.T
 
-    fn = interpolate.interp1d(ok_z, ok_Mc)
+    fn = extrap1d( interpolate.interp1d(ok_z, ok_Mc) )
     return fn(z)
+
 
 def plot_fits(Mc_amr, Mc_cudaton, **cosmo):
     import numpy as np
@@ -257,6 +179,7 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, nce
 
         plt.show()
 
+
 def gnedin_fitting_func(Mh, Mc, alpha, **cosmo):
     f_bar = cosmo["omega_b_0"] /  cosmo["omega_M_0"]
     return f_bar * (1 + (2**(alpha/3.) - 1) * (Mh/Mc)**(-alpha))**(-3./alpha)
@@ -356,8 +279,8 @@ def main(path, iout, pickle_path, allow_estimation=False):
         mpi.msg("Working on halo %i \t %i" % (i, h.hid))
 
         part_dset = h.p[["id", "mass", "epoch"]].flatten()
-        ix_dm = np.where(np.logical_and( part_dset["id"] >= 0., part_dset["epoch"] == 0 ))
-        ix_stars = np.where( np.logical_and( part_dset["id"] >= 0., part_dset["epoch"] != 0 ) )
+        ix_dm = np.where(np.logical_and( part_dset["id"] > 0., part_dset["epoch"] == 0 ))  # index of dm particles
+        ix_stars = np.where( np.logical_and( part_dset["id"] > 0., part_dset["epoch"] != 0 ) )  # index of star particles
         np_dm = len(ix_dm[0])
 
         # if np_dm > 50.:
@@ -403,6 +326,7 @@ def main(path, iout, pickle_path, allow_estimation=False):
             fname = "%s/fbaryon_mm_gdset_est_%05i.p" % (pickle_path, iout)
         pickle.dump( mpi.unpack(dest), open( fname, "wb" ) )
 
+
 if __name__ == "__main__":
     import sys
     path = sys.argv[1]
@@ -415,3 +339,4 @@ if __name__ == "__main__":
     except Exception as e:
         from seren3.analysis.parallel import mpi
         mpi.terminate(500, e=e)
+

@@ -13,6 +13,26 @@ import numpy as np
 # interpolation arrays to correct type
 
 
+def extrap1d(interpolator):
+    from scipy import array
+
+    xs = interpolator.x
+    ys = interpolator.y
+
+    def pointwise(x):
+        if x < xs[0]:
+            return ys[0]+(x-xs[0])*(ys[1]-ys[0])/(xs[1]-xs[0])
+        elif x > xs[-1]:
+            return ys[-1]+(x-xs[-1])*(ys[-1]-ys[-2])/(xs[-1]-xs[-2])
+        else:
+            return interpolator(x)
+
+    def ufunclike(xs):
+        return array(map(pointwise, array(xs)))
+
+    return ufunclike
+
+
 def interpolate3d(x, y, z, x_vals, y_vals, z_vals, vals):
     """
     Interpolate on a 3D regular grid. 
