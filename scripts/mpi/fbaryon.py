@@ -21,13 +21,14 @@ def unpack(fname):
 def interp_Okamoto_Mc(z):
     from seren3 import config
     from scipy import interpolate
-    from seren3.analysis.interpolate import extrap1d
+    # from seren3.analysis.interpolate import extrap1d
 
     fname = "%s/Mc_Okamoto08.txt" % config.get('data', 'data_dir')
     data = np.loadtxt(fname)
     ok_a, ok_z, ok_Mc = data.T
 
-    fn = extrap1d( interpolate.interp1d(ok_z, ok_Mc) )
+    # fn = extrap1d( interpolate.interp1d(ok_z, ok_Mc) )
+    fn = interpolate.InterpolatedUnivariateSpline(ok_z, ok_Mc, k=1)
     return fn(z)
 
 
