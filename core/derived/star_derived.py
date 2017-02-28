@@ -55,7 +55,9 @@ def star_Nion_d(context, dset, dt=0., group=1):
 
     # Multiply by (SSP) escape fraction and return
     nml = context.nml
-    rt_esc_frac = float(nml[nml.NML.RT_PARAMS]['rt_esc_frac'].replace('d', 'e'))
+    NML_KEYS = nml.NML
+
+    rt_esc_frac = float(nml[NML_KEYS.RT_PARAMS]['rt_esc_frac'].replace('d', 'e'))
     Nion_d = SimArray(rt_esc_frac * nPhotons, "s**-1 Msol**-1")
     Nion_d.set_field_latex("$\\dot{N_{\\mathrm{ion}}}$")
     return Nion_d

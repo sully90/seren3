@@ -33,7 +33,7 @@ def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
     mass = dset["mass"].in_units("Msol")
 
     if len(age) == 0 or len(mass) == 0:
-        raise NoParticlesException("No particles found while computing SFR", 'star_sSFR')
+        raise NoParticlesException("No particles found while computing SFR", 'analysis/stars/sfr')
 
     def compute_sfr(age, mass, nbins=nbins, **kwargs):
         agerange = kwargs.pop('agerange', [age.min(), age.max()])

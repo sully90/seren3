@@ -136,7 +136,7 @@ class Snapshot(object):
         import os
         if os.path.isfile(self.info_rt_fname):
             return 'rt'
-        elif os.path.isfile("%s/output_%05i/rad_%05i.out00001" % (self.path, self.ioutout, self.ioutout)):
+        elif os.path.isfile("%s/output_%05i/rad_%05i.out00001" % (self.path, self.ioutput, self.ioutput)):
             return 'cudaton'
         else:
             return 'ramses'
