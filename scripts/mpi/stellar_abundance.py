@@ -87,8 +87,9 @@ def plot(snap, fname, plot_baryon_fraction=True, compare=True, dm_particle_cutof
 
 def stars(dset):
     return np.where( np.logical_and(dset["epoch"] != 0, dset["id"] > 0.) )
+    
 
-def main(path, iout, pickle_path=None):
+def main(path, iout, finder='ctrees', pickle_path=None):
     import seren3
     from seren3.analysis.parallel import mpi
 
@@ -96,11 +97,12 @@ def main(path, iout, pickle_path=None):
     snap = seren3.load_snapshot(path, iout)
     snap.set_nproc(1)  # disable multiprocessing
 
-    halos = snap.halos(finder='ctrees')
+    halos = snap.halos(finder=finder)
     halo_ix = None
     if mpi.host:
         halo_ix = halos.halo_ix(shuffle=True)
 
+    mpi.msg("Starting worker loop")
     dest = {}
     for i, sto in mpi.piter(halo_ix, storage=dest):
         h = halos[i]
@@ -137,8 +139,9 @@ if __name__ == "__main__":
     import sys
     path = sys.argv[1]
     iout = int(sys.argv[2])
+    finder = sys.argv[3]
     pickle_path = None
-    if len(sys.argv) > 3:
-        pickle_path = sys.argv[3]
+    if len(sys.argv) > 4:
+        pickle_path = sys.argv[4]
 
-    main(path, iout, pickle_path)
+    main(path, iout, finder, pickle_path)

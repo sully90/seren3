@@ -1,21 +1,7 @@
 import numpy as np
 
+_DEFAULT_ALPHA = 2.
 _MASS_UNIT = "Msol h**-1"
-
-def unpack(fname):
-    import pickle
-    # fname = "%s/pickle/fbaryon_%05i.p" % (path, iout)
-    data = pickle.load( open(fname, "rb") )
-
-    def _unpack(data):
-        tot_mass, fb, pid = (np.zeros(len(data)), np.zeros(len(data)), np.zeros(len(data)))
-        for i in range(len(data)):
-            tot_mass[i] = data[i].result["tot_mass"]
-            fb[i] = data[i].result["fb"]
-            pid = data[i].result["pid"]
-        return tot_mass, fb, pid
-
-    return _unpack(data)
 
 
 def interp_Okamoto_Mc(z):
@@ -27,9 +13,10 @@ def interp_Okamoto_Mc(z):
     data = np.loadtxt(fname)
     ok_a, ok_z, ok_Mc = data.T
 
-    # fn = extrap1d( interpolate.interp1d(ok_z, ok_Mc) )
-    fn = interpolate.InterpolatedUnivariateSpline(ok_z, np.log10(ok_Mc), k=1)  # interpolate on log mass
-    return 10**fn(z)
+    fn = interpolate.interp1d(ok_z, ok_Mc, fill_value="extrapolate")
+    return fn(z)
+    # fn = interpolate.InterpolatedUnivariateSpline(ok_z, np.log10(ok_Mc), k=1)  # interpolate on log mass
+    # return 10**fn(z)
 
 
 def plot_fits(Mc_amr, Mc_cudaton, **cosmo):
@@ -78,7 +65,7 @@ def plot_fits(Mc_amr, Mc_cudaton, **cosmo):
     return fb_amr, fb_cudaton
 
 
-def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, ncell_cutoff=1, nbins=12):
+def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., ncell_cutoff=1., **kwargs):
     '''
     Plot and fit the halo baryon fraction
     '''
@@ -87,21 +74,18 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, nce
     import matplotlib.gridspec as gridspec
     from seren3.analysis.plots import fit_scatter, grid
 
-    _SIZE = 12  # point size
-    # _MASS_CUTOFF = 2e7  # Msun/h
+    # Set some global variables
+    _SIZE = 12
     _MASS_CUTOFF = 1e6  # Msun/h
 
-    # Prepare the figure
-    # fig = plt.figure()
-    # gs = gridspec.GridSpec(3,3,wspace=0.,hspace=0.)
+    fix_alpha = kwargs.get("fix_alpha", True)
+    use_lmfit = kwargs.get("use_lmfit", True)
 
-    # ax1 = fig.add_subplot(gs[1:,:])
-    # ax2 = fig.add_subplot(gs[:1,:], sharex=ax1)
-    # plt.setp(ax2.get_xticklabels(), visible=False)
-    ax1 = plt.gca()
-
+    # Cosmological params
     cosmo = snapshot.cosmo
-    cosmic_mean = cosmo["omega_b_0"]/cosmo["omega_M_0"]
+    cosmic_mean_b = cosmo["omega_b_0"] / cosmo["omega_M_0"]
+
+    # Open the file and load the pickle dictionary
     with open(fname, "rb") as f:
         data = pickle.load(f)
 
@@ -132,30 +116,26 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, nce
         idx = np.where(mass >= _MASS_CUTOFF)
         mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
-        # Apply time since last merger cutoff
-        # idx = np.where(time_since_last_MM >= time_since_last_MM_cutoff)
-        # mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
-
-        # Apply tidal force limit
+        # Apply tidal force cutoff
         idx = np.where(tidal_force_tdyn <= tidal_force_cutoff)
         mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
-        bc, mean, std = fit_scatter(np.log10(mass), fb, nbins=nbins)
-        bc = 10**bc
-        # Fit the data
-        (Mc, Mc_sigma), (alpha, alpha_sigma), corr = fit(mass, fb, **cosmo)
-        # (Mc, Mc_sigma), (alpha, alpha_sigma), corr = fit(bc, mean, **cosmo)
-        x = np.linspace(mass.min(), mass.max(), 1000)
-        y = gnedin_fitting_func(x, Mc, alpha, **cosmo)
+        # Compute the characteristic mass scale, Mc
+        fit_dict = fit(mass, fb, fix_alpha, use_lmfit=use_lmfit, **cosmo)
+        Mc_fit, Mc_stderr = ( fit_dict["Mc"]["fit"], fit_dict["Mc"]["stderr"] )
+        alpha_fit, alpha_stderr = ( fit_dict["alpha"]["fit"], fit_dict["alpha"]["stderr"] )
 
-        print 'Mc(z=%1.1f) = %e, alpha = %f' % (snapshot.z, Mc, alpha)
+        # Arrays for generating the fit
+        x = np.linspace(mass.min(), mass.max(), 10000)
+        y = gnedin_fitting_func(x, Mc_fit, alpha_fit, **cosmo)
+
+        print 'Mc(z=%1.1f) = %e +/- %e, alpha = %f' % (snapshot.z, Mc_fit, Mc_stderr, alpha_fit)
 
         # Plot in units of the cosmic mean
-        fb_cosmic_mean = fb/cosmic_mean
-        y_cosmic_mean = y/cosmic_mean
+        fb_cosmic_mean = fb/cosmic_mean_b
+        y_cosmic_mean = y/cosmic_mean_b
 
-        # X,Y,Z = grid(mass, fb_cosmic_mean, np.log10(1. + tidal_force_tdyn))
-        # ax1.contour(X, Y, Z)
+        ax1 = plt.gca()
 
         p = ax1.scatter(mass, fb_cosmic_mean, s=_SIZE, alpha=1., c=np.log10(1.+tidal_force_tdyn), cmap="jet_black")
         cbar = plt.colorbar(p, ax=ax1)
@@ -164,12 +144,12 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, nce
         # ax1.plot(x, y_cosmic_mean, color='k', linewidth=2.)
 
         Mc_okamoto = interp_Okamoto_Mc(cosmo["z"])
-        ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean, color='k', linewidth=2., label=r"Okamoto08 Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_okamoto))
-        ax1.plot(x, gnedin_fitting_func(x, Mc, 2., **cosmo)/cosmic_mean, color='r', linewidth=2., label=r"Fit Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc))
-        # ax1.plot(x, gnedin_fitting_func(x, Mc, 1., **cosmo)/cosmic_mean, color='b', linewidth=2.)
-        # ax1.plot(bc, mean/cosmic_mean, linewidth=3., color='b', linestyle='-')
-        ax1.set_xscale("log")
+        ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean_b,\
+                     color='k', linewidth=2., label=r"Okamoto08 Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_okamoto))
+        ax1.plot(x, gnedin_fitting_func(x, Mc_fit, 2., **cosmo)/cosmic_mean_b,\
+                     color='r', linewidth=2., label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
 
+        ax1.set_xscale("log")
         ax1.set_title("z = %1.1f" % snapshot.z)
         ax1.set_xlabel(r"log$_{10}$(M$_{\mathrm{h}}$[M$_{\odot}$/h])")
         ax1.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
@@ -181,45 +161,76 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100, nce
         plt.show()
 
 
-def gnedin_fitting_func(Mh, Mc, alpha, **cosmo):
+def gnedin_fitting_func(Mh, Mc, alpha=_DEFAULT_ALPHA, **cosmo):
     f_bar = cosmo["omega_b_0"] /  cosmo["omega_M_0"]
     return f_bar * (1 + (2**(alpha/3.) - 1) * (Mh/Mc)**(-alpha))**(-3./alpha)
 
 
-def fit(tot_mass, fb, **cosmo):
-    '''
-    Fit Mc and alpha
-    '''
-    import numpy as np
+def lmfit_gnedin_fitting_func(params, mass, data, **cosmo):
+    # For use with the lmfit module
+
+    Mc = params["Mc"].value
+    alpha = params["alpha"].value
+    f_bar = cosmo["omega_b_0"] /  cosmo["omega_M_0"]
+    model = f_bar * (1 + (2**(alpha/3.) - 1) * (mass/Mc)**(-alpha))**(-3./alpha)
+    return model - data  # what we want to minimise
+
+
+def fit(mass, fb, fix_alpha, use_lmfit=True, **cosmo):
     import scipy.optimize as optimization
 
-    log_tot_mass = np.log10(tot_mass)
-    cosmic_mean = cosmo["omega_b_0"] / cosmo["omega_M_0"]
-    fb_cosmic_mean = fb/cosmic_mean
+    # Make an initial guess at Mc
+    cosmic_mean_b = cosmo["omega_b_0"] / cosmo["omega_M_0"]
+    fb_cosmic_mean = fb/cosmic_mean_b
 
-    idx_Mc = np.abs(fb_cosmic_mean - 0.5).argmin()
-    Mc = tot_mass[idx_Mc]
-    alpha = 1.5
-    p0 = [Mc, alpha]  # the initial guess at Mc/alpha
+    idx_Mc_guess = np.abs( fb_cosmic_mean - 0.5 ).argmin()
+    Mc_guess = mass[idx_Mc_guess]
 
-    def _gnedin_fitting_func(Mh, Mc, alpha):
-        return gnedin_fitting_func(Mh, Mc, alpha, **cosmo)
+    p0 = [Mc_guess]
+    if fix_alpha is False:
+        alpha_guess = _DEFAULT_ALPHA
+        p0.append(alpha_guess)
 
-    # Curve fit
-    popt, pcov = optimization.curve_fit(_gnedin_fitting_func, tot_mass, fb, p0=p0, maxfev=1000)
+    if use_lmfit:
+        # Alternative least-squares fitting routine
 
-    # Errors
-    sigma_Mc = np.sqrt(pcov[0,0])
-    sigma_alpha = np.sqrt(pcov[1,1])
+        from lmfit import minimize, Parameters
+        fit_params = Parameters()
+        fit_params.add("Mc", value=p0[0], min=0.)
+        fit_params.add("alpha", value=_DEFAULT_ALPHA, vary=np.logical_not(fix_alpha), min=0.)
+        print fit_params
+        result = minimize( lmfit_gnedin_fitting_func, fit_params, args=(mass, fb), kws=cosmo, method='dogleg')
+        if result.success:
+            Mc_res = result.params['Mc']
+            alpha_res = result.params['alpha']
+            return {"Mc" : {"fit" : Mc_res.value, "stderr" : Mc_res.stderr},\
+                    "alpha" : {"fit" : alpha_res.value, "stderr" : alpha_res.stderr}}
+        else:
+            raise Exception("Could not fit params: %s" % result.message)
+    else:
+        # Curve fit
+        fn = lambda *args: gnedin_fitting_func(*args, **cosmo)
+        popt, pcov = optimization.curve_fit( fn, mass, fb, p0=p0, maxfev=1000 )
 
-    # Correlation
-    corr = pcov[0,1] / (sigma_Mc * sigma_alpha)
+        # Fit
+        Mc_fit = popt[0]
 
-    Mc_fit = popt[0]
-    alpha_fit = popt[1]
+        # Errors
+        sigma_Mc = np.sqrt(pcov[0,0])
 
-    return (Mc_fit, sigma_Mc), (alpha_fit, sigma_alpha), corr
-    # return popt, pcov
+        if fix_alpha:
+            return {"Mc" : {"fit" : Mc_fit, "stderr" : sigma_Mc},\
+                    "alpha" : {"fit" : _DEFAULT_ALPHA, "stderr" : None}}
+        else:
+            alpha_fit = popt[1]
+            sigma_alpha = np.sqrt(pcov[1,1])
+
+            # correlation between Mc and alpha
+            corr = pcov[0,1] / (sigma_Mc * sigma_alpha)
+            print 'corr = ', corr
+            return {"Mc" : {"fit" : Mc_fit, "stderr" : sigma_Mc},\
+                    "alpha" : {"fit" : alpha_fit, "stderr" : sigma_alpha},\
+                    "corr" : corr}
 
 
 def estimate_unresolved(snapshot, halo):

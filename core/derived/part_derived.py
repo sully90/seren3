@@ -1,7 +1,6 @@
 import seren3
 from seren3.array import SimArray
 import numpy as np
-from pymses.utils import constants as C
 
 @seren3.derived_quantity(requires=["epoch"])
 def part_age(context, dset, **kwargs):
