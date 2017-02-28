@@ -4,6 +4,37 @@ Routines for plotting star properties
 import numpy as np
 import matplotlib.pylab as plt
 
+
+def plot_sfr(context, **kwargs):
+    '''
+    Plots the star formation rate
+    '''
+    from seren3.analysis import stars
+    from seren3.array import units
+
+    sfr, lbtime, bsize = stars.sfr(context, **kwargs)
+
+    plt.step(lbtime, sfr, linewidth=2.)
+    plt.yscale("log")
+
+    unit = sfr.units
+    dims = unit.dimensional_project([units.Unit("kg"), units.Unit("s")])
+
+    field_name = None
+    if dims[0].numerator == 1:
+        # SFR [Msol / Gyr]
+        field_name = "SFR"
+    elif dims[0].numerator == 0:
+        # sSFR [Gyr^-1]
+        field_name = "sSFR"
+    else:
+        raise Exception("Cannot understand SFR dims: %s" % dims)
+    plt.ylabel(r"log$_{10}$ %s [$%s$]" % (field_name, unit.latex()))
+    plt.xlabel(r"Lookback-time [$%s$]" % lbtime.units.latex())
+
+    plt.show()
+
+
 def schmidtlaw(subsnap, filename=None, center=True, pretime='50 Myr', diskheight='3 kpc', rmax='20 kpc', compare=True, \
             radial=True, clear=True, legend=True, bins=10, **kwargs):
     '''
