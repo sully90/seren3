@@ -1,3 +1,25 @@
+def test_sfr():
+    '''
+    Test SFR calculation is working correctly
+    '''
+    import seren3
+    import numpy as np
+    from scipy import integrate
+
+    path = "/research/prace/david/aton/256/"
+    sim = seren3.init(path)
+    iout = sim.numbered_outputs[-1]  # last snapshot
+
+    snap = sim[iout]
+    snap_sfr, lbtime, bsize = sfr(snap)
+
+    dset = snap.s["mass"].flatten()
+    mstar_tot = dset["mass"].in_units("Msol").sum()
+    integrated_mstar = integrate.trapz(snap_sfr, lbtime)
+
+    assert(np.allclose(mstar_tot, integrated_mstar, rtol=1e-2)), "Error: Integrated stellar mass not close to actual."
+    print "Passed"
+
 def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
     '''
     Compute the (specific) star formation rate within this context.
@@ -16,7 +38,7 @@ def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
     def compute_sfr(age, mass, nbins=nbins, **kwargs):
         agerange = kwargs.pop('agerange', [age.min(), age.max()])
         binnorm = SimArray(1e-9 * nbins / (agerange[1] - agerange[0]), "yr**-1")
-        # binnorm = nbins / (agerange[1] - agerange[0])
+
         weights = mass * binnorm
 
         sfrhist, bin_edges = np.histogram(age, weights=weights, bins=nbins, range=agerange, **kwargs)
