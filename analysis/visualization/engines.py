@@ -19,6 +19,7 @@ from seren3.core.serensource import DerivedDataset
 from seren3.exceptions import IncompatibleUnitException
 
 class ProjectionEngine(object):
+    # Abstract class
     __metaclass__ = abc.ABCMeta
     def __init__(self, family, field):
         """
@@ -68,6 +69,7 @@ class ProjectionEngine(object):
         if unit == units.NoUnit():
             return self.family.C.none
         return derived_utils.pymses_units(str(unit))
+
 
     def get_field(self, dset, field):
         dset_gen = lambda dset: DerivedDataset(self.family, dset)
@@ -185,6 +187,18 @@ class RayTraceMinTemperatureEngine(RayTraceEngine):
     def get_operator(self):
         from seren3.analysis.visualization.operators import MinTempOperator
         return MinTempOperator(self.get_map_unit())
+
+
+class CustomRayTraceEngine(RayTraceEngine):
+    '''
+    Ray-tracing engine which accepts a user defined operator
+    '''
+    def __init__(self, family, field, operator):
+        super(CustomRayTraceEngine, self).__init__(family, field)
+        self._operator = operator
+
+    def get_operator(self):
+        return self._operator
 
 '''
 FFT convolution for EXTENSIVE scalar fields

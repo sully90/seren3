@@ -25,6 +25,10 @@ import config
 # # mpljson = json.load(open("%s/styles/538.json" % config.DATA_DIR))
 # matplotlib.rcParams.update(mpljson)
 
+# print "PLOT FBARYON FIT CURVES FOR AMR AND CUDATON RUNS AT FIXED POINTS IN THEIR REIONIZATION HISTORY, NOT REDSHIFT"
+# print "RUN RAMSES-RT SIM WITH EXACT SAME PHYSICS_PARAMS AS ATON RUNS (EXCEPT SF CRITERIA)"
+# print "Impact of small boost in speed of light on Mc(z)? Is reduced speed of light impacing suppression strengh?"
+
 def init(path="./"):
     from seren3.core.simulation import Simulation
     return Simulation(path)

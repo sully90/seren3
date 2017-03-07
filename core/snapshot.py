@@ -42,6 +42,9 @@ class Snapshot(object):
         # Init friedmann dict variable
         self._friedmann = None
 
+        # Init info variable
+        self._info = None
+
         # Quantities object
         self.quantities = Quantity(self)
 
@@ -155,24 +158,28 @@ class Snapshot(object):
         '''
         Expose info API
         '''
-        fname = self.info_fname
-        from pymses.sources.ramses import info
-        info_dict = info.read_ramses_info_file(fname)
-        if self.patch == 'rt':
-            full_info = info_dict.copy()
-            full_info.update(self.info_rt)
-            return full_info
-        return info_dict
+        if self._info is None:
+            fname = self.info_fname
+            from pymses.sources.ramses import info as info_utils
+
+            info_dict = info_utils.read_ramses_info_file(fname)
+            if self.patch == 'rt':
+                full_info = info_dict.copy()
+                full_info.update(self.info_rt)
+                self._info = full_info
+            else:
+                self._info = info_dict
+        return self._info
 
     @property
     def info_rt(self):
         '''
         Expose RT info API
         '''
-        from pymses.sources.ramses import info
+        from pymses.sources.ramses import info as info_utils
         
         fname = self.info_rt_fname
-        return info.read_ramses_rt_info_file(fname)
+        return info_utils.read_ramses_rt_info_file(fname)
 
     @property
     def unit_l(self):

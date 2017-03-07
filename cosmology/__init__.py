@@ -17,6 +17,75 @@ def z_to_age(zmax=20., zmin=0., return_inverse=False, **cosmo):
     return cd.quick_age_function(zmax=zmax, zmin=zmin, return_inverse=return_inverse, **cosmo)
 
 
+def plot_energy_density_evol(**cosmo):
+    '''
+    Plots the evolution of energy densities in the Universe
+    '''
+    import matplotlib
+    from matplotlib import rc
+    import matplotlib.ticker as ticker
+    import matplotlib.pylab as plt
+
+    matplotlib.rcParams['axes.linewidth'] = 2.
+    matplotlib.rcParams['xtick.labelsize'] = 14
+    matplotlib.rcParams['ytick.labelsize'] = 14
+    matplotlib.rcParams['axes.labelsize'] = 20
+
+    fig = plt.figure(figsize=(5, 4))
+
+    H0 = cosmo['h'] * 100.
+    H0 *= (1000. / 3.08e22)
+
+    rho_crit_0 = rho_crit_now(**cosmo)
+
+    omega_r_0 = 9.4e-5
+    rho_m = lambda z: cosmo['omega_M_0'] * rho_crit_0 * (1. + z)**3
+    rho_r = lambda z: omega_r_0 * rho_crit_0 * (1. + z)**4
+
+    a = np.linspace(1e-5, 1., 100.)
+    z = (1./a) - 1.
+
+    # hfont = {'fontname':'Times'}
+
+    # z_eq = (cosmo["omega_M_0"] / omega_r_0) - 1
+    # a_eq = 1./(1. + z_eq)
+    # ix_eq = np.abs(a - a_eq).argmin()
+
+    # z_lambda = (cosmo["omega_lambda_0"] / cosmo["omega_M_0"])**(1./3.) - 1
+    # a_lambda = 1./(1. + z_lambda)
+    # ix_lambda = np.abs(a - a_lambda).argmin()
+
+    rho_m_a = rho_m(z) / rho_crit_0
+    rho_r_a = rho_r(z) / rho_crit_0
+    rho_lambda_a = np.ones(len(z)) * cosmo["omega_lambda_0"]
+    rho_tot_a = rho_m_a + rho_r_a + rho_lambda_a
+
+    plt.loglog(a, rho_m_a, color='k', linestyle='-.')
+    plt.loglog(a, rho_lambda_a, color='k', linestyle='-.')
+    plt.loglog(a, rho_r_a, color='k', linestyle='-.')
+
+    # print a_eq, rho_m_a[ix_eq], a[ix_eq]
+    # plt.annotate("Matter-radiation equality", xy=(a_eq, rho_m_a[ix_eq]), xytext=(0.00073, 2.308e10), arrowprops=dict(facecolor='black', shrink=0.05))
+    # plt.annotate("Dark Energy Domination", xy=(a_lambda, rho_m_a[ix_lambda]))
+    
+    plt.text(0.05, 10000., "matter", size=12, fontweight='bold')
+    plt.text(0.0003, 6000., "radiation", size=12, fontweight='bold')
+    plt.text(0.00002, 0.05, "dark energy", size=12, fontweight='bold')
+    plt.xlabel(r"$a(t)$")
+    h = plt.ylabel(r"$\frac{\rho(t)}{\rho_{c,0}}$", labelpad=15)
+    h.set_rotation(0)
+    plt.ylim(1e-4, 5e14)
+    # plt.ylim(-5, 15)
+    plt.xlim(a.min(), a.max())
+
+    ax = plt.gca()
+    # ax.yaxis.set_ticks(np.arange(0, 20, 5))
+    # ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%1.0i'))
+
+    plt.tight_layout()
+    plt.savefig('./energy_den_evol_2.eps', format='eps', dpi=1000)
+
+
 def fgrowth(**cosmo):
     """ Return Lahav et al. (1991) fit to dln(D)/dln(a) """
     return ((cosmo['omega_M_0'] * (1. + cosmo['z']) ** 3.)
@@ -149,7 +218,7 @@ def omega_z(omega0, z):
 
 
 def Hubble_z(z, **cosmo):
-    H0 = cosmo['h'] * (1000. / 3.08e22)
+    H0 = (cosmo['h'] * 100.) * (1000. / 3.08e22)
     Hz = lambda z: H0 * np.sqrt((cosmo['omega_M_0']
                                  * (1. + z) ** 3.) + cosmo['omega_lambda_0'])
     return Hz(z)

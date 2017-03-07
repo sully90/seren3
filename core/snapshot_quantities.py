@@ -121,11 +121,11 @@ class Quantity(object):
         if mem_opt:
             msum = 0.
             for dset in snap.g[[field, 'mass']]:
-                msum += np.sum(dset[field] * dset['mass'])
+                msum += np.sum(dset[field] * dset['mass'].in_units("Msol"))
 
             return (msum / boxmass)
         else:
             dset = snap.g[[field, 'mass']].flatten()
-            return np.sum(dset[field] * dset['mass']) / boxmass
+            return np.sum(dset[field] * dset['mass'].in_units("Msol")) / boxmass
 
             

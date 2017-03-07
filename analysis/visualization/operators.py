@@ -35,7 +35,7 @@ class MinxHIIOperator(AbstractOperator):
         '''
         def invT_func(dset):
             return 1./dset["xHII"]
-        d = {"invTemp": invT_func}
+        d = {"invxHII": invT_func}
         super(MinxHIIOperator, self).__init__(d, unit, is_max_alos=True)
     def operation(self, int_dict):
         map = int_dict.values()[0]

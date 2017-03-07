@@ -13,8 +13,8 @@ def interp_Okamoto_Mc(z):
     data = np.loadtxt(fname)
     ok_a, ok_z, ok_Mc = data.T
 
-    fn = interpolate.interp1d(ok_z, ok_Mc, fill_value="extrapolate")
-    return fn(z)
+    fn = interpolate.interp1d(ok_z, np.log10(ok_Mc), fill_value="extrapolate")
+    return 10**fn(z)
     # fn = interpolate.InterpolatedUnivariateSpline(ok_z, np.log10(ok_Mc), k=1)  # interpolate on log mass
     # return 10**fn(z)
 
@@ -92,33 +92,36 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., nc
         # Load the required arrays. We use dm particle and cell count to filter poorly resolved halos
         # pid==-1 gives distinct halos only
         nrecords = len(data)
-        mass = np.zeros(nrecords); fb = np.zeros(nrecords); pid = np.zeros(nrecords)
-        time_since_last_MM = np.zeros(nrecords); np_dm = np.zeros(nrecords); ncell = np.zeros(nrecords)
+        mass = np.zeros(nrecords); fb = np.zeros(nrecords)
+        np_dm = np.zeros(nrecords); ncell = np.zeros(nrecords)
+
         tidal_force_tdyn = np.zeros(nrecords)
+        pid = np.zeros(nrecords)
 
         for i in range(nrecords):
             res = data[i].result
-            mass[i] = res["tot_mass"]; fb[i] = res["fb"]; pid[i] = res["pid"]
-            time_since_last_MM[i] = res["time_since_last_MM"]; np_dm[i] = res["np_dm"]
-            ncell[i] = res["ncell"]
+            mass[i] = res["tot_mass"]; fb[i] = res["fb"]
+            np_dm[i] = res["np_dm"]; ncell[i] = res["ncell"]
+
+            pid[i] = res["pid"]
             tidal_force_tdyn[i] = res["hprops"]["tidal_force_tdyn"]
             del res
 
         # Apply resolution cutoff
         idx = np.where( np.logical_and(np_dm >= dm_particle_cutoff, ncell >= ncell_cutoff) )
-        mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
         # Keep distinct halos only
         idx = np.where(pid[idx]==-1)
-        mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
         # Apply mass cutoff
         idx = np.where(mass >= _MASS_CUTOFF)
-        mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
         # Apply tidal force cutoff
         idx = np.where(tidal_force_tdyn <= tidal_force_cutoff)
-        mass = mass[idx]; fb = fb[idx]; time_since_last_MM = time_since_last_MM[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
         # Compute the characteristic mass scale, Mc
         fit_dict = fit(mass, fb, fix_alpha, use_lmfit=use_lmfit, **cosmo)
@@ -137,7 +140,9 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., nc
 
         ax1 = plt.gca()
 
-        p = ax1.scatter(mass, fb_cosmic_mean, s=_SIZE, alpha=1., c=np.log10(1.+tidal_force_tdyn), cmap="jet_black")
+        carr = np.log10(1.+tidal_force_tdyn)
+        # carr = tidal_force_tdyn
+        p = ax1.scatter(mass, fb_cosmic_mean, s=_SIZE, alpha=1., c=carr, cmap="jet_black")
         cbar = plt.colorbar(p, ax=ax1)
         # cbar.set_label(r"Time Since Last MM [Gyr]")
         cbar.set_label(r"Tidal Force (Av. over dyn time)")
@@ -146,11 +151,15 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., nc
         Mc_okamoto = interp_Okamoto_Mc(cosmo["z"])
         ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean_b,\
                      color='k', linewidth=2., label=r"Okamoto08 Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_okamoto))
-        ax1.plot(x, gnedin_fitting_func(x, Mc_fit, 2., **cosmo)/cosmic_mean_b,\
-                     color='r', linewidth=2., label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
+
+        # ax1.plot(x, gnedin_fitting_func(x, Mc_fit, 2., **cosmo)/cosmic_mean_b,\
+        #              color='r', linewidth=2., label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
+        y_upper = gnedin_fitting_func(x, Mc_fit + Mc_stderr, alpha_fit, **cosmo)/cosmic_mean_b
+        y_lower = gnedin_fitting_func(x, Mc_fit - Mc_stderr, alpha_fit, **cosmo)/cosmic_mean_b
+        ax1.fill_between(x, y1=y_lower, y2=y_upper, color='r', label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
 
         ax1.set_xscale("log")
-        ax1.set_title("z = %1.1f" % snapshot.z)
+        ax1.set_title("z = %1.2f" % snapshot.z)
         ax1.set_xlabel(r"log$_{10}$(M$_{\mathrm{h}}$[M$_{\odot}$/h])")
         ax1.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
         ax1.hlines(0.5, mass.min(), mass.max(), linestyle='--', linewidth=2.,\
@@ -158,7 +167,7 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., nc
         plt.legend(loc='upper left')
         # plt.ylim(0., 1.5)
 
-        plt.show()
+        # plt.show()
 
 
 def gnedin_fitting_func(Mh, Mc, alpha=_DEFAULT_ALPHA, **cosmo):
@@ -278,7 +287,10 @@ def main(path, iout, pickle_path, allow_estimation=False):
     snap.set_nproc(1)  # disbale multiprocessing/threading
 
     # Use consistent trees halo catalogues to compute time since last major merger
-    halos = snap.halos(finder="ctrees")
+    # finder = "ahf"
+    finder = "ctrees"
+    # halos = snap.halos(finder="ctrees")
+    halos = snap.halos(finder=finder)
 
     halo_ix = None
     if mpi.host:
@@ -315,27 +327,32 @@ def main(path, iout, pickle_path, allow_estimation=False):
         fb = (gas_mass_tot + star_mass_tot)/tot_mass
         sto.idx = h["id"]
 
-        # Compute time since last major merger and store
-        pid = h["pid"]  # -1 if distinct halo
-        scale_of_last_MM = h["scale_of_last_mm"]  # aexp of last major merger
-        z_of_last_MM = (1./scale_of_last_MM)-1.
-        age_of_last_MM = age_fn(z_of_last_MM)
+        if finder == "ctrees":
+            # Compute time since last major merger and store
+            pid = h["pid"]  # -1 if distinct halo
+            scale_of_last_MM = h["scale_of_last_mm"]  # aexp of last major merger
+            z_of_last_MM = (1./scale_of_last_MM)-1.
+            age_of_last_MM = age_fn(z_of_last_MM)
 
-        time_since_last_MM = age_now - age_of_last_MM
-        sto.result = {"fb" : fb, "tot_mass" : tot_mass,\
-                 "pid" : pid, "np_dm" : np_dm, "ncell" : ncell,\
-                 "time_since_last_MM" : time_since_last_MM, "hprops" : h.properties}
-        # else:
-        #     mpi.msg("Skipping halo with %i dm particles" % np_dm)
+            time_since_last_MM = age_now - age_of_last_MM
+            sto.result = {"fb" : fb, "tot_mass" : tot_mass,\
+                     "pid" : pid, "np_dm" : np_dm, "ncell" : ncell,\
+                     "time_since_last_MM" : time_since_last_MM, "hprops" : h.properties}
+            # else:
+            #     mpi.msg("Skipping halo with %i dm particles" % np_dm)
+        else:
+            sto.result = {"fb" : fb, "tot_mass" : tot_mass,\
+                     "np_dm" : np_dm, "ncell" : ncell,\
+                     "hprops" : h.properties}
 
     if mpi.host:
         if pickle_path is None:
             pickle_path = "%s/pickle/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
-        fname = "%s/fbaryon_mm_%05i.p" % (pickle_path, iout)
+        fname = "%s/fbaryon_tdyn_%05i.p" % (pickle_path, iout)
         if allow_estimation:
-            fname = "%s/fbaryon_mm_gdset_est_%05i.p" % (pickle_path, iout)
+            fname = "%s/fbaryon_tdyn_gdset_est_%05i.p" % (pickle_path, iout)
         pickle.dump( mpi.unpack(dest), open( fname, "wb" ) )
 
 
