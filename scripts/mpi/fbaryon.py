@@ -65,18 +65,70 @@ def plot_fits(Mc_amr, Mc_cudaton, **cosmo):
     return fb_amr, fb_cudaton
 
 
-def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., ncell_cutoff=1., **kwargs):
+def load_data(fname):
+    import pickle
+
+    f = open(fname, "rb")
+    data = pickle.load(f)
+
+    # Load the required arrays. We use dm particle and cell count to filter poorly resolved halos
+    # pid==-1 gives distinct halos only
+    nrecords = len(data)
+    mass = np.zeros(nrecords); fb = np.zeros(nrecords)
+    np_dm = np.zeros(nrecords); ncell = np.zeros(nrecords)
+
+    # Use the tidal force, in dimensionless units of Rvir/Rhill (Hill = Hill sphere, or sphere of influence over satellites)
+    # averaged over a single dynamical time.
+
+    tidal_force_tdyn = np.zeros(nrecords)
+    pid = np.zeros(nrecords)
+
+    for i in range(nrecords):
+        res = data[i].result
+        mass[i] = res["tot_mass"]; fb[i] = res["fb"]
+        np_dm[i] = res["np_dm"]; ncell[i] = res["ncell"]
+
+        pid[i] = res["pid"]
+        tidal_force_tdyn[i] = res["hprops"]["tidal_force_tdyn"]
+        del res
+
+    f.close()
+    return mass, fb, np_dm, ncell, tidal_force_tdyn, pid
+
+
+def filter_data(mass, fb, np_dm, ncell, tidal_force_tdyn, pid, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., ncell_cutoff=1.,):
+    _MASS_CUTOFF = 1e5  # Msun/h
+    # Apply resolution cutoff
+    idx = np.where( np.logical_and(np_dm >= dm_particle_cutoff, ncell >= ncell_cutoff) )
+    mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+
+    # Keep distinct halos only
+    idx = np.where(pid[idx]==-1)
+    mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+
+    # Apply mass cutoff
+    idx = np.where(mass >= _MASS_CUTOFF)
+    mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+
+    # Apply tidal force cutoff
+    idx = np.where(tidal_force_tdyn <= tidal_force_cutoff)
+    mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+
+    return mass, fb, np_dm, ncell, tidal_force_tdyn, pid
+
+
+def plot(snapshot, fname, **kwargs):
     '''
     Plot and fit the halo baryon fraction
     '''
-    import pickle
     import matplotlib.pylab as plt
     import matplotlib.gridspec as gridspec
     from seren3.analysis.plots import fit_scatter, grid
 
+    fig = plt.figure(figsize=(9, 8))
+
     # Set some global variables
     _SIZE = 12
-    _MASS_CUTOFF = 1e6  # Msun/h
 
     fix_alpha = kwargs.get("fix_alpha", True)
     use_lmfit = kwargs.get("use_lmfit", True)
@@ -86,88 +138,75 @@ def plot(snapshot, fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., nc
     cosmic_mean_b = cosmo["omega_b_0"] / cosmo["omega_M_0"]
 
     # Open the file and load the pickle dictionary
-    with open(fname, "rb") as f:
-        data = pickle.load(f)
+    mass, fb, np_dm, ncell, tidal_force_tdyn, pid = load_data(fname)
 
-        # Load the required arrays. We use dm particle and cell count to filter poorly resolved halos
-        # pid==-1 gives distinct halos only
-        nrecords = len(data)
-        mass = np.zeros(nrecords); fb = np.zeros(nrecords)
-        np_dm = np.zeros(nrecords); ncell = np.zeros(nrecords)
+    # Filter
+    mass, fb, np_dm, ncell, tidal_force_tdyn, pid = filter_data(mass, fb, np_dm, ncell, tidal_force_tdyn, pid)
 
-        tidal_force_tdyn = np.zeros(nrecords)
-        pid = np.zeros(nrecords)
+    # Compute the characteristic mass scale, Mc
+    fit_dict = fit(mass, fb, fix_alpha, use_lmfit=use_lmfit, **cosmo)
+    Mc_fit, Mc_stderr = ( fit_dict["Mc"]["fit"], fit_dict["Mc"]["stderr"] )
+    alpha_fit, alpha_stderr = ( fit_dict["alpha"]["fit"], fit_dict["alpha"]["stderr"] )
 
-        for i in range(nrecords):
-            res = data[i].result
-            mass[i] = res["tot_mass"]; fb[i] = res["fb"]
-            np_dm[i] = res["np_dm"]; ncell[i] = res["ncell"]
+    # Arrays for generating the fit
+    x = np.linspace(mass.min(), mass.max(), 10000)
+    y = gnedin_fitting_func(x, Mc_fit, alpha_fit, **cosmo)
 
-            pid[i] = res["pid"]
-            tidal_force_tdyn[i] = res["hprops"]["tidal_force_tdyn"]
-            del res
+    print 'Mc(z=%1.1f) = %e +/- %e, alpha = %f' % (snapshot.z, Mc_fit, Mc_stderr, alpha_fit)
 
-        # Apply resolution cutoff
-        idx = np.where( np.logical_and(np_dm >= dm_particle_cutoff, ncell >= ncell_cutoff) )
-        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+    # Plot in units of the cosmic mean
+    fb_cosmic_mean = fb/cosmic_mean_b
+    y_cosmic_mean = y/cosmic_mean_b
 
-        # Keep distinct halos only
-        idx = np.where(pid[idx]==-1)
-        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+    ax1 = plt.gca()
 
-        # Apply mass cutoff
-        idx = np.where(mass >= _MASS_CUTOFF)
-        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+    # carr = np.log10(1.+tidal_force_tdyn)
+    carr = tidal_force_tdyn
+    p = ax1.scatter(mass, fb_cosmic_mean, s=_SIZE, alpha=1., c=carr, cmap="jet_black")
+    cbar = plt.colorbar(p, ax=ax1)
+    # cbar.set_label(r"Time Since Last MM [Gyr]")
+    cbar.set_label(r"Tidal Force (Av. over dyn time)")
+    # ax1.plot(x, y_cosmic_mean, color='k', linewidth=2.)
 
-        # Apply tidal force cutoff
-        idx = np.where(tidal_force_tdyn <= tidal_force_cutoff)
-        mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+    Mc_okamoto = interp_Okamoto_Mc(cosmo["z"])
+    ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean_b,\
+                 color='k', linewidth=2., label=r"Okamoto08 Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_okamoto))
+
+    # ax1.plot(x, gnedin_fitting_func(x, Mc_fit, 2., **cosmo)/cosmic_mean_b,\
+    #              color='r', linewidth=2., label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
+    y_upper = gnedin_fitting_func(x, Mc_fit + Mc_stderr, alpha_fit, **cosmo)/cosmic_mean_b
+    y_lower = gnedin_fitting_func(x, Mc_fit - Mc_stderr, alpha_fit, **cosmo)/cosmic_mean_b
+    ax1.fill_between(x, y1=y_lower, y2=y_upper, color='r', label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
+
+    ax1.set_xscale("log")
+    ax1.set_title("z = %1.2f" % snapshot.z)
+    ax1.set_xlabel(r"log$_{10}$(M$_{\mathrm{h}}$[M$_{\odot}$/h])")
+    ax1.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
+    ax1.hlines(0.5, mass.min(), mass.max(), linestyle='--', linewidth=2.,\
+             label=r"$\frac{1}{2}$ $\frac{\Omega_{\mathrm{b}}}{\Omega_{\mathrm{M}}}$")
+    plt.legend(loc='upper left')
+    # plt.ylim(0., 1.5)
+
+    # plt.show()
+
+
+def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, **cosmo):
+    # Compute Mc/alpha fit for each output
+
+    output = {}
+    for iout in iouts:
+        fname = "%s/fbaryon_tdyn_%05i.p" % (pickle_dir, iout)
+        mass, fb, np_dm, ncell, tidal_force_tdyn, pid = load_data(fname)
+        mass, fb, np_dm, ncell, tidal_force_tdyn, pid = filter_data(mass, fb, np_dm, ncell, tidal_force_tdyn, pid)
 
         # Compute the characteristic mass scale, Mc
         fit_dict = fit(mass, fb, fix_alpha, use_lmfit=use_lmfit, **cosmo)
-        Mc_fit, Mc_stderr = ( fit_dict["Mc"]["fit"], fit_dict["Mc"]["stderr"] )
-        alpha_fit, alpha_stderr = ( fit_dict["alpha"]["fit"], fit_dict["alpha"]["stderr"] )
+        # Mc_fit, Mc_stderr = ( fit_dict["Mc"]["fit"], fit_dict["Mc"]["stderr"] )
+        # alpha_fit, alpha_stderr = ( fit_dict["alpha"]["fit"], fit_dict["alpha"]["stderr"] )
 
-        # Arrays for generating the fit
-        x = np.linspace(mass.min(), mass.max(), 10000)
-        y = gnedin_fitting_func(x, Mc_fit, alpha_fit, **cosmo)
+        output[iout] = fit_dict
 
-        print 'Mc(z=%1.1f) = %e +/- %e, alpha = %f' % (snapshot.z, Mc_fit, Mc_stderr, alpha_fit)
-
-        # Plot in units of the cosmic mean
-        fb_cosmic_mean = fb/cosmic_mean_b
-        y_cosmic_mean = y/cosmic_mean_b
-
-        ax1 = plt.gca()
-
-        carr = np.log10(1.+tidal_force_tdyn)
-        # carr = tidal_force_tdyn
-        p = ax1.scatter(mass, fb_cosmic_mean, s=_SIZE, alpha=1., c=carr, cmap="jet_black")
-        cbar = plt.colorbar(p, ax=ax1)
-        # cbar.set_label(r"Time Since Last MM [Gyr]")
-        cbar.set_label(r"Tidal Force (Av. over dyn time)")
-        # ax1.plot(x, y_cosmic_mean, color='k', linewidth=2.)
-
-        Mc_okamoto = interp_Okamoto_Mc(cosmo["z"])
-        ax1.plot(x, gnedin_fitting_func(x, Mc_okamoto, 2., **cosmo)/cosmic_mean_b,\
-                     color='k', linewidth=2., label=r"Okamoto08 Mc(z=%1.1f) = %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_okamoto))
-
-        # ax1.plot(x, gnedin_fitting_func(x, Mc_fit, 2., **cosmo)/cosmic_mean_b,\
-        #              color='r', linewidth=2., label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
-        y_upper = gnedin_fitting_func(x, Mc_fit + Mc_stderr, alpha_fit, **cosmo)/cosmic_mean_b
-        y_lower = gnedin_fitting_func(x, Mc_fit - Mc_stderr, alpha_fit, **cosmo)/cosmic_mean_b
-        ax1.fill_between(x, y1=y_lower, y2=y_upper, color='r', label=r"Fit Mc(z=%1.1f) = %1.2e +/- %1.2e M$_{\odot}$/h" % (cosmo['z'], Mc_fit, Mc_stderr))
-
-        ax1.set_xscale("log")
-        ax1.set_title("z = %1.2f" % snapshot.z)
-        ax1.set_xlabel(r"log$_{10}$(M$_{\mathrm{h}}$[M$_{\odot}$/h])")
-        ax1.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
-        ax1.hlines(0.5, mass.min(), mass.max(), linestyle='--', linewidth=2.,\
-                 label=r"$\frac{1}{2}$ $\frac{\Omega_{\mathrm{b}}}{\Omega_{\mathrm{M}}}$")
-        plt.legend(loc='upper left')
-        # plt.ylim(0., 1.5)
-
-        # plt.show()
+    return output
 
 
 def gnedin_fitting_func(Mh, Mc, alpha=_DEFAULT_ALPHA, **cosmo):
