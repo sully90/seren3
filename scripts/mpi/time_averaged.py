@@ -14,12 +14,17 @@ def volume_mass_weighted_average(snap, field):
     boxmass = snap.quantities.box_mass('b').in_units(mass_unit)
     boxsize = SimArray(snap.info["boxlen"], snap.info["unit_length"]).in_units(length_unit)
 
-    dset = snap.g[[field, "dx", "mass"]].flatten()
-    dx = dset["dx"].in_units(length_unit)
-    mass = dset["mass"].in_units(mass_unit)
+    vsum = 0.
+    msum = 0.
+    for dset in snap.g[[field, "dx", "mass"]]:
+        dx = dset["dx"].in_units(length_unit)
+        mass = dset["mass"].in_units(mass_unit)
 
-    vw = np.sum(dset[field] * dx**3) / boxsize**3
-    mw = np.sum(dset[field] * mass) / boxmass
+        vsum += np.sum(dset[field] * dx**3)
+        msum += np.sum(dset[field] * mass)
+
+    vw = vsum / boxsize**3
+    mw = msum / boxmass
 
     return vw, mw
 
