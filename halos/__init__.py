@@ -52,6 +52,10 @@ class Halo(object):
         return self._base()
 
     @property
+    def nml(self):
+        return self.base.nml
+
+    @property
     def info(self):
         return self.base.info
 

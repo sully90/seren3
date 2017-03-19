@@ -2,6 +2,7 @@ import seren3
 import numpy as np
 import matplotlib.pylab as plt
 import weakref
+from seren3.array import SimArray
 from seren3.utils.plot_utils import add_colorbar
 
 class PhasePlot(object):
@@ -117,7 +118,7 @@ class PhasePlot(object):
 
         nml = self.snapshot.nml
         PHYSICS_PARAMS = nml[NML.PHYSICS_PARAMS]
-        n_star = PHYSICS_PARAMS['n_star']
+        n_star = SimArray(PHYSICS_PARAMS['n_star'], "cm**-3").in_units("m**-3")
         T2_star = PHYSICS_PARAMS['T2_star']
         g_star = PHYSICS_PARAMS.get('g_star', 2.0)
 
@@ -206,7 +207,7 @@ def _annotate_nstar(ax, pp, **kwargs):
     from seren3.core.snapshot import NML
 
     nml = pp.snapshot.nml
-    n_star = float(nml[NML.PHYSICS_PARAMS]['n_star'])
+    n_star = SimArray(nml[NML.PHYSICS_PARAMS]['n_star'], "cm**-3").in_units("m**-3")
 
     ymin, ymax = ax.get_ylim()
 
@@ -263,7 +264,7 @@ def _annotate_T2_thresh(ax, pp, internal_thresh=2.e4, **kwargs):
 
         nml = pp.snapshot.nml
         PHYSICS_PARAMS = nml[NML.PHYSICS_PARAMS]
-        n_star = PHYSICS_PARAMS['n_star']
+        n_star = SimArray(PHYSICS_PARAMS['n_star'], "cm**-3").in_units("m**-3")
         T2_star = PHYSICS_PARAMS['T2_star']
         g_star = PHYSICS_PARAMS.get('g_star', 2.0)
 

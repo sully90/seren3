@@ -422,26 +422,33 @@ class Family(object):
 
         return SerenSource(self, source)
 
-    def bin_spherical(self, field, r_units='pc', ncell_per_dim=128, prof_units=None, profile_func=None, center=None, radius=None, nbins=200, divide_by_counts=True):
+    def bin_spherical(self, field, ngrid, nbins, **kwargs):
         '''
         Spherical binning function
         '''
         from seren3.array import SimArray
-        from seren3.utils.derived_utils import is_derived, get_derived_field, get_field_unit
+        from seren3.utils.derived_utils import is_derived, get_derived_field
         from seren3.analysis.profile_binners import SphericalProfileBinner
 
+        center = kwargs.pop("center", None)
         if center is None:
             if hasattr(self.base, "region"):
                 center = self.base.region.center
             else:
                 raise Exception("center not specified")
+        # if not isinstance(center, SimArray):
+        #     raise Exception("Center must be a SimArray")
 
+        radius = kwargs.pop("radius", None)
         if radius is None:
             if hasattr(self.base, "region"):
                 radius = self.base.region.radius
             else:
                 raise Exception("radius not specified")
+        # if not isinstance(radius, SimArray):
+        #     raise Exception("Radius must be a SimArray")
 
+        profile_func = kwargs.pop("profile_func", None)
         if profile_func is None:
             if is_derived(self, field):
                 fn = get_derived_field(self, field)
@@ -449,21 +456,65 @@ class Family(object):
             else:
                 profile_func = lambda dset: dset[field]
 
-        _ = np.linspace(0., radius, nbins)
+        bin_bounds = np.linspace(0., radius, nbins)
 
-        unit = get_field_unit(self, field)
+        divide_by_counts = kwargs.pop("divide_by_counts", False)
         source = self[[field, "pos"]]
-        binner = SphericalProfileBinner(field, center, profile_func, _, divide_by_counts)
-        # prof = self.base.array(binner.process(source), unit)
-        prof = binner.process(source, ncell_per_dim)
+        binner = SphericalProfileBinner(field, center, profile_func, bin_bounds, divide_by_counts)
+        prof = binner.process(source, ngrid)
 
+        prof_units = kwargs.pop("prof_units", None)
         if prof_units is not None:
             prof = prof.in_units(prof_units)
 
-        r_bins = (_[1:] + _[:-1])/2.
+        r_units = kwargs.pop("r_units", "pc")
+        r_bins = (bin_bounds[1:] + bin_bounds[:-1])/2.
         r_bins = SimArray(r_bins, self.info["unit_length"]).in_units(r_units)
 
-        return prof, r_bins
+        return prof, r_bins, binner
+
+    # def bin_spherical(self, field, r_units='pc', ncell_per_dim=128, prof_units=None, profile_func=None, center=None, radius=None, nbins=200, divide_by_counts=True):
+    #     '''
+    #     Spherical binning function
+    #     '''
+    #     from seren3.array import SimArray
+    #     from seren3.utils.derived_utils import is_derived, get_derived_field, get_field_unit
+    #     from seren3.analysis.profile_binners import SphericalProfileBinner
+
+    #     if center is None:
+    #         if hasattr(self.base, "region"):
+    #             center = self.base.region.center
+    #         else:
+    #             raise Exception("center not specified")
+
+    #     if radius is None:
+    #         if hasattr(self.base, "region"):
+    #             radius = self.base.region.radius
+    #         else:
+    #             raise Exception("radius not specified")
+
+    #     if profile_func is None:
+    #         if is_derived(self, field):
+    #             fn = get_derived_field(self, field)
+    #             profile_func = lambda dset: fn(self, dset)
+    #         else:
+    #             profile_func = lambda dset: dset[field]
+
+    #     _ = np.linspace(0., radius, nbins)
+
+    #     unit = get_field_unit(self, field)
+    #     source = self[[field, "pos"]]
+    #     binner = SphericalProfileBinner(field, center, profile_func, _, divide_by_counts)
+    #     # prof = self.base.array(binner.process(source), unit)
+    #     prof = binner.process(source, ncell_per_dim)
+
+    #     if prof_units is not None:
+    #         prof = prof.in_units(prof_units)
+
+    #     r_bins = (_[1:] + _[:-1])/2.
+    #     r_bins = SimArray(r_bins, self.info["unit_length"]).in_units(r_units)
+
+    #     return prof, r_bins
 
     def projection(self, field, **kwargs):
         from seren3.analysis.visualization import Projection

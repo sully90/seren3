@@ -213,15 +213,10 @@ class SerenSource(object):
         dset = self.source.flatten()
         return DerivedDataset(self.family, dset, **kwargs)
 
-    def sample_points(self, level, **kwargs):
-        '''
-        Samples points to cartesian mesh of size 2**level
-        '''
+    def generate_uniform_points(self, ngrid):
         import numpy as np
-        from pymses.analysis.point_sampling import PointSamplingProcessor
-
+        
         x = y = z = None
-        ngrid = 2**level
         if hasattr(self.family.base, "region"):
             bbox = self.family.base.region.get_bounding_box()
             x, y, z = np.mgrid[bbox[0][0]:bbox[1][0]:complex(ngrid), bbox[0][1]:bbox[1][1]:complex(ngrid), bbox[0][2]:bbox[1][2]:complex(ngrid)]
@@ -237,8 +232,15 @@ class SerenSource(object):
         # Arrange for Pymses
         pxyz = np.array([x1, y1, z1])
         pxyz = pxyz.transpose()
+        return pxyz
+
+    def sample_points(self, points, **kwargs):
+        '''
+        Samples points to cartesian mesh of size 2**level
+        '''
+        from pymses.analysis.point_sampling import PointSamplingProcessor
 
         source = self.pymses_source
         psampler = PointSamplingProcessor(source)
-        dset = psampler.process(pxyz)
+        dset = psampler.process(points)
         return DerivedDataset(self.family, dset, **kwargs)

@@ -27,17 +27,6 @@ def pymses_units(unit_string):
             unit *= C.Unit(c)
     return unit
 
-def get_field_unit(family, field):
-    '''
-    Returns correct unit for tracked/derived fields
-    '''
-    from pymses.utils import constants as C
-
-    if is_derived(family, field):
-        return _derived_field_registry["%s_%s_unit" % (family.family, field)]
-    else:
-        return C.none
-
 def derived_quantity(requires):
     def _check_dset(fn, context, dset, **kwargs):
         '''

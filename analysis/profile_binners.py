@@ -12,33 +12,23 @@ class ProfileBinner(object):
     Base class for all profile binners
     '''
     __metaclass__ = abc.ABCMeta # Abstract class
-    def __init__(self, field, profile_func, bin_bounds):  #, divide_by_counts=True):
+    def __init__(self, field, profile_func, bin_bounds, divide_by_counts=False):
         self.field = field
         self.profile_func = profile_func
         self.bin_bounds = bin_bounds
-        # self.divide_by_counts = divide_by_counts
+        self.divide_by_counts = divide_by_counts
 
     @abc.abstractmethod
     def bin_func(self, point_dset):
         return
 
-    def process(self, source, ncell_per_dim):
+    def process(self, dset):
         """Compute the profile of the specified data source
         """
 
-        if not isinstance(source, SerenSource):
-            raise Exception("Must supply SerenSource object")
         # Prepare full profile histogram
         # profile = np.zeros(len(self.bin_bounds) - 1)
         profile = 0.
-
-        dest = None
-        divide_by_counts = False
-        if source.family.family == "amr":
-            divide_by_counts = True
-            dset = source.amr_sample_points(ncell_per_dim=ncell_per_dim, reshape=False)
-        elif source.family.family in ["dm", "star"]:
-            dset = source.flatten()
 
         bin_coords = self.bin_func(dset)
 
@@ -49,7 +39,7 @@ class ProfileBinner(object):
             bins=self.bin_bounds,
             normed=False)[0]
 
-        if divide_by_counts:
+        if self.divide_by_counts:
             print "Dividing by bin counts"
             # Divide by counts
             counts = np.histogram(
@@ -73,7 +63,9 @@ class SphericalProfileBinner(ProfileBinner):
     Spherical profile binner class
     '''
     def __init__(self, field, center, profile_func, bin_bounds, divide_by_counts=False):
-        self.center = np.asarray(center)
+        # if not isinstance(center, SimArray):
+        #     raise Exception("Center must be a SimArray")
+        self.center = center
         super(SphericalProfileBinner, self).__init__(field, profile_func, bin_bounds, divide_by_counts)
 
     def bin_func(self, point_dset):
@@ -82,7 +74,9 @@ class SphericalProfileBinner(ProfileBinner):
         '''
 
         # Radial vector from center to pos
-        rad = point_dset["pos"] - self.center[np.newaxis, :]
+        # units = point_dset["pos"].units
+        # rad = point_dset["pos"] - self.center.in_units(units)[np.newaxis, :]
+        rad = point_dset._dset.points - self.center[np.newaxis, :]
 
         # The bin is determined by the norm of rad
         return np.sqrt(np.sum(rad * rad, axis=1))
@@ -94,6 +88,8 @@ class CylindricalProfileBinner(ProfileBinner):
     """
 
     def __init__(self, field, center, axis_vect, profile_func, bin_bounds, divide_by_counts=False):
+        if not isinstance(center, SimArray):
+            raise Exception("Center must be a SimArray")
         self.center = np.asarray(center)
         self.axis_vect = np.asarray(axis_vect) / np.linalg.norm(axis_vect, 2)
 
