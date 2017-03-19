@@ -1,5 +1,5 @@
 # Seren3 #
-This is the seren3 package, a python module which uses the PyMSES (http://irfu.cea.fr/Projets/PYMSES/intro.html) for RAMSES data access.
+This is the seren3 package, a python module which uses PyMSES (http://irfu.cea.fr/Projets/PYMSES/intro.html) for RAMSES data access.
 This package is designed for working with memory intensive datasets, such as those with deep AMR hierarchys. It contains modules for writing/analysing
 halo catalogues, data access/filtering, derived fields, visualization (3D projections) and other utility functions.
 
