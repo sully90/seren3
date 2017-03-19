@@ -3,10 +3,6 @@
 **/*.so
 **/**/*.so
 analysis/*.c
-analysis/*.html
 cosmology/*.c
 cosmology/*.html
-utils/cython/*.c
-utils/cython/*.so
-utils/cython/*.o
-utils/cython/*.html
+utils/f90/*.so
