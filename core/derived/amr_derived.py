@@ -3,6 +3,48 @@ from seren3.array import SimArray
 import numpy as np
 from pymses.utils import constants as C
 
+@seren3.derived_quantity(requires=["nH", "T2"])
+def amr_dSFR(context, dset, **kwargs):
+
+    '''
+    Computes the (instantaneous) star formation rate density, in Msun/yr/kpc^3, from the gas
+    '''
+    import numpy as np
+    from seren3.core.namelist import NML
+
+    mH = context.array(context.C.mH)
+    X_fraction = context.info.get("X_fraction", 0.76)
+    H_frac = mH/X_fraction  # fractional mass of hydrogen
+
+    nml = context.nml
+    nH = dset["nH"].in_units("cm**-3")
+
+    # Load star formation model params from the namelist
+    n_star = context.array(nml[NML.PHYSICS_PARAMS]["n_star"], "cm**-3")  # cm^-3
+    t_star = context.quantities.t_star.in_units("yr")
+
+    # Compute the SFR density in each cell
+    sfr = nH / (t_star*np.sqrt(n_star/nH))  # atoms/yr/cm**3
+    sfr *= H_frac  # kg/yr/cm**3
+    sfr.convert_units("Msol yr**-1 kpc**-3")
+
+    impose_criterion = kwargs.pop("impose_criterion", False)
+    # Impose density/temperature criterion
+    if impose_criterion:
+        idx = np.where(nH < n_star)
+        sfr[idx] = 0.
+
+        # Compute and subtract away the non-thermal polytropic temperature floor
+        g_star = nml[NML.PHYSICS_PARAMS].get("g_star", 1.)
+        T2_star = context.array(nml[NML.PHYSICS_PARAMS]["T2_star"], "K")
+        Tpoly = T2_star * (nH/n_star)**(g_star-1.)  # Polytropic temp. floor
+        Tmu = dset["T2"] - Tpoly  # Remove non-thermal polytropic temperature floor
+        idx = np.where(Tmu > 2e4)
+        sfr[idx] = 0.
+
+    return sfr
+
+
 @seren3.derived_quantity(requires=["pos"])
 def amr_r(context, dset, center=None):
     '''
@@ -52,15 +94,13 @@ def amr_deltab(context, dset):
 
     return db
 
-@seren3.derived_quantity(requires=["nH", "xHII", "nHe", "xHeII", "xHeIII"])
+@seren3.derived_quantity(requires=["nHII", "nHe", "xHeII", "xHeIII"])
 def amr_ne(context, dset):
     '''
     Returns number density of electrons in each cell
     '''
-    ne = dset["nH"] * dset["xHII"]  # num. den. of electrons from ionised hydrogen
-    ne += dset["nHe"] * (dset["xHeII"] + dset["xHeIII"])  # " " from ionised Helium
-    ne.set_field_latex("n$_{\\mathrm{e}}")
-    return context.array(ne, "m**-3")
+    n_e = dset["nHII"] + dset["nHe"]*(dset["xHeII"]+2.*dset["xHeIII"])
+    return n_e
 
 @seren3.derived_quantity(requires=["rho"])
 def amr_nH(context, dset):
@@ -112,7 +152,7 @@ def amr_nHII(context, dset):
     '''
     nHII = SimArray(dset["nH"] * dset["xHII"], dset["nH"].units)
     nHII.set_field_latex("n$_{\\mathrm{HII}}$")
-    return nHI
+    return nHII
 
 @seren3.derived_quantity(requires=["P", "rho"])
 def amr_cs(context, dset):

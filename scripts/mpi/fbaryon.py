@@ -96,8 +96,12 @@ def load_data(fname):
     return mass, fb, np_dm, ncell, tidal_force_tdyn, pid
 
 
-def filter_data(mass, fb, np_dm, ncell, tidal_force_tdyn, pid, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., ncell_cutoff=1.,):
+def filter_and_load_data(fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., ncell_cutoff=1.,):
     _MASS_CUTOFF = 1e5  # Msun/h
+    print tidal_force_cutoff, dm_particle_cutoff, ncell_cutoff
+
+    mass, fb, np_dm, ncell, tidal_force_tdyn, pid = load_data(fname)
+
     # Apply resolution cutoff
     idx = np.where( np.logical_and(np_dm >= dm_particle_cutoff, ncell >= ncell_cutoff) )
     mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
@@ -190,14 +194,13 @@ def plot(snapshot, fname, **kwargs):
     # plt.show()
 
 
-def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, **cosmo):
+def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, *args, **cosmo):
     # Compute Mc/alpha fit for each output
 
     output = {}
     for iout in iouts:
-        fname = "%s/fbaryon_tdyn_%05i.p" % (pickle_dir, iout)
-        mass, fb, np_dm, ncell, tidal_force_tdyn, pid = load_data(fname)
-        mass, fb, np_dm, ncell, tidal_force_tdyn, pid = filter_data(mass, fb, np_dm, ncell, tidal_force_tdyn, pid)
+        fname = "%s/ConsistentTrees/fbaryon_tdyn_%05i.p" % (pickle_dir, iout)
+        mass, fb, np_dm, ncell, tidal_force_tdyn, pid = filter_and_load_data(fname, *args)
 
         # Compute the characteristic mass scale, Mc
         fit_dict = fit(mass, fb, fix_alpha, use_lmfit=use_lmfit, **cosmo)
@@ -208,6 +211,105 @@ def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, **cosmo):
 
     return output
 
+
+def tmp_plot_bc03_bpass(fix_alpha=True):
+    import matplotlib.pylab as plt
+    from seren3.core.simulation import Simulation
+
+    paths = ['/research/prace/david/bpass/bc03/', \
+            '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/']
+    ppaths = ['/lustre/scratch/astro/ds381/simulations/bpass/bc03/pickle/', \
+            '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/pickle/']
+
+    sims = [Simulation(p) for p in paths]
+    iouts = [60, 66, 70, 76, 80, 86, 90, 96, 100, 106]
+    labels = ["BC03", "BPASS"]
+    cols = ['r', 'b']
+
+    plot_Mc_var(sims, iouts, ppaths, labels, cols, fix_alpha)
+    plt.show()
+
+
+def plot_Mc_var(sims, iouts, pickle_paths, labels, cols, fix_alpha=True):
+    import pickle
+    import matplotlib.pylab as plt
+    from seren3.analysis.plots import fit_scatter
+    from seren3.utils import tau as tau_mod
+    from scipy.interpolate import interp1d
+
+    fig, axs = plt.subplots(2, 2, figsize=(11,10))
+
+    plot_PLANCK=True
+    for sim, ppath, label, c in zip(sims, pickle_paths, labels, cols):
+        print ppath
+        cosmo = sim[iouts[0]].cosmo
+        # data = pickle.load( open("%s/Gamma_time_averaged.p" % ppath, "rb") )
+        data = pickle.load( open("%s/xHII_reion_history.p" % ppath, "rb") )
+        z = np.zeros(len(data))
+        var = np.zeros(len(data))
+
+        for i in range(len(data)):
+            res = data[i].result
+            z[i] = res['z']
+            # var[i] = res['mw']
+            var[i] = res["volume_weighted"]
+
+        tau, redshifts = tau_mod.interp_xHe(var, z, sim)
+        tau_mod.plot(tau, redshifts, ax=axs[1,1], plot_PLANCK=plot_PLANCK, label=label, color=c)
+        plot_PLANCK=False
+
+        idx = np.where(z <= 18.)
+        z = z[idx]
+        var = var[idx]
+
+        bc, mean, std, stderr = fit_scatter(z, var, ret_sterr=True)
+        # fn = interp1d(bc, mean, fill_value="extrapolate")
+        fn = interp1d(z, var, fill_value="extrapolate")
+
+        # Compute Mc
+        output = fit_sim_iouts(iouts, ppath, fix_alpha, True,\
+                 0.15, 50., 1., **cosmo)
+        z_sim = np.array([sim[i].z for i in iouts])
+        Mc = np.zeros(len(output))
+        Mc_stderr = np.zeros(len(output))
+
+        for i in range(len(output)):
+            iout = iouts[i]
+            Mc[i] = output[iout]["Mc"]["fit"]
+            Mc_stderr[i] = output[iout]["Mc"]["stderr"]
+
+        # Plot Mc
+        axs[0,0].errorbar(z_sim, Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
+        axs[0,1].errorbar(fn(z_sim), Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
+
+        axs[1,0].plot(z, 1.-var, label=label, color=c)
+        #p = axs[1,0].errorbar(bc, mean, yerr=stderr, linewidth=1, label=label)
+        #children = p.get_children()
+        #l = children[0]
+        #axs[1,0].plot(bc, fn(bc), linewidth=4., linestyle='--', color=l.get_color(), zorder=10)
+
+    axs[0,0].set_xlabel(r"z")
+    axs[0,0].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
+    axs[0,0].set_xlim(6, 10)
+    axs[0,0].set_ylim(1e7, 2e8)
+
+    axs[0,1].set_xlabel(r"$\langle x_{\mathrm{HII}} \rangle_{V}$")
+    axs[0,1].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
+    # axs[0,1].set_xscale("log")
+    axs[0,1].set_xlim(0.2, 1.05)
+    axs[0,1].set_ylim(1e7, 2e8)
+
+    axs[1,0].set_xlabel(r"z")
+    axs[1,0].set_ylabel(r"$\langle x_{\mathrm{HI}} \rangle_{V}$")
+    axs[1,0].set_xlim(6, 18)
+
+    for ax in axs.flatten()[:-1]:
+        ax.set_yscale("log")
+    for ax in axs.flatten():
+        ax.legend()
+
+    plt.tight_layout()
+    fig.savefig('./Mc_panel_plot.pdf', format='pdf', dpi=10000)
 
 def gnedin_fitting_func(Mh, Mc, alpha=_DEFAULT_ALPHA, **cosmo):
     f_bar = cosmo["omega_b_0"] /  cosmo["omega_M_0"]
@@ -246,7 +348,7 @@ def fit(mass, fb, fix_alpha, use_lmfit=True, **cosmo):
         fit_params = Parameters()
         fit_params.add("Mc", value=p0[0], min=0.)
         fit_params.add("alpha", value=_DEFAULT_ALPHA, vary=np.logical_not(fix_alpha), min=0.)
-        print fit_params
+        # print fit_params
         result = minimize( lmfit_gnedin_fitting_func, fit_params, args=(mass, fb), kws=cosmo)
         if result.success:
             Mc_res = result.params['Mc']

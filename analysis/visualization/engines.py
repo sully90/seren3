@@ -13,6 +13,8 @@ from seren3.analysis.visualization import engines
 engine = engines.RayTraceEngine(snapshot.g, "rho")
 projection = engine.process(snapshot.camera())
 It is down to the desired engine to provide the correct AMR source and operator.
+
+TODO - allow user to specify units
 '''
 import abc, weakref
 from seren3.core.serensource import DerivedDataset

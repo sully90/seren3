@@ -104,7 +104,7 @@ def read_binary_map(fname, reshape=False, unformatted=True, astype=None):
                 file=f, dtype=np.float32, count=ncount).astype(astype)
         else:
             data = np.fromfile(
-                file=f, dtype=np.float32, count=ncount).astype(astype)
+                file=f, dtype=np.float32, count=ncount)
         if(unformatted):
             skip(f)
 

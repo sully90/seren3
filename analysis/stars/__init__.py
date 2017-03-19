@@ -61,3 +61,47 @@ def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
     lookback_time.set_field_latex("$\\mathrm{Lookback-Time}$")
     binsize.set_field_latex("$\Delta$")
     return SFR, lookback_time, binsize  # SFR [Msol Gyr^-1] (sSFR [Gyr^-1]), Lookback Time [Gyr], binsize [Gyr]
+
+def gas_SFR_density(context, impose_criterion=True):
+    '''
+    Computes the (instantaneous) star formation rate density, in Msun/yr/kpc^3, from the gas
+    '''
+    import numpy as np
+    from seren3.core.namelist import NML
+
+    if hasattr(context, "subsnap"):
+        # Halos
+        context = context.subsnap
+
+    mH = context.array(context.C.mH)
+    X_fraction = context.info.get("X_fraction", 0.76)
+    H_frac = mH/X_fraction  # fractional mass of hydrogen
+
+    nml = context.nml
+    dset = context.g[["nH", "T2"]].flatten()
+    nH = dset["nH"].in_units("cm**-3")
+
+    # Load star formation model params from the namelist
+    n_star = context.array(nml[NML.PHYSICS_PARAMS]["n_star"], "cm**-3")  # cm^-3
+    t_star = context.quantities.t_star.in_units("yr")
+
+    # Compute the SFR density in each cell
+    sfr = nH / (t_star*np.sqrt(n_star/nH))  # atoms/yr/cm**3
+    sfr *= H_frac  # kg/yr/cm**3
+    sfr.convert_units("Msol yr**-1 kpc**-3")
+
+    # Impose density/temperature criterion
+    if impose_criterion:
+        idx = np.where(nH < n_star)
+        sfr[idx] = 0.
+
+        # Compute and subtract away the non-thermal polytropic temperature floor
+        g_star = nml[NML.PHYSICS_PARAMS].get("g_star", 1.)
+        T2_star = context.array(nml[NML.PHYSICS_PARAMS]["T2_star"], "K")
+        Tpoly = T2_star * (nH/n_star)**(g_star-1.)  # Polytropic temp. floor
+        Tmu = dset["T2"] - Tpoly  # Remove non-thermal polytropic temperature floor
+        idx = np.where(Tmu > 2e4)
+        sfr[idx] = 0.
+
+    return sfr 
+

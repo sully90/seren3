@@ -3,12 +3,12 @@ FRIEDMANN_DIR=utils/f90/
 
 .PHONY all:
 	make cython
-	make fortran
 	make inplace_build
+	make fortran
 
 # This compiles all modules for an inplace use
 inplace_build:
-	python setup.py build_src build_ext --inplace $(PYSETUP_FLAGS)
+	python setup.py build_src build_ext --inplace
 
 cython:
 	find . -name "*.pyx" | xargs cython

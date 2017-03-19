@@ -12,7 +12,13 @@ def plot_sfr(context, **kwargs):
     from seren3.analysis import stars
     from seren3.array import units
 
+    sfr_unit = None
+    if "sfr_unit" in kwargs:
+        sfr_unit = kwargs.pop("sfr_unit")
+
     sfr, lbtime, bsize = stars.sfr(context, **kwargs)
+    if (sfr_unit is not None):
+        sfr.convert_units(sfr_unit)
 
     plt.step(lbtime, sfr, linewidth=2.)
     plt.yscale("log")

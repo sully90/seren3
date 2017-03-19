@@ -9,13 +9,30 @@ class Quantity(object):
         self.base = snapshot
 
     @property
+    def t_star(self):
+        '''
+        Star formation time scale in Gyr
+        '''
+        NML = self.base.nml.NML
+        nml = self.base.nml
+
+        if ("t_star" in nml[NML.PHYSICS_PARAMS]):
+            return nml[NML.PHYSICS_PARAMS]["t_star"]
+
+        n_star = nml[NML.PHYSICS_PARAMS]["n_star"]  # cm^-3
+        eps_star = nml[NML.PHYSICS_PARAMS]["eps_star"]
+
+        t_star=0.1635449*(n_star/0.1)**(-0.5)/eps_star  # Gyr
+        return self.base.array(t_star, "Gyr")
+
+    @property
     def rhoc(self):
         '''
         Performs CIC interpolation to compute CDM density on the simulation coarse grid in units
         kg/m^3
         '''
-        from seren3.utils import deconvolve_cic
         from seren3.utils.cython import cic
+        from seren3.utils import deconvolve_cic
 
         dset = self.base.d["pos"].flatten()
         x,y,z = dset["pos"].T
