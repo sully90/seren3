@@ -26,7 +26,7 @@ def fit_scatter(x, y, ret_n=False, ret_sterr=False, nbins=10):
 def grid(x, y, z, resX=100, resY=100):
     """
     Convert 3 column data to matplotlib grid.
-    Can be used to conver x/y scatter with z value to correct format for plt.contour
+    Can be used to convert x/y scatter with z value to correct format for plt.contour
     """
     import numpy as np
     from matplotlib.mlab import griddata
