@@ -472,6 +472,7 @@ class HaloCatalogue(object):
         '''
         masses = []
         for halo in self:
+            #Mvir = halo['M200c'].in_units(units)
             Mvir = halo['Mvir'].in_units(units)
             masses.append(Mvir)
 

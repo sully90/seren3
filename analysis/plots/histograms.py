@@ -268,7 +268,8 @@ def pdf_cdf(snapshot, field, field_latex=None, bins=50, logscale=True, density=F
 
     # dset = snapshot[field].flatten()
     # data = dset[field]
-    data = snapshot[field].flatten()
+    dset = snapshot[field].flatten()
+    data = dset[field]
 
     if logscale:
         data = np.log10(data)
@@ -339,13 +340,14 @@ def plot_pdf_cdf(snapshot, P, bincenters, dx, logscale, field_latex, \
 
     if label_nstar:
         fs = 15
+        n_star = snapshot.array(snapshot.info_rt["n_star"].express(snapshot.C.H_cc), "cm**-3").in_units("m**-3")
         if logscale:
-            ax1.vlines(np.log10(snapshot.info_rt['n_star'].express(snapshot.C.H_cc)), ymin, ymax, color='r', linestyle='--')
+            ax1.vlines(np.log10(n_star), ymin, ymax, color='r', linestyle='--')
             # ax1.text(np.log10(snapshot.info_rt['n_star'].express(snapshot.C.H_cc)) + xr*0.01, ymax/2. + .01, r"n$_{*}$", color='r', fontsize=fs)
-            ax1.text(np.log10(snapshot.info_rt['n_star'].express(snapshot.C.H_cc)) + xr*0.01, 0.076, r"n$_{*}$", color='r', fontsize=fs)
+            # ax1.text(np.log10(n_star) + xr*0.01, 0.076, r"n$_{*}$", color='r', fontsize=fs)
         else:
             ax1.vlines(snapshot.info_rt['n_star'].express(snapshot.C.H_cc), ymin, ymax, color='r', linestyle='--')
-            ax1.text(snapshot.info_rt['n_star'].express(snapshot.C.H_cc) + xr*0.01, ymax/2. + .01, r"n$_{*}$", color='r', fontsize=fs)
+            # ax1.text(n_star + xr*0.01, ymax/2. + .01, r"n$_{*}$", color='r', fontsize=fs)
 
     if label_T_star:
         print ymax/2. + .01

@@ -4,7 +4,88 @@ _DEFAULT_ALPHA = 2.
 _MASS_UNIT = "Msol h**-1"
 
 
-def interp_Okamoto_Mc(z):
+def _gauss(x,mu,sigma,A):
+    return A*np.exp(-(x-mu)**2/2/sigma**2)
+
+def _bimodal(x,mu1,sigma1,A1,mu2,sigma2,A2):
+    return _gauss(x,mu1,sigma1,A1)+_gauss(x,mu2,sigma2,A2)
+
+
+def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
+    '''
+    Computes and (optional) plots the PDF of the tidal force for each halo, averaged
+    over a dynamical time
+    '''
+    import pickle
+    import peakutils
+    from peakutils.peak import centroid
+    from seren3.analysis.plots import fit_scatter
+    from scipy.interpolate import interp1d
+    from scipy.optimize import curve_fit
+
+    nbins = kwargs.pop("nbins", 50)
+    def pdf(arr, bins):
+        log_arr = np.log10(arr)
+        idx = np.where(np.isinf(log_arr))
+        log_arr = np.delete(log_arr, idx)
+
+        P, bin_edges = np.histogram(log_arr, bins=bins,  density=False)
+        P = np.array( [float(i)/float(len(data)) for i in P] )
+        bincenters = 0.5*(bin_edges[1:] + bin_edges[:-1])
+        dx = (bincenters.max() - bincenters.min()) / bins
+        C = np.cumsum(P) * dx
+        C = (C - C.min()) / C.ptp()
+        return P,C,bincenters,dx
+
+    data = pickle.load(open(fname, 'rb'))
+    tidal_force_tdyn = np.zeros(len(data))
+
+    for i in range(len(data)):
+        res = data[i].result
+        tidal_force_tdyn[i] = res["hprops"]["tidal_force_tdyn"]
+
+    P,C,bincenters,dx = pdf(tidal_force_tdyn, nbins)
+    n = int(np.round(nbins/5.))
+    bc, mean, std = fit_scatter(bincenters, P, nbins=n)
+
+    # Interpolate the PDF
+    fn = interp1d(bincenters, P)
+    x = np.linspace(bincenters.min(), bincenters.max(), 1000)
+    y = fn(x)
+    
+    # Fit peaks to get initial estimate of guassian properties
+    indexes = peakutils.indexes(y, thres=0.02, min_dist=250)
+    peaks_x = peakutils.interpolate(x, y, ind=indexes)
+
+    # Do the bimodal fit
+    expected = (peaks_x[0], 0.2, 1.0, peaks_x[1], 0.2, 1.0)
+    params,cov=curve_fit(_bimodal,x,y,expected)
+    sigma=np.sqrt(np.diag(cov))
+
+    # Refit the peaks to improve accuracy
+    y_2 = _bimodal(x,*params)
+    fn = interp1d(x, y_2)
+    indexes = peakutils.indexes(y_2, thres=0.02, min_dist=250)
+    peaks_x = peakutils.interpolate(x, y_2, ind=indexes)
+
+    if plot:
+        import matplotlib.pylab as plt
+
+        p = plt.plot(bincenters, P * (1. + snapshot.z)**3, linewidth=1.5, label="z=%1.2f" % snapshot.z)
+        col = p[0].get_color()
+        plt.plot(x, y_2 * (1. + snapshot.z)**3, color=col, lw=3)#, label='model')
+
+        plt.scatter(peaks_x, fn(peaks_x) * (1. + snapshot.z)**3, color='r', s=250, marker='o')
+
+        plt.xlabel(r"log$_{10}$ $\langle F_{\mathrm{Tidal}} \rangle_{t_{\mathrm{dyn}}}$")
+        plt.ylabel(r"P (1 + z)$^{3}$")
+        plt.legend()
+        # plt.show()
+
+    return P,C,bincenters,dx,(bc,mean,std,indexes,peaks_x)
+
+
+def Okamoto_Mc_fn():
     from seren3 import config
     from scipy import interpolate
     # from seren3.analysis.interpolate import extrap1d
@@ -14,7 +95,12 @@ def interp_Okamoto_Mc(z):
     ok_a, ok_z, ok_Mc = data.T
 
     fn = interpolate.interp1d(ok_z, np.log10(ok_Mc), fill_value="extrapolate")
-    return 10**fn(z)
+    return lambda z: 10**fn(z)
+
+
+def interp_Okamoto_Mc(z):
+    fn = Okamoto_Mc_fn()
+    return fn(z)
     # fn = interpolate.InterpolatedUnivariateSpline(ok_z, np.log10(ok_Mc), k=1)  # interpolate on log mass
     # return 10**fn(z)
 
@@ -141,11 +227,9 @@ def plot(snapshot, fname, **kwargs):
     cosmo = snapshot.cosmo
     cosmic_mean_b = cosmo["omega_b_0"] / cosmo["omega_M_0"]
 
-    # Open the file and load the pickle dictionary
-    mass, fb, np_dm, ncell, tidal_force_tdyn, pid = load_data(fname)
-
-    # Filter
-    mass, fb, np_dm, ncell, tidal_force_tdyn, pid = filter_data(mass, fb, np_dm, ncell, tidal_force_tdyn, pid)
+    # Open the file and load the pickle dictionary  # Filter
+    mass, fb, np_dm, ncell, tidal_force_tdyn, pid = filter_and_load_data(fname, **kwargs)
+    print len(mass)
 
     # Compute the characteristic mass scale, Mc
     fit_dict = fit(mass, fb, fix_alpha, use_lmfit=use_lmfit, **cosmo)
@@ -212,25 +296,39 @@ def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, *args, **co
     return output
 
 
-def tmp_plot_bc03_bpass(fix_alpha=True):
+def tmp_plot_bc03_bpass(fix_alpha=False):
     import matplotlib.pylab as plt
     from seren3.core.simulation import Simulation
 
     paths = ['/research/prace/david/bpass/bc03/', \
-            '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/']
+            '/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc5']#, \
+            # '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/']#, \
+            # '/research/prace/david/aton/256/']
+
     ppaths = ['/lustre/scratch/astro/ds381/simulations/bpass/bc03/pickle/', \
-            '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/pickle/']
+            '/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc5/pickle/']#, \
+            # '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/pickle/']#, \
+            # '/lustre/scratch/astro/ds381/simulations/aton/256/pickle/']
 
     sims = [Simulation(p) for p in paths]
-    iouts = [60, 66, 70, 76, 80, 86, 90, 96, 100, 106]
-    labels = ["BC03", "BPASS"]
-    cols = ['r', 'b']
+    z=[12, 9.520844871763828,9.1183961742776667,8.870301819250594,8.637584547306572,8.478813937808214,7.970466391120848,\
+        7.649564270488902,7.243141404330228,7.020725505646379,6.6678946695209875,\
+        6.435186929659703,6.152974042392178]
 
-    plot_Mc_var(sims, iouts, ppaths, labels, cols, fix_alpha)
+    sim_iouts = []
+    for sim in sims:
+        iouts = [sim.redshift(i) for i in z]
+        print iouts
+        sim_iouts.append(iouts)
+    # iouts = [60, 66, 70, 76, 80, 86, 90, 96, 100, 106]
+    labels = ["BC03", "BC03_FESC5"]#, "ATON"]
+    cols = ['r', 'b']#, 'm']
+
+    plot_Mc_var(sims, sim_iouts, ppaths, labels, cols, fix_alpha)
     plt.show()
 
 
-def plot_Mc_var(sims, iouts, pickle_paths, labels, cols, fix_alpha=True):
+def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True):
     import pickle
     import matplotlib.pylab as plt
     from seren3.analysis.plots import fit_scatter
@@ -240,19 +338,19 @@ def plot_Mc_var(sims, iouts, pickle_paths, labels, cols, fix_alpha=True):
     fig, axs = plt.subplots(2, 2, figsize=(11,10))
 
     plot_PLANCK=True
-    for sim, ppath, label, c in zip(sims, pickle_paths, labels, cols):
+    for sim, iouts, ppath, label, c in zip(sims, sim_iouts, pickle_paths, labels, cols):
         print ppath
         cosmo = sim[iouts[0]].cosmo
-        # data = pickle.load( open("%s/Gamma_time_averaged.p" % ppath, "rb") )
-        data = pickle.load( open("%s/xHII_reion_history.p" % ppath, "rb") )
+        data = pickle.load( open("%s/T_time_averaged.p" % ppath, "rb") )
+        # data = pickle.load( open("%s/xHII_reion_history.p" % ppath, "rb") )
         z = np.zeros(len(data))
         var = np.zeros(len(data))
 
         for i in range(len(data)):
             res = data[i].result
             z[i] = res['z']
-            # var[i] = res['mw']
-            var[i] = res["volume_weighted"]
+            var[i] = res['mw']
+            # var[i] = res["volume_weighted"]
 
         tau, redshifts = tau_mod.interp_xHe(var, z, sim)
         tau_mod.plot(tau, redshifts, ax=axs[1,1], plot_PLANCK=plot_PLANCK, label=label, color=c)
@@ -268,7 +366,9 @@ def plot_Mc_var(sims, iouts, pickle_paths, labels, cols, fix_alpha=True):
 
         # Compute Mc
         output = fit_sim_iouts(iouts, ppath, fix_alpha, True,\
-                 0.15, 50., 1., **cosmo)
+                0.5, 20., 1., **cosmo)
+                # 0.15, 50., 1., **cosmo)
+                # 0.3, 20., 1., **cosmo)
         z_sim = np.array([sim[i].z for i in iouts])
         Mc = np.zeros(len(output))
         Mc_stderr = np.zeros(len(output))
@@ -288,9 +388,15 @@ def plot_Mc_var(sims, iouts, pickle_paths, labels, cols, fix_alpha=True):
         #l = children[0]
         #axs[1,0].plot(bc, fn(bc), linewidth=4., linestyle='--', color=l.get_color(), zorder=10)
 
-    axs[0,0].set_xlabel(r"z")
+    Ok_z = np.linspace(6, 10, 100)
+    Ok_fn = Okamoto_Mc_fn()
+    Ok_Mc = np.array([Ok_fn(i) for i in Ok_z])
+
+    axs[0,0].plot(Ok_z, Ok_Mc, color='g', label="Okamoto et al. 08", linestyle='-.')
+
+    axs[0,0].set_xlabel(r"$z$")
     axs[0,0].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
-    axs[0,0].set_xlim(6, 10)
+    axs[0,0].set_xlim(6, 14)
     axs[0,0].set_ylim(1e7, 2e8)
 
     axs[0,1].set_xlabel(r"$\langle x_{\mathrm{HII}} \rangle_{V}$")
@@ -299,9 +405,10 @@ def plot_Mc_var(sims, iouts, pickle_paths, labels, cols, fix_alpha=True):
     axs[0,1].set_xlim(0.2, 1.05)
     axs[0,1].set_ylim(1e7, 2e8)
 
-    axs[1,0].set_xlabel(r"z")
+    axs[1,0].set_xlabel(r"$z$")
     axs[1,0].set_ylabel(r"$\langle x_{\mathrm{HI}} \rangle_{V}$")
-    axs[1,0].set_xlim(6, 18)
+    # axs[1,0].set_xlim(6, 18)
+    axs[1,0].set_xlim(6, 14)
 
     for ax in axs.flatten()[:-1]:
         ax.set_yscale("log")
@@ -309,7 +416,7 @@ def plot_Mc_var(sims, iouts, pickle_paths, labels, cols, fix_alpha=True):
         ax.legend()
 
     plt.tight_layout()
-    fig.savefig('./Mc_panel_plot.pdf', format='pdf', dpi=10000)
+    # fig.savefig('./Mc_panel_plot.pdf', format='pdf', dpi=10000)
 
 def gnedin_fitting_func(Mh, Mc, alpha=_DEFAULT_ALPHA, **cosmo):
     f_bar = cosmo["omega_b_0"] /  cosmo["omega_M_0"]

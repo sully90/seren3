@@ -7,6 +7,7 @@ movie_img_dir = /lustre/scratch/astro/ds381/Movies/tmp/
 
 [halo]
 default_finder = ctrees
-rockstar_base = rockstar/
+rockstar_base = rockstar_so2/
 consistenttrees_base = rockstar/hlists/
+#consistenttrees_base = rockstar_so2/hlists/
 ahf_base = AHF/

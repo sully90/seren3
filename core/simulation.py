@@ -6,6 +6,11 @@ class Simulation(object):
     Object to encapsulate a simulation directory and offer snapshot access
     '''
     def __init__(self, path):
+        import glob
+
+        if len(glob.glob("%s/output_*" % path)) == 0:
+            raise Exception("No outputs found in %s" % path)
+            
         self.path = path
         self.store = {}
 
@@ -67,7 +72,7 @@ class Simulation(object):
             result = re.findall(r'\d+', outputs[i])[0]
             ioutput = int(result)
             numbered[i] = ioutput
-        return sorted(numbered)
+        return np.array(sorted(numbered), dtype=np.int32)
 
     @property
     def outputs(self):
@@ -77,12 +82,12 @@ class Simulation(object):
         outputs = glob.glob("%s/output_*" % self.path)
         outputs.sort(key=string_utils.natural_keys)
 
-	result = []
-	for o in outputs:
-		if '/' in o:
-			result.append( o.split('/')[-1] )
-		else:
-			result.append(o)
+        result = []
+        for o in outputs:
+            if '/' in o:
+                result.append( o.split('/')[-1] )
+            else:
+                result.append(o)
         return result
 
     @property

@@ -113,7 +113,7 @@ def interp_xHe(xion, z, sim):
     """
     from scipy import interpolate
 
-    cosmo = sim[1].cosmo
+    cosmo = sim[sim.numbered_outputs[0]].cosmo
     del cosmo['z'], cosmo['aexp']
     # agefunc, zfunc = sim.z_to_age(zmax=100., zmin=0., return_inverse=True)
 
@@ -209,7 +209,7 @@ def plot(tau, z, ax=None, color='k', label=None, plot_WMAP7=False, plot_PLANCK=F
         ax.fill_between(
             z, tau_WMAP7 - err, tau_WMAP7 + err, color='k', alpha=0.3)
 
-    ax.set_ylabel(r'$\tau_{\mathrm{e}}$')
+    ax.set_ylabel(r'$\tau$')
     ax.set_xlabel(r'$z$')
     ax.set_xlim(0., 14.5)
     ax.set_ylim(0., 0.12)

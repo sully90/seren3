@@ -1,6 +1,4 @@
-
-import sys
-import seren3
+import seren3, sys
 from seren3.analysis.visualization import EngineMode
 
 path = sys.argv[1]

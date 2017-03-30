@@ -5,6 +5,36 @@ import weakref
 from seren3.array import SimArray
 from seren3.utils.plot_utils import add_colorbar
 
+def plot_baryfrac(pp1=None, pp2=None):
+    path = '/research/prace/david/bpass/bc03/'
+    sim = seren3.init(path)
+
+    snap1 = sim[60]
+    snap2 = sim[100]
+
+    if (pp1 is None):
+        pp1 = PhasePlot(snap1)
+    if (pp2 is None):
+        pp2 = PhasePlot(snap2)
+
+    fig, axs = plt.subplots(nrows=1, ncols=2)#, figsize=(18,8))
+    pp1.draw(ax=axs[0], draw_cbar=False)
+    pp2.draw(ax=axs[1], draw_cbar=False)
+    # plt.tight_layout()
+
+    cbar1 = fig.colorbar(pp1.im, ax=axs[0])
+    cbar2 = fig.colorbar(pp2.im, ax=axs[1])
+    cbar1.set_label('f(mass)', labelpad=-5)
+    cbar2.set_label('f(mass)', labelpad=-5)
+
+    for ax, snap in zip(axs, [snap1, snap2]):
+        ax.set_title("z = %1.2f" % snap.z, fontsize=20)
+
+    # plt.show()
+    plt.savefig("./bc03_phase_diag.pdf", format="pdf", dpi=1000)
+    return pp1, pp2
+
+
 class PhasePlot(object):
     '''
     Class to handle equation of state plot and annotations

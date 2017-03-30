@@ -5,12 +5,15 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-def plot_sfr(context, **kwargs):
+def plot_sfr(context, ax=None, label=None, **kwargs):
     '''
     Plots the star formation rate
     '''
     from seren3.analysis import stars
     from seren3.array import units
+
+    if ax is None:
+        ax = plt.gca()
 
     sfr_unit = None
     if "sfr_unit" in kwargs:
@@ -20,8 +23,8 @@ def plot_sfr(context, **kwargs):
     if (sfr_unit is not None):
         sfr.convert_units(sfr_unit)
 
-    plt.step(lbtime, sfr, linewidth=2.)
-    plt.yscale("log")
+    ax.step(lbtime, sfr, linewidth=2., label=label)
+    ax.set_yscale("log")
 
     unit = sfr.units
     dims = unit.dimensional_project([units.Unit("kg"), units.Unit("s")])
@@ -35,10 +38,10 @@ def plot_sfr(context, **kwargs):
         field_name = "sSFR"
     else:
         raise Exception("Cannot understand SFR dims: %s" % dims)
-    plt.ylabel(r"log$_{10}$ %s [$%s$]" % (field_name, unit.latex()))
-    plt.xlabel(r"Lookback-time [$%s$]" % lbtime.units.latex())
+    ax.set_ylabel(r"log$_{10}$ %s [$%s$]" % (field_name, unit.latex()))
+    ax.set_xlabel(r"Lookback-time [$%s$]" % lbtime.units.latex())
 
-    plt.show()
+    #plt.show()
 
 
 def schmidtlaw(subsnap, filename=None, center=True, pretime='50 Myr', diskheight='3 kpc', rmax='20 kpc', compare=True, \
