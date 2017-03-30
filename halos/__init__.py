@@ -275,6 +275,78 @@ class HaloCatalogue(object):
 
         return mvir
 
+def annotate_all_halos(self, im, color="lightsteelblue", facecolor="none", alpha=1):
+    '''
+    Annotate halos on the projection
+    im = proj.save_plot()
+    '''
+    import matplotlib
+    import matplotlib.pylab as plt
+    from matplotlib.ticker import IndexLocator, FormatStrFormatter
+    from matplotlib.colors import Colormap, LinearSegmentedColormap
+    from matplotlib.patches import Circle
+    import matplotlib.cm as cm
+
+    ax = im.axes[0]
+
+    camera = proj.camera
+    los_axis = camera.los_axis
+
+    pos = []
+    rvir = np.zeros(len(self))
+
+    for i in range(len(self)):
+        h = self[i]
+        pos.append(h['pos'].in_units(self.boxsize))
+        rvir[i] = h['rvir'].in_units(self.boxsize)
+
+    pos = np.array( pos )
+    pos_transpose = pos.T
+
+    x,y = (None, None)
+    if los_axis[0] == 1:
+        x,y = (pos_transpose[1], pos_transpose[2])
+    elif los_axis[1] == 1:
+        x,y = (pos_transpose[0], pos_transpose[2])
+    elif los_axis[2] == 1:
+        x,y = (pos_transpose[0], pos_transpose[1])
+    else:
+        raise Exception("los_axis must be along x,y or z")
+
+
+    # region_size = camera.region_size[0]  # code length
+    # map_max_size = camera.map_max_size  # projection size in pixels
+
+    # rvir_pixels = (rvir/region_size) * map_max_size
+
+    if hasattr(color, "__iter__"):
+        norm = matplotlib.colors.Normalize(vmin=color.min(), vmax=color.max())
+        cmap = cm.hot
+
+        m = cm.ScalarMappable(norm=norm, cmap=cmap)
+
+        for i,ci in zip(range(len(rvir)), color):
+            r = rvir[i]
+            e = Circle(xy=(x[i], y[i]), radius=r)
+
+            c = m.to_rgba(ci)
+
+            ax.add_artist( e )
+            e.set_clip_box( ax.bbox )
+            e.set_edgecolor( c )
+            e.set_facecolor( facecolor )  # "none" not None
+            e.set_alpha( alpha )
+    else:
+        for i in range(len(rvir)):
+            r = rvir[i]
+            e = Circle(xy=(x[i], y[i]), radius=r)
+
+            ax.add_artist( e )
+            e.set_clip_box( ax.bbox )
+            e.set_edgecolor( color )
+            e.set_facecolor( facecolor )  # "none" not None
+            e.set_alpha( alpha )
+
     @property
     def mass_sigma_relation(self):
         '''

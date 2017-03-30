@@ -11,6 +11,28 @@ def _bimodal(x,mu1,sigma1,A1,mu2,sigma2,A2):
     return _gauss(x,mu1,sigma1,A1)+_gauss(x,mu2,sigma2,A2)
 
 
+def tag_halos_tidal_peaks(snapshot, fname, nbins=20, cl=3):
+    P,C,bincenters,dx,hid,tidal_force_tdyn,\
+            indexes,peaks_x,params,sigma\
+             = tidal_force_pdf(snapshot, fname, plot=False, nbins=20)
+
+    mu1,sigma1,A1,mu2,sigma2,A2 = params
+    p1_min, p1_max = ( mu1 - sigma1*cl, mu1 + sigma1*cl )
+    p2_min, p2_max = ( mu2 - sigma2*cl, mu2 + sigma2*cl )
+
+    idx1 = np.where( np.logical_and(tidal_force_tdyn >= 10**p1_min, tidal_force_tdyn <= 10**p1_max) )
+    idx2 = np.where( np.logical_and(tidal_force_tdyn >= 10**p2_min, tidal_force_tdyn <= 10**p2_max) )
+
+    halo_dict = {i:0 for i in hid}
+
+    for i in hid[idx1]:
+        halo_dict[i] = 1  # peak 1
+    for i in his[idx2]:
+        halo_dict[i] = 2  # peak 2
+
+    return halo_dict
+
+
 def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
     '''
     Computes and (optional) plots the PDF of the tidal force for each halo, averaged
@@ -38,15 +60,23 @@ def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
         return P,C,bincenters,dx
 
     data = pickle.load(open(fname, 'rb'))
+
+    hid = np.zeros(len(data))
     tidal_force_tdyn = np.zeros(len(data))
+    pid = np.zeros(len(data))
 
     for i in range(len(data)):
         res = data[i].result
+        hid[i] = res["hprops"]["id"]
+        pid[i] = res["pid"]
         tidal_force_tdyn[i] = res["hprops"]["tidal_force_tdyn"]
+
+    idx = np.where(pid == -1)
+    hid = hid[idx]
+    tidal_force_tdyn = tidal_force_tdyn[idx]
 
     P,C,bincenters,dx = pdf(tidal_force_tdyn, nbins)
     n = int(np.round(nbins/5.))
-    bc, mean, std = fit_scatter(bincenters, P, nbins=n)
 
     # Interpolate the PDF
     fn = interp1d(bincenters, P)
@@ -71,7 +101,7 @@ def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
     if plot:
         import matplotlib.pylab as plt
 
-        p = plt.plot(bincenters, P * (1. + snapshot.z)**3, linewidth=1.5, label="z=%1.2f" % snapshot.z)
+        p = plt.plot(bincenters, P * (1. + snapshot.z)**3, linewidth=1., label="z=%1.2f" % snapshot.z)
         col = p[0].get_color()
         plt.plot(x, y_2 * (1. + snapshot.z)**3, color=col, lw=3)#, label='model')
 
@@ -82,7 +112,7 @@ def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
         plt.legend()
         # plt.show()
 
-    return P,C,bincenters,dx,(bc,mean,std,indexes,peaks_x)
+    return P,C,bincenters,dx,hid,tidal_force_tdyn,indexes,peaks_x,params,sigma
 
 
 def Okamoto_Mc_fn():
