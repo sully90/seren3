@@ -33,7 +33,7 @@ def tag_halos_tidal_peaks(snapshot, fname, nbins=20, cl=3):
     return halo_dict
 
 
-def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
+def tidal_force_pdf(fname, plot=False, nbins=20, **cosmo):
     '''
     Computes and (optional) plots the PDF of the tidal force for each halo, averaged
     over a dynamical time
@@ -45,7 +45,6 @@ def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
     from scipy.interpolate import interp1d
     from scipy.optimize import curve_fit
 
-    nbins = kwargs.pop("nbins", 50)
     def pdf(arr, bins):
         log_arr = np.log10(arr)
         idx = np.where(np.isinf(log_arr))
@@ -101,11 +100,12 @@ def tidal_force_pdf(snapshot, fname, plot=True, **kwargs):
     if plot:
         import matplotlib.pylab as plt
 
-        p = plt.plot(bincenters, P * (1. + snapshot.z)**3, linewidth=1., label="z=%1.2f" % snapshot.z)
+        z = cosmo["z"]
+        p = plt.plot(bincenters, P * (1. + z)**3, linewidth=1., label="z=%1.2f" % z)
         col = p[0].get_color()
-        plt.plot(x, y_2 * (1. + snapshot.z)**3, color=col, lw=3)#, label='model')
+        plt.plot(x, y_2 * (1. + z)**3, color=col, lw=3)#, label='model')
 
-        plt.scatter(peaks_x, fn(peaks_x) * (1. + snapshot.z)**3, color='r', s=250, marker='o')
+        plt.scatter(peaks_x, fn(peaks_x) * (1. + z)**3, color='r', s=250, marker='o')
 
         plt.xlabel(r"log$_{10}$ $\langle F_{\mathrm{Tidal}} \rangle_{t_{\mathrm{dyn}}}$")
         plt.ylabel(r"P (1 + z)$^{3}$")
@@ -181,6 +181,43 @@ def plot_fits(Mc_amr, Mc_cudaton, **cosmo):
     return fb_amr, fb_cudaton
 
 
+def load_tint_fb_data(snap, fname):
+    import pickle
+
+    data = pickle.load(open(fname, 'rb'))
+
+    halos = snap.halos()
+
+    nrecords = len(data)
+    tint_fb = np.zeros(nrecords)
+    fb = np.zeros(nrecords)
+    mass = np.zeros(nrecords)
+    pid = np.zeros(nrecords)
+    np_dm = np.zeros(nrecords)
+    tidal_force = np.zeros(nrecords)
+
+    for i in range(len(data)):
+        res = data[i].result
+
+        tint_fb[i] = res['tint_fbaryon'][0]
+        fb[i] = res['I1'][0]/res['I2'][0]
+        mass[i] = res['fbaryon_dict'][snap.ioutput]['tot_mass']
+        np_dm[i] = res['fbaryon_dict'][snap.ioutput]['np_dm']
+        pid[i] = res['fbaryon_dict'][snap.ioutput]['pid']
+        tidal_force[i] = res['tidal_force_tdyn_dict'][snap.ioutput]
+
+    idx = np.where( ~np.isnan(tint_fb) )
+    mass = mass[idx]; tint_fb = tint_fb[idx]; fb = fb[idx]; pid = pid[idx]; np_dm = np_dm[idx]
+    tidal_force = tidal_force[idx]
+
+    # Filter
+    idx = np.where( np.logical_and(pid == -1, np_dm >= 20.) )
+    mass = mass[idx]; tint_fb = tint_fb[idx]; fb = fb[idx]; pid = pid[idx]; np_dm = np_dm[idx]
+    tidal_force = tidal_force[idx]
+
+    return mass, tint_fb, fb, np_dm, pid, tidal_force
+
+
 def load_data(fname):
     import pickle
 
@@ -214,9 +251,16 @@ def load_data(fname):
 
 def filter_and_load_data(fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=100., ncell_cutoff=1.,):
     _MASS_CUTOFF = 1e5  # Msun/h
+
+    if tidal_force_cutoff is None:
+        res = tidal_force_pdf(fname, plot=False)
+        peaks_x = res[-3]
+        tidal_force_cutoff = 10**np.max(peaks_x)
+
     print tidal_force_cutoff, dm_particle_cutoff, ncell_cutoff
 
     mass, fb, np_dm, ncell, tidal_force_tdyn, pid = load_data(fname)
+    print "Pre-filter: ", len(mass)
 
     # Apply resolution cutoff
     idx = np.where( np.logical_and(np_dm >= dm_particle_cutoff, ncell >= ncell_cutoff) )
@@ -230,9 +274,11 @@ def filter_and_load_data(fname, tidal_force_cutoff=np.inf, dm_particle_cutoff=10
     idx = np.where(mass >= _MASS_CUTOFF)
     mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
 
+    print "Pre-filter2: ", len(mass)
     # Apply tidal force cutoff
     idx = np.where(tidal_force_tdyn <= tidal_force_cutoff)
     mass = mass[idx]; fb = fb[idx]; tidal_force_tdyn = tidal_force_tdyn[idx]
+    print "Post-filter: ", len(mass)
 
     return mass, fb, np_dm, ncell, tidal_force_tdyn, pid
 
@@ -313,8 +359,12 @@ def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, *args, **co
 
     output = {}
     for iout in iouts:
+        snap = sim[iout]
         fname = "%s/ConsistentTrees/fbaryon_tdyn_%05i.p" % (pickle_dir, iout)
+        # fname = "%s/ConsistentTrees/tint_fbaryon_tdyn_%05i_fixed.p" % (pickle_dir, iout)
+
         mass, fb, np_dm, ncell, tidal_force_tdyn, pid = filter_and_load_data(fname, *args)
+        # mass, fb, dummy, np_dm, pid = load_tint_fb_data(snap, fname)
 
         # Compute the characteristic mass scale, Mc
         fit_dict = fit(mass, fb, fix_alpha, use_lmfit=use_lmfit, **cosmo)
@@ -351,39 +401,43 @@ def tmp_plot_bc03_bpass(fix_alpha=False):
         print iouts
         sim_iouts.append(iouts)
     # iouts = [60, 66, 70, 76, 80, 86, 90, 96, 100, 106]
-    labels = ["BC03", "BC03_FESC5"]#, "ATON"]
+    labels = ["RT2", "RT5"]#, "ATON"]
     cols = ['r', 'b']#, 'm']
 
     plot_Mc_var(sims, sim_iouts, ppaths, labels, cols, fix_alpha)
     plt.show()
 
 
-def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True):
+def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tidal_force_cutoff=None):
     import pickle
     import matplotlib.pylab as plt
     from seren3.analysis.plots import fit_scatter
     from seren3.utils import tau as tau_mod
     from scipy.interpolate import interp1d
 
-    fig, axs = plt.subplots(2, 2, figsize=(11,10))
+    # fig, axs = plt.subplots(2, 2, figsize=(11,10))
+    fig1, axs1 = plt.subplots(1, 2, figsize=(10,5))
+    fig2, axs2 = plt.subplots(1, 2, figsize=(10,5))
 
     plot_PLANCK=True
     for sim, iouts, ppath, label, c in zip(sims, sim_iouts, pickle_paths, labels, cols):
         print ppath
         cosmo = sim[iouts[0]].cosmo
-        data = pickle.load( open("%s/T_time_averaged.p" % ppath, "rb") )
-        # data = pickle.load( open("%s/xHII_reion_history.p" % ppath, "rb") )
+        # data = pickle.load( open("%s/T_time_averaged.p" % ppath, "rb") )
+        data = pickle.load( open("%s/xHII_reion_history.p" % ppath, "rb") )
         z = np.zeros(len(data))
         var = np.zeros(len(data))
 
         for i in range(len(data)):
             res = data[i].result
             z[i] = res['z']
-            var[i] = res['mw']
-            # var[i] = res["volume_weighted"]
+            # var[i] = res['mw']
+            var[i] = res["volume_weighted"]
+            # var[i] = res["mass_weighted"]
 
         tau, redshifts = tau_mod.interp_xHe(var, z, sim)
-        tau_mod.plot(tau, redshifts, ax=axs[1,1], plot_PLANCK=plot_PLANCK, label=label, color=c)
+        # tau_mod.plot(tau, redshifts, ax=axs[1,1], plot_PLANCK=plot_PLANCK, label=label, color=c)
+        tau_mod.plot(tau, redshifts, ax=axs2[1], plot_PLANCK=plot_PLANCK, label=label, color=c)
         plot_PLANCK=False
 
         idx = np.where(z <= 18.)
@@ -396,7 +450,7 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True):
 
         # Compute Mc
         output = fit_sim_iouts(iouts, ppath, fix_alpha, True,\
-                0.5, 20., 1., **cosmo)
+                tidal_force_cutoff, 20., 1., **cosmo)
                 # 0.15, 50., 1., **cosmo)
                 # 0.3, 20., 1., **cosmo)
         z_sim = np.array([sim[i].z for i in iouts])
@@ -409,10 +463,15 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True):
             Mc_stderr[i] = output[iout]["Mc"]["stderr"]
 
         # Plot Mc
-        axs[0,0].errorbar(z_sim, Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
-        axs[0,1].errorbar(fn(z_sim), Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
+        # axs[0,0].errorbar(z_sim, Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
+        # axs[0,1].errorbar(fn(z_sim), Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
 
-        axs[1,0].plot(z, 1.-var, label=label, color=c)
+        # axs[1,0].plot(z, 1.-var, label=label, color=c)
+        axs1[0].errorbar(z_sim, Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
+        axs1[1].errorbar(fn(z_sim), Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
+
+        # Plot neutral fraction
+        axs2[0].plot(z, 1.-var, label=label, color=c)
         #p = axs[1,0].errorbar(bc, mean, yerr=stderr, linewidth=1, label=label)
         #children = p.get_children()
         #l = children[0]
@@ -422,31 +481,59 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True):
     Ok_fn = Okamoto_Mc_fn()
     Ok_Mc = np.array([Ok_fn(i) for i in Ok_z])
 
-    axs[0,0].plot(Ok_z, Ok_Mc, color='g', label="Okamoto et al. 08", linestyle='-.')
+    # axs[0,0].plot(Ok_z, Ok_Mc, color='g', label="Okamoto et al. 08", linestyle='-.')
 
-    axs[0,0].set_xlabel(r"$z$")
-    axs[0,0].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
-    axs[0,0].set_xlim(6, 14)
-    axs[0,0].set_ylim(1e7, 2e8)
+    # axs[0,0].set_xlabel(r"$z$")
+    # axs[0,0].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
+    # axs[0,0].set_xlim(6, 14)
+    # axs[0,0].set_ylim(1e7, 2e8)
 
-    axs[0,1].set_xlabel(r"$\langle x_{\mathrm{HII}} \rangle_{V}$")
-    axs[0,1].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
+    # axs[0,1].set_xlabel(r"$\langle x_{\mathrm{HII}} \rangle_{V}$")
+    # axs[0,1].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
+    # # axs[0,1].set_xscale("log")
+    # axs[0,1].set_xlim(0.2, 1.05)
+    # axs[0,1].set_ylim(1e7, 2e8)
+
+    # axs[1,0].set_xlabel(r"$z$")
+    # axs[1,0].set_ylabel(r"$\langle x_{\mathrm{HI}} \rangle_{V}$")
+    # # axs[1,0].set_xlim(6, 18)
+    # axs[1,0].set_xlim(6, 14)
+    axs1[0].plot(Ok_z, Ok_Mc, color='g', label="Okamoto et al. 08", linestyle='-.')
+
+    axs1[0].set_xlabel(r"$z$")
+    axs1[0].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
+    # axs1[0].set_xlim(6, 14)
+    axs1[0].set_ylim(1e7, 2e8)
+
+    axs1[1].set_xlabel(r"$\langle x_{\mathrm{HII}} \rangle_{V}$")
+    axs1[1].set_ylabel(r"$M_{\mathrm{c}}$ [M$_{\odot}$/h]")
     # axs[0,1].set_xscale("log")
-    axs[0,1].set_xlim(0.2, 1.05)
-    axs[0,1].set_ylim(1e7, 2e8)
+    axs1[1].set_xlim(0.2, 1.05)
+    axs1[1].set_ylim(1e7, 2e8)
 
-    axs[1,0].set_xlabel(r"$z$")
-    axs[1,0].set_ylabel(r"$\langle x_{\mathrm{HI}} \rangle_{V}$")
+    axs2[0].set_xlabel(r"$z$")
+    axs2[0].set_ylabel(r"$\langle x_{\mathrm{HI}} \rangle_{V}$")
     # axs[1,0].set_xlim(6, 18)
-    axs[1,0].set_xlim(6, 14)
+    axs2[0].set_xlim(6, 16)
+    axs2[1].set_xlim(0, 16)
 
-    for ax in axs.flatten()[:-1]:
-        ax.set_yscale("log")
-    for ax in axs.flatten():
-        ax.legend()
+    axs1[0].set_yscale("log")
+    axs1[1].set_yscale("log")
+    axs2[0].set_yscale("log")
 
-    plt.tight_layout()
-    # fig.savefig('./Mc_panel_plot.pdf', format='pdf', dpi=10000)
+    axs1[0].legend()
+    # axs1[1].legend()
+    # axs2[0].legend()
+    axs2[1].legend()
+    # for ax in axs.flatten()[:-1]:
+    #     ax.set_yscale("log")
+    # for ax in axs.flatten():
+    #     ax.legend()
+
+    fig1.tight_layout()
+    fig2.tight_layout()
+    # plt.tight_layout()
+    # fig.savefig('./Mc_panel_plot_ftidal_pdf.pdf', format='pdf', dpi=10000)
 
 def gnedin_fitting_func(Mh, Mc, alpha=_DEFAULT_ALPHA, **cosmo):
     f_bar = cosmo["omega_b_0"] /  cosmo["omega_M_0"]
@@ -463,7 +550,7 @@ def lmfit_gnedin_fitting_func(params, mass, data, **cosmo):
     return model - data  # what we want to minimise
 
 
-def fit(mass, fb, fix_alpha, use_lmfit=True, **cosmo):
+def fit(mass, fb, fix_alpha, weights=None, use_lmfit=True, **cosmo):
     import scipy.optimize as optimization
 
     # Make an initial guess at Mc
@@ -486,7 +573,7 @@ def fit(mass, fb, fix_alpha, use_lmfit=True, **cosmo):
         fit_params.add("Mc", value=p0[0], min=0.)
         fit_params.add("alpha", value=_DEFAULT_ALPHA, vary=np.logical_not(fix_alpha), min=0.)
         # print fit_params
-        result = minimize( lmfit_gnedin_fitting_func, fit_params, args=(mass, fb), kws=cosmo)
+        result = minimize( lmfit_gnedin_fitting_func, fit_params, args=(mass, fb), kws=cosmo, weights=weights)
         if result.success:
             Mc_res = result.params['Mc']
             alpha_res = result.params['alpha']

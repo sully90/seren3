@@ -1,4 +1,4 @@
-from pymses.analysis.operator import AbstractOperator
+from pymses.analysis.operator import AbstractOperator, FractionOperator
 
 # Map operator : minimum temperature along line-of-sight
 class MinTempOperator(AbstractOperator):
@@ -24,7 +24,6 @@ class MinTempOperator(AbstractOperator):
         map[mask] = 0.0
         return map
 
-from pymses.analysis.operator import AbstractOperator
 
 # Map operator : minimum hydrogon ionised fraction along line-of-sight
 class MinxHIIOperator(AbstractOperator):
@@ -44,3 +43,19 @@ class MinxHIIOperator(AbstractOperator):
         map[mask2] = 1.0 / map[mask2]
         map[mask] = 0.0
         return map
+
+
+# Simple density weighted operator for ray-tracing for scalar fields
+class DensityWeightedOperator(FractionOperator):
+    def __init__(self, field, unit, **kwargs):
+        up_fn = lambda dset: dset[field] * dset["rho"]
+        down_fn = lambda dset: dset["rho"]
+        super(DensityWeightedOperator, self).__init__(up_fn, down_fn, unit, **kwargs)
+
+
+# Simple mass weighted operator for ray-tracing for scalar fields
+class MassWeightedOperator(FractionOperator):
+    def __init__(self, field, unit, **kwargs):
+        up_fn = lambda dset: dset[field] * (dset["rho"] * dset.get_sizes()**3)
+        down_fn = lambda dset: dset["rho"] * dset.get_sizes()**3
+        super(MassWeightedOperator, self).__init__(up_fn, down_fn, unit, **kwargs)

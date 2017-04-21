@@ -1,3 +1,35 @@
+def plot_baryfrac_comparisson(snap1, snap2, ihalo1, ihalo2, PDF_CDF=None):
+    import matplotlib.pylab as plt
+
+    halos1 = snap1.halos(); shalos1 = halos1.sort("Mvir")
+    halos2 = snap2.halos(); tree2 = halos2.kdtree()
+
+    hs1_i1 = shalos1[ihalo1]; hs1_i2 = shalos1[ihalo2]
+
+    d1, idx1 = tree2.query(hs1_i1.pos, 1)
+    d2, idx2 = tree2.query(hs1_i2.pos, 1)
+    hs2_i1 = halos2[idx1]
+    hs2_i2 = halos2[idx2]
+
+    if PDF_CDF is None:
+        PDF_CDF = [ pdf_cdf(h.g, 'nH', cumulative=True) for h in [hs1_i1, hs1_i2, hs2_i1, hs2_i2] ]
+
+    titles = [ "M$_{\mathrm{vir}}$ = %1.2e M$_{\odot}$/h \nT$_{\mathrm{vir}}$ = %1.2e K" % (h['mvir'], h.Tvir) for h in [hs1_i1, hs1_i2, hs2_i1, hs2_i2] ]
+
+    fig, axs = plt.subplots(nrows=2, ncols=2)
+
+    for snap,val,ax in zip([snap1, snap1, snap2, snap2], PDF_CDF, axs.flatten()):
+        P,C,bc,dx = val
+        plot_pdf_cdf(snap, P, bc, dx, True, r"n$_{\mathrm{H}}$ [m$^{-3}$]", ax1=ax, C=C, label_nstar=True)
+
+    for ax, title in zip(axs.flatten(), titles):
+        ax.set_title(title, fontsize=18)
+
+    plt.tight_layout(pad=0.005)
+    plt.show(block=False)
+
+    return PDF_CDF
+
 def rho_T_hist2d(snap, xo=None, yo=None, mass=None, den_field='nH', temp_field='T2', \
                 nbins=500, plot=False, ax=None, title=None, show=False, **kwargs):
     ''' Produces a mass weighted, 2D histogram of density vs temperature '''
@@ -219,10 +251,11 @@ def nH_halo_cdf_fit(snapshot, the_mass_bins=[8., 9., 10.], nbins=10):
     print "Bracketing nH"
     min_nH = np.inf; max_nH = -np.inf
     for dset in snapshot.g["nH"]:
-        if dset.min() < min_nH:
-            min_nH = dset.min()
-        if dset.max() > max_nH:
-            max_nH = dset.max()
+        nH = dset["nH"]
+        if nH.min() < min_nH:
+            min_nH = nH.min()
+        if nH.max() > max_nH:
+            max_nH = nH.max()
 
     nH_range = (min_nH, max_nH)
 
@@ -234,7 +267,7 @@ def nH_halo_cdf_fit(snapshot, the_mass_bins=[8., 9., 10.], nbins=10):
     for i in range(nhalos):
         print '(%i / %i)' % (i+1, nhalos)
         h = halos[i]
-        if len(h.g['nH'].f) > 0:
+        if len(h.g) > 0:
             P, C, bc, dx = pdf_cdf(h.g, "nH", cumulative=True, plot=False, bins=50, x_range=nH_range, density=True)
             cdf_halos.append(C)
             bin_centre_halos.append(bc)
@@ -249,7 +282,7 @@ def nH_halo_cdf_fit(snapshot, the_mass_bins=[8., 9., 10.], nbins=10):
     for i in range(len(the_mass_bins)):
         idx = np.where( mass_bins == i )
         x, y = ( flatten_nested_array(bin_centre_halos[idx]), flatten_nested_array(cdf_halos[idx]) )
-        binned_cdf[i] = fit_scatter(x, y, ret_stderr=True)
+        binned_cdf[i] = fit_scatter(x, y, ret_sterr=True)
 
     binned_cdf['the_mass_bins'] = the_mass_bins
 
@@ -273,6 +306,8 @@ def pdf_cdf(snapshot, field, field_latex=None, bins=50, logscale=True, density=F
 
     if logscale:
         data = np.log10(data)
+        if x_range is not None:
+            x_range = np.log10(x_range)
 
     P, bin_edges = np.histogram(data, bins=bins, range=x_range, density=density)
     P = np.array( [float(i)/float(len(data)) for i in P] )

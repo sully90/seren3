@@ -195,9 +195,20 @@ class CustomRayTraceEngine(RayTraceEngine):
     '''
     Ray-tracing engine which accepts a user defined operator
     '''
-    def __init__(self, family, field, operator):
+    def __init__(self, family, field, operator, **kwargs):
         super(CustomRayTraceEngine, self).__init__(family, field)
         self._operator = operator
+        self._additional_fields = kwargs.pop("extra_fields", None)
+
+
+    def get_source(self):
+        if self._additional_fields is not None:
+            fields = [self.field]
+            fields.extend(self._additional_fields)
+            return self.family[fields].pymses_source
+
+        return self.family[self.field].pymses_source
+
 
     def get_operator(self):
         return self._operator
@@ -229,12 +240,39 @@ class SplatterEngine(ProjectionEngine):
         return True
 
 
+class CustomSplatterEngine(SplatterEngine):
+    '''
+    Ray-tracing engine which accepts a user defined operator
+    '''
+    def __init__(self, family, field, operator, **kwargs):
+        super(CustomSplatterEngine, self).__init__(family, field)
+        self._operator = operator
+        self._additional_fields = kwargs.pop("extra_fields", None)
+
+
+    def get_source(self):
+        if self._additional_fields is not None:
+            fields = [self.field]
+            fields.extend(self._additional_fields)
+            return self.family[fields].pymses_source
+
+        return self.family[self.field].pymses_source
+
+
+    def get_operator(self):
+        return self._operator
+
+
 class MassWeightedSplatterEngine(SplatterEngine):
     '''
     Example of how to process intensive variable with the splatter engine
     '''
     def __init__(self, family, field):
         super(MassWeightedSplatterEngine, self).__init__(family, field)
+
+
+    def get_source(self):
+        return self.family[["rho", self.field]].pymses_source
 
 
     @classmethod
@@ -246,7 +284,7 @@ class MassWeightedSplatterEngine(SplatterEngine):
         from pymses.analysis import FractionOperator
 
         up_func = lambda dset: self.get_field(dset, self.field)**2 * self.get_field(dset, "dx")**3
-        down_func = lambda dset: self.get_field(dset, self.field) * self.get_field(dset, "dx")**3
+        down_func = lambda dset: self.get_field(dset, "rho") * self.get_field(dset, "dx")**3
         unit = self.get_map_unit()
 
         op = FractionOperator(up_func, down_func, unit)

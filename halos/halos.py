@@ -631,7 +631,8 @@ class ConsistentTreesCatalogue(HaloCatalogue):
                 last = iout_prog
         return hid, prog_halos
 
-    def iterate_progenitors(self, halo, back_to_aexp = 0.):
+
+    def iterate_progenitors(self, halo, back_to_aexp=0., verbose=True):
         '''
         Iterates through list of progenitors without loading halo catalogues completely
         '''
@@ -669,10 +670,12 @@ class ConsistentTreesCatalogue(HaloCatalogue):
             if (mmp_props != None):
                 sim = Simulation(halo.base.path)
                 # print aexp_hlist[::-1][i]
-                z = (1./aexp_hlist[::-1][i]) - 1.
+                # z = (1./aexp_hlist[::-1][i]) - 1.
+                z = (1./aexp_hlist[i]) - 1.
                 prog_snap = sim[sim.redshift(z)]
                 yield Halo(mmp_props, prog_snap, self.units, self.get_boxsize())  # the mmp
                 hid = int(mmp_props["id"])
             else:
-                print "No descentent found - exiting"
+                if (verbose):
+                    print "No descentent found - exiting"
                 break

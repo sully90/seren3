@@ -6,6 +6,46 @@ from matplotlib.colors import LinearSegmentedColormap as lsc
 import numpy as np
 
 
+def list_custom_cmaps():
+    import glob, re
+    from seren3 import config
+
+    _REGEX = ".+?(?=_256)"
+
+    cmap_dir = "%s/cmaps/" % config.get("data", "data_dir")
+    files = glob.glob("%s/*.txt" % cmap_dir)
+
+    cmap_names = []
+    for f in files:
+        m = re.search(_REGEX, f)
+        cmap_name = m.group(0).split("/")[-1]
+        cmap_names.append(cmap_name)
+
+    return cmap_names
+
+
+def load_custom_cmaps(cmap_name):
+    import numpy as np
+    import glob, re
+    from seren3 import config
+
+    cmap_dir = "%s/cmaps/" % config.get("data", "data_dir")
+
+    _REGEX = ".+?(?=_256)"
+
+    files = glob.glob("%s/*.txt" % cmap_dir)
+    for f in files:
+        m = re.search(_REGEX, f)
+        name = m.group(0).split("/")[-1]
+
+        if cmap_name == name:
+            C = np.loadtxt(f)
+            cm = matplotlib.colors.ListedColormap(C/255.0)
+            return cm
+
+    raise IOError("No cmap found with name: %s" % cmap_name)
+
+
 def velocity_plot(s, width='15 kpc', cmap1='hot', cmap2='viridis', stream=False):
     import pynbody
     import pynbody.plot.sph as sph

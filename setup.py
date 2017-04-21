@@ -27,6 +27,10 @@ def make_config(parent_package='', top_path=None):
         name="analysis._interpolate3d",
         sources=["src/analysis/_interpolate3d.c"])
 
+    config.add_extension(
+        name="cosmology._power_spectrum",
+        sources=["src/cosmology/_power_spectrum.c"])
+
     return config
 
 

@@ -3,10 +3,11 @@ import numpy as np
 # Setup MPI environment
 from mpi4py import MPI
 # MPI runtime variables
+HOST_RANK=0
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
-host = (rank == 0)
+host = (rank == HOST_RANK)
 
 class Result(object):
     '''
@@ -80,6 +81,8 @@ def piter(iterable, storage=None, keep_None=False, print_stats=False):
     local_results = []
     # yield the iterable
     for i in xrange(len(local_iterable)):
+        if print_stats:
+            msg("%i / %i" % (i, len(local_iterable)))
 
         # yield to the for loop
         if storage is not None:

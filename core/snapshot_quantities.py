@@ -34,8 +34,9 @@ class Quantity(object):
         from seren3.utils.cython import cic
         from seren3.utils import deconvolve_cic
 
+        unit_l = self.base.array(self.base.info["unit_length"])
         dset = self.base.d["pos"].flatten()
-        x,y,z = dset["pos"].T
+        x,y,z = dset["pos"].in_units(unit_l).T
         x = np.ascontiguousarray(x); y = np.ascontiguousarray(y); z = np.ascontiguousarray(z)
         npart = len(x)
         N = 2**self.base.info['levelmin']
@@ -114,7 +115,7 @@ class Quantity(object):
 
     def volume_weighted_average(self, field, mem_opt = False):
         '''
-        Computes the volume weighted ionization fraction for the desired field
+        Computes the volume weighted average for the desired field
         '''
         boxsize = SimArray(self.base.info["boxlen"], self.base.info["unit_length"]).in_units("pc")
         if mem_opt:  # slower
@@ -131,7 +132,7 @@ class Quantity(object):
 
     def mass_weighted_average(self, field, mem_opt = False):
         '''
-        Computes the mass weighted ionization fraction for the desired field
+        Computes the mass weighted average for the desired field
         '''
         snap = self.base
         boxmass = self.box_mass('b').in_units("Msol")
