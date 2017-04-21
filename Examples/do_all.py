@@ -24,6 +24,32 @@ def amr_halo_average_qty(context, qty, lengh_unit="pc", halo=None):
 
     return np.sum(field * dx**3) / vol
 
+########################################## FILTERING ##########################################
+
+def spherical_filter(snapshot, center=None, radius=None):
+    '''
+    Filter a spherical sub-snapshot from the full volume
+    '''
+
+    # Lets just filter a simple sphericl sub-volume in the centre of our box (supply your own centre/radius if you want).
+    if (centre is None):
+        centre = [.5, .5, .5]  # centre in usual box units of [0., 1.)]
+
+    if (radius is None):
+        radius = 0.1
+
+    # All values passed to this routine must be in code-length units
+    sphere = snapshot.get_sphere(centre, radius)
+
+    # Snapshots __getitem__ accepts any pymses.utils.regions object as a filter
+    sub_snapshot = snapshot[sphere]
+
+    # Now data access with sub_snapshot in the usual syntax will only return
+    # cells/particles in this sub-volume, i.e
+    # dset = sub_snapshot.g["rho"].flatten()
+
+    return sub_snapshot
+
 ########################################## GAS ##########################################
 def spherical_profile(context, field):
     '''
