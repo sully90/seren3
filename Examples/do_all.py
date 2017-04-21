@@ -31,15 +31,15 @@ def spherical_filter(snapshot, center=None, radius=None):
     Filter a spherical sub-snapshot from the full volume
     '''
 
-    # Lets just filter a simple sphericl sub-volume in the centre of our box (supply your own centre/radius if you want).
-    if (centre is None):
-        centre = [.5, .5, .5]  # centre in usual box units of [0., 1.)]
+    # Lets just filter a simple sphericl sub-volume in the center of our box (supply your own center/radius if you want).
+    if (center is None):
+        center = [.5, .5, .5]  # center in usual box units of [0., 1.)]
 
     if (radius is None):
         radius = 0.1
 
     # All values passed to this routine must be in code-length units
-    sphere = snapshot.get_sphere(centre, radius)
+    sphere = snapshot.get_sphere(center, radius)
 
     # Snapshots __getitem__ accepts any pymses.utils.regions object as a filter
     sub_snapshot = snapshot[sphere]
