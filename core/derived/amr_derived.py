@@ -141,7 +141,10 @@ def amr_nHI(context, dset):
     '''
     Neutral hydrogen number density
     '''
-    nHI = SimArray(dset["nH"] * (1. - dset["xHII"]), dset["nH"].units)
+
+    xHII = np.round( dset["xHII"], decimals=5 )
+    nHI = SimArray(dset["nH"] * (1. - xHII), dset["nH"].units)
+    # nHI = SimArray(dset["nH"] * (1. - dset["xHII"]), dset["nH"].units)
     nHI.set_field_latex("n$_{\\mathrm{HI}}$")
     return nHI
 

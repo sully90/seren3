@@ -21,87 +21,138 @@ def compute_fb(context, mass_unit="Msol h**-1"):
 
 ############################# NEURAL NET #############################
 
-def dump_fbaryon_training_set(snap, fname, out_fname, topology=[2,6,1], out_zero_ftydn=False, n=1):
-    import pickle
+def dump_fb_training_data(snapshot, topology, niter, pickle_path=None, out_path=None):
+    '''
+    Dump data to disk for training our neural network
+    '''
+    import seren3
     import numpy as np
+    import pickle, os
 
-    data = pickle.load(open(fname, 'rb'))
-    mvir = np.zeros(len(data))
-    fb = np.zeros(len(data))
-    ftdyn = np.zeros(len(data))
-    pid = np.zeros(len(data))
+    if (pickle_path is None):
+        pickle_path = "%s/pickle/" % snapshot.path
 
     def _list_to_string(lst):
         return str(lst)[1:-1].replace(',', '')
 
-    for i in range(len(data)):
-        res = data[i].result
+    def _get_halo_av_fname(qty, iout, pickle_path):
+        return "%s/%s_halo_av_%05i.p" % (pickle_path, qty, iout)
+
+    def _get_fbaryon_fname(iout, pickle_path):
+        return "%s/ConsistentTrees/fbaryon_tdyn_%05i.p" % (pickle_path, iout)
+
+    def _load_pickle_dict(fname):
+        return pickle.load(open(fname, "rb"))
+
+    T_fname = _get_halo_av_fname("T", snapshot.ioutput, pickle_path)
+    xHII_fname = _get_halo_av_fname("xHII", snapshot.ioutput, pickle_path)
+    fb_fname = _get_fbaryon_fname(snapshot.ioutput, pickle_path)
+
+    T_data = _load_pickle_dict(T_fname)
+    xHII_data = _load_pickle_dict(xHII_fname)
+    fb_data = _load_pickle_dict(fb_fname)
+
+    # Make table with keys as halo ids
+    fb_data_table = {}
+    for i in range(len(fb_data)):
+        di = fb_data[i]
+        fb_data_table[int(di.idx)] = di.result
+
+    # Add T and xHII data
+    assert len(xHII_data) == len(T_data), "xHII and T databases have different lenghs"
+    for i in range(len(xHII_data)):
+        fb_data_table[int(xHII_data[i].idx)]["xHII"] = xHII_data[i].result["vw"]
+        fb_data_table[int(T_data[i].idx)]["T"] = T_data[i].result["vw"]
+
+    mvir = np.zeros(len(fb_data_table)); fb = np.zeros(len(fb_data_table))
+    ftidal = np.zeros(len(fb_data_table)); xHII = np.zeros(len(fb_data_table))
+    T = np.zeros(len(fb_data_table)); pid = np.zeros(len(fb_data_table))
+    np_dm = np.zeros(len(fb_data_table))
+
+    keys = fb_data_table.keys()
+    for i in range(len(fb_data_table)):
+        res = fb_data_table[keys[i]]
         mvir[i] = res["tot_mass"]
         fb[i] = res["fb"]
+        ftidal[i] = res["hprops"]["tidal_force_tdyn"]
+        xHII[i] = res["xHII"]
+        T[i] = res["T"]
         pid[i] = res["pid"]
-        ftdyn[i] = res["hprops"]["tidal_force_tdyn"]
-
-    cosmo = snap.cosmo
-    fb_cosmic_mean = cosmo["omega_b_0"] / cosmo["omega_M_0"]
-    fb /= fb_cosmic_mean
-
-    idx = np.where(np.logical_and(pid == -1, fb > 0.))
-    # fb[fb==0.] += 1e-6
-    mvir = mvir[idx]; fb = fb[idx]; ftdyn = ftdyn[idx]; pid = pid[idx]
-    fb = np.log10(fb)
+        np_dm[i] = res["np_dm"]
 
     log_mvir = np.log10(mvir)
+    idx = np.where(np.logical_and(pid == -1, np_dm >= 20))
 
-    fb_scaled = (fb - fb.min()) / (fb.max() - fb.min())
-    log_mvir_scaled = (log_mvir - log_mvir.min()) / (log_mvir.max() - log_mvir.min())
-    ftdyn_scaled = (ftdyn - ftdyn.min()) / (ftdyn.max() - ftdyn.min())
+    log_mvir = log_mvir[idx]; fb = fb[idx]; ftidal = ftidal[idx]
+    xHII = xHII[idx]; T = T[idx]
 
-    if out_zero_ftydn:
-        ftdyn_scaled = np.zeros(len(ftdyn_scaled))
+    def _scale_z(zmax, zmin, z):
+        scaled = (z - zmin) / (zmax - zmin)
+        scaled -= 0.5  # [-0.5, 0.5]
+        scaled *= 2.  # [-1, 1]
+        return scaled
 
+    def _scale(arr):
+        scaled = (arr - arr.min()) / (arr.max() - arr.min())  # [0, 1]
+        scaled -= 0.5  # [-0.5, 0.5]
+        scaled *= 2.  # [-1, 1]
+        return scaled
+
+    # Scale between [-1, 1] to fit within neural-net transfer function
+    log_mvir_scaled = _scale(log_mvir); fb_scaled = _scale(fb)
+    ftidal_scaled = _scale(ftidal); xHII_scaled = _scale(xHII)
+    T_scaled = _scale(T)
+
+    if (out_path is None):
+        out_path = snapshot.path
+
+    net_dir = "%s/neural-net/" % out_path
+    if (os.path.isdir(net_dir) is False):
+        os.mkdir(net_dir)
+
+    sim = seren3.init(snapshot.path)
+    redshifts = sim.redshifts
+    zmin = min(redshifts)
+    zmax = max(redshifts)
+
+    z_scaled = _scale_z(zmax, zmin, snapshot.z)
+
+    # Write the files
     top_line = "topology: %s\n" % (_list_to_string(topology))
+    f = open('%s/fb_neural_net_%05i_training_data.txt' % (net_dir, snapshot.ioutput), 'w')
+    f.write(top_line)
 
-    with open(out_fname, 'w') as f:
-        f.write(top_line)
+    # niter = 100
+    for j in range(niter):
+        for i in range(len(fb_scaled)):
+            l1 = "in: %f %f %f %f %f\n" % (log_mvir_scaled[i], ftidal_scaled[i], xHII_scaled[i], T_scaled[i], z_scaled)
+            l2 = "out: %f\n" % fb_scaled[i]
+            f.write(l1)
+            f.write(l2)
 
-        for i in range(n):
-            for i in range(len(mvir)):
-                l1 = "in: %f %f\n" % (log_mvir_scaled[i], ftdyn_scaled[i])
-                l2 = "out: %f\n" % fb_scaled[i]
-                f.write(l1)
-                f.write(l2)
+    f.close()
 
-    return mvir, 10**fb, ftdyn
+    f = open('%s/fb_neural_net_%05i_prediction_data.txt' % (net_dir, snapshot.ioutput), 'w')
+    for i in range(len(fb_scaled)):
+        l1 = "in: %f %f %f %f %f" % (log_mvir_scaled[i], ftidal_scaled[i], xHII_scaled[i], T_scaled[i], z_scaled)
+        f.write(l1)
 
-def load_neural_net_results(fname):
-    import numpy as np
+        if (i < len(fb_scaled - 1)):
+            f.write("\n")
 
-    lines = None
-    with open(fname, 'r') as f:
-        lines = f.readlines()
+    write_neural_net_input_data(snapshot, net_dir, z_scaled, log_mvir_scaled, fb_scaled, ftidal_scaled, xHII_scaled, T_scaled)
 
-    inp_vals = []
-    out_vals = []
+    return log_mvir_scaled, fb_scaled, ftidal_scaled, xHII_scaled, T_scaled
 
-    for l in lines:
-        if l.startswith("Inputs"):
-            li = l.split()
-            inp_vals.append([float(li[1]), float(li[2])])
-        elif l.startswith("Outputs"):
-            out_vals.append(float(l.split()[1]))
+def write_neural_net_input_data(snapshot, out_path, z_scaled, log_mvir_scaled, fb_scaled, ftidal_scaled, xHII_scaled, T_scaled):
 
-    return np.array(inp_vals), np.array(out_vals)
+    with open("%s/fb_neural_net_%05i_input_data.txt" % (out_path, snapshot.ioutput), "w") as f:
 
-def rescale_neural_network_vals(inp_vals, out_vals, mvir, fb, ftdyn):
-    import numpy as np
+        for i in range(len(log_mvir_scaled)):
+            l = "%f %f %f %f %f %f" % (log_mvir_scaled[i], ftidal_scaled[i], \
+                xHII_scaled[i], T_scaled[i], z_scaled, fb_scaled[i])
+            f.write(l)
 
-    log_mvir = np.log10(mvir)
-
-    def _unscale(arr, ref):
-        return (arr * (ref.max() - ref.min())) + ref.min()
-
-    fb_out_unscaled = _unscale(out_vals, np.log10(fb))
-    log_mvir_out_unscaled = _unscale(inp_vals[:,0], log_mvir)
-    ftdyn_out_unscaled = _unscale(inp_vals[:,1], ftdyn)
-
-    return 10**log_mvir_out_unscaled, 10**fb_out_unscaled, ftdyn_out_unscaled
+            if (i < len(log_mvir_scaled) - 1):
+                f.write("\n")
+    

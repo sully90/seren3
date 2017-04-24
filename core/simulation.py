@@ -1,6 +1,23 @@
 import numpy as np
 from seren3.core.pymses_snapshot import PymsesSnapshot
 
+def load(name):
+    import json, os
+    from seren3 import config
+
+    store_dir = config.get("data", "sim_dir")
+
+    if (os.path.isdir(store_dir) is False):
+        raise IOError("Cannot locate simulation store directory.")
+    else:
+        fname = "%s/%s.json" % (store_dir, name)
+        data = None
+
+        with open(fname, "rb") as f:
+            data = json.load(f)
+
+        return Simulation(data["path"])
+
 class Simulation(object):
     '''
     Object to encapsulate a simulation directory and offer snapshot access
@@ -29,6 +46,29 @@ class Simulation(object):
     def __iter__(self):
         for ioutput in self.numbered_outputs:
             yield self[ioutput]
+
+    def to_JSON(self):
+        import json
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+
+    def save(self, name):
+        '''
+        Write to json file
+        '''
+        import os
+        from seren3 import config
+
+        store_dir = config.get("data", "sim_dir")
+
+        if (os.path.isdir(store_dir) is False):
+            raise IOError("Cannot locate simulation store directory.")
+        else:
+            fname = "%s/%s.json" % (store_dir, name)
+            if (os.path.isfile(fname)):
+                raise IOError("Refusing to overwrite file: " % fname)
+            with open(fname, "w") as f:
+                f.write(self.to_JSON())
+
 
     def snapshot(self, ioutput, **kwargs):
         return PymsesSnapshot(self.path, ioutput, **kwargs)

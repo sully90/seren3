@@ -1,6 +1,21 @@
 import ConfigParser
+
+def get_seren3_abspath():
+    import seren3, os
+    path = os.path.abspath(seren3.__file__).replace("__init__.pyc", "").replace("__init__.py", "")
+    return path
+
+def get_config_fname():
+    import os
+
+    seren3_dir = get_seren3_abspath()
+    if (os.path.isfile("%s/._seren3_config.txt" % seren3_dir) is False):
+        return "%s/._default_seren3_config.txt" % seren3_dir
+    else:
+        return "%s/._seren3_config.txt" % seren3_dir
+
 _configParser = ConfigParser.RawConfigParser()
-_configFilePath = "/home/ds381/seren3/._seren3_config.txt"
+_configFilePath = get_config_fname()
 _configParser.read(_configFilePath)
 
 def get_config():
@@ -13,27 +28,4 @@ def get(section, key):
     else:
         return value
 
-# Module wide base unit system
-class _BASE_UNITS(object):
-    def __init__(self):
-        self._BASE_UNITS = {"length" : "m", "velocity" : "m s**-1", "mass" : "kg"}  # DO NOT CHANGE
-
-    def __getitem__(self, item):
-        return self._BASE_UNITS[item]
-
-    def __contains__(self, item):
-        return item in self._BASE_UNITS
-
-    def __len__(self):
-        return len(self._BASE_UNITS)
-
-    def __str__(self):
-        return self._BASE_UNITS.__str__()
-
-    def __repr__(self):
-        return self._BASE_UNITS.__repr__()
-
-    def keys(self):
-        return self._BASE_UNITS.keys()
-
-BASE_UNITS = _BASE_UNITS()
+BASE_UNITS = {"length" : "m", "velocity" : "m s**-1", "mass" : "kg"}  # DO NOT CHANGE

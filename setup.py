@@ -46,5 +46,47 @@ def setup_seren():
     return
 
 
+def write_config_file():
+    '''
+    Writes a config file for seren3, if one doesnt exist
+    '''
+    import os
+
+    cwd = os.getcwd()  # the seren3 directory location
+    fname = "%s/._default_seren3_config.txt" % cwd
+
+    if (os.path.isfile(fname) is False):
+        # Write a default config file
+        import ConfigParser
+
+        config = ConfigParser.ConfigParser()
+
+        # General
+        config.add_section("general")
+        config.set("general", "verbose", False)
+
+        # Data
+        config.add_section("data")
+        data_dir = "%s/data/" % cwd
+        if (os.path.isdir(data_dir) is False):
+            os.mkdir(data_dir)
+        config.set("data", "data_dir", data_dir)
+
+        if (os.path.isdir("%s/sims/" % data_dir) is False):
+            os.mkdir("%s/sims" % data_dir)
+        config.set("data", "sim_dir", "%s/sims/" % data_dir)
+
+        # Halos
+        config.add_section("halo")
+        config.set("halo", "default_finder", "ctrees")
+        config.set("halo", "rockstar_base", "rockstar/")
+        config.set("halo", "consistenttrees_base", "rockstar/hlists/")
+        config.set("halo", "ahf_base", "AHF/")
+
+        with open(fname, "w") as f:
+            config.write(f)
+
+
 if __name__ == '__main__':
     setup_seren()
+    write_config_file()
