@@ -21,7 +21,7 @@ def compute_fb(context, mass_unit="Msol h**-1"):
 
 ############################# NEURAL NET #############################
 
-def dump_fb_training_data(snapshot, topology, niter, pickle_path=None, out_path=None):
+def dump_fb_training_data(snapshot, topology, niter, pickle_path=None, out_path=None, zero_ftidal=False, use_halo_xHII=True):
     '''
     Dump data to disk for training our neural network
     '''
@@ -86,6 +86,10 @@ def dump_fb_training_data(snapshot, topology, niter, pickle_path=None, out_path=
     log_mvir = log_mvir[idx]; fb = fb[idx]; ftidal = ftidal[idx]
     xHII = xHII[idx]; T = T[idx]
 
+    cosmo = snapshot.cosmo
+    fb_cosmic_mean = cosmo["omega_b_0"] / cosmo["omega_M_0"]
+    fb /= fb_cosmic_mean
+
     def _scale_z(zmax, zmin, z):
         scaled = (z - zmin) / (zmax - zmin)
         scaled -= 0.5  # [-0.5, 0.5]
@@ -132,9 +136,33 @@ def dump_fb_training_data(snapshot, topology, niter, pickle_path=None, out_path=
 
     f.close()
 
-    f = open('%s/fb_neural_net_%05i_prediction_data.txt' % (net_dir, snapshot.ioutput), 'w')
+    if (use_halo_xHII is False):
+        xHII_hist = pickle.load( open("%s/xHII_reion_history.p" % pickle_path, "rb") )
+        xHII_table = {}
+
+        for i in range(len(xHII_hist)):
+            d = xHII_hist[i]
+            xHII_table[int(d.idx)] = d.result["volume_weighted"]
+
+        print xHII_table[snapshot.ioutput]
+        xHII_global_scaled = _scale_z(xHII.max(), xHII.min(), xHII_table[snapshot.ioutput])
+        xHII_scaled = np.ones(len(xHII)) * xHII_global_scaled
+
+    fname = '%s/fb_neural_net_%05i_prediction_data' % (net_dir, snapshot.ioutput)
+    if (zero_ftidal):
+        fname = '%s_zeroftidal' % (fname)
+
+    if (use_halo_xHII is False):
+        fname = "%s_globalxHII" % fname 
+
+    f = open("%s.txt" % fname, "w")
+
     for i in range(len(fb_scaled)):
-        l1 = "in: %f %f %f %f %f" % (log_mvir_scaled[i], ftidal_scaled[i], xHII_scaled[i], T_scaled[i], z_scaled)
+        l1 = None
+        if (zero_ftidal):
+            l1 = "in: %f %f %f %f %f" % (log_mvir_scaled[i], -1., xHII_scaled[i], T_scaled[i], z_scaled)
+        else:
+            l1 = "in: %f %f %f %f %f" % (log_mvir_scaled[i], ftidal_scaled[i], xHII_scaled[i], T_scaled[i], z_scaled)
         f.write(l1)
 
         if (i < len(fb_scaled - 1)):
@@ -142,7 +170,7 @@ def dump_fb_training_data(snapshot, topology, niter, pickle_path=None, out_path=
 
     write_neural_net_input_data(snapshot, net_dir, z_scaled, log_mvir_scaled, fb_scaled, ftidal_scaled, xHII_scaled, T_scaled)
 
-    return log_mvir_scaled, fb_scaled, ftidal_scaled, xHII_scaled, T_scaled
+    return log_mvir, fb, ftidal, xHII, T
 
 def write_neural_net_input_data(snapshot, out_path, z_scaled, log_mvir_scaled, fb_scaled, ftidal_scaled, xHII_scaled, T_scaled):
 

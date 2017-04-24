@@ -24,6 +24,36 @@ def amr_halo_average_qty(context, qty, lengh_unit="pc", halo=None):
 
     return np.sum(field * dx**3) / vol
 
+########################################## SIMULATIONS ##########################################
+
+def simulation_example(path, name=None):
+    '''
+    Sometimes, it's useful to start with a simulation object, and then load your snapshot
+    '''
+    import seren3
+
+    sim = None  # init
+    # Load our simulation
+    if (name is not None):
+        sim = seren3.load(name)
+    else:
+        # Just init from the path
+        sim = seren3.init(path)
+
+    # Now, lets load the snapshot which is closest to redshift 6
+    ioutput = sim.redshift(6.)  # output number
+    snapshot = sim[ioutput]
+
+    # There are also interpolators for age -> redshift and vise versa, for our chosen cosmology
+    age_func = sim.age_func(zmax=100., zmin=0.)
+    z_func = sim.redshift_func(zmax=100., zmin=0.)
+
+    age_of_universe = age_func(snapshot.z)
+    redshift = z_func(age_of_universe)
+
+    print snapshot.z, redshift, age_of_universe
+
+
 ########################################## FILTERING ##########################################
 
 def spherical_filter(snapshot, center=None, radius=None):
