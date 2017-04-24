@@ -26,7 +26,7 @@ def amr_halo_average_qty(context, qty, lengh_unit="pc", halo=None):
 
 ########################################## SIMULATIONS ##########################################
 
-def simulation_example(path, name=None):
+def simulation_example(path, zi=6., name=None):
     '''
     Sometimes, it's useful to start with a simulation object, and then load your snapshot
     '''
@@ -34,14 +34,16 @@ def simulation_example(path, name=None):
 
     sim = None  # init
     # Load our simulation
-    if (name is not None):
+    if (name is not None):  # load by name
         sim = seren3.load(name)
     else:
         # Just init from the path
         sim = seren3.init(path)
 
-    # Now, lets load the snapshot which is closest to redshift 6
-    ioutput = sim.redshift(6.)  # output number
+    print sim
+
+    # Now, lets load the snapshot which is closest to the desired redshift
+    ioutput = sim.redshift(zi)  # output number
     snapshot = sim[ioutput]
 
     # There are also interpolators for age -> redshift and vise versa, for our chosen cosmology
