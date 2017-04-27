@@ -234,7 +234,7 @@ class SerenSource(object):
         pxyz = pxyz.transpose()
         return pxyz
 
-    def sample_points(self, points, **kwargs):
+    def sample_points(self, points, use_multiprocessing=True, **kwargs):
         '''
         Samples points to cartesian mesh of size 2**level
         '''
@@ -242,5 +242,9 @@ class SerenSource(object):
 
         source = self.pymses_source
         psampler = PointSamplingProcessor(source)
+
+        if (use_multiprocessing is False):
+            psampler.disable_multiprocessing()
+            
         dset = psampler.process(points)
         return DerivedDataset(self.family, dset, **kwargs)

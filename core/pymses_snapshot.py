@@ -44,6 +44,13 @@ class PymsesSnapshot(Snapshot):
         from pymses.utils.regions import Sphere
         return Sphere(pos, r)
 
+    def get_cube(self, pos, l):
+        '''
+        Return a cube region object encasing this halo
+        '''
+        from pymses.utils.regions import Cube
+        return Cube(pos, l)
+
     def amr_source(self, fields):
         if not hasattr(fields, "__iter__"):
             fields = [fields]

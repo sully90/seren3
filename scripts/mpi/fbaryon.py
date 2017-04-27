@@ -573,7 +573,7 @@ def fit(mass, fb, fix_alpha, weights=None, use_lmfit=True, **cosmo):
         fit_params.add("Mc", value=p0[0], min=0.)
         fit_params.add("alpha", value=_DEFAULT_ALPHA, vary=np.logical_not(fix_alpha), min=0.)
         # print fit_params
-        result = minimize( lmfit_gnedin_fitting_func, fit_params, args=(mass, fb), kws=cosmo, weights=weights)
+        result = minimize( lmfit_gnedin_fitting_func, fit_params, args=(mass, fb), kws=cosmo)
         if result.success:
             Mc_res = result.params['Mc']
             alpha_res = result.params['alpha']

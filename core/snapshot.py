@@ -80,6 +80,10 @@ class Snapshot(object):
     def get_sphere(self, pos, r):
         return
 
+    @abc.abstractmethod
+    def get_cube(self, pos, l):
+        return
+
     @property
     def boxsize(self):
         return self.array(self.info["unit_length"]).in_units("Mpc a h**-1")

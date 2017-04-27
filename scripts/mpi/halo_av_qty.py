@@ -1,11 +1,10 @@
 import numpy as np
 
-def _volume_weighted_average(field, dset, volume, lengh_unit="pc"):
-    qty = dset[field]
-    dx = dset["dx"].in_units(lengh_unit)
-    vol = volume.in_units("%s**3" % lengh_unit)
+def _volume_weighted_average(field, halo, npoints=100000):
+    points = halo.sphere.random_points(npoints)
+    dset = halo.g[field].sample_points(points, use_multiprocessing=False)
 
-    return np.sum(qty * dx**3) / vol
+    return dset[field].mean()
 
 def main(path, iout, field, pickle_path=None):
     import seren3
@@ -14,7 +13,8 @@ def main(path, iout, field, pickle_path=None):
 
     mpi.msg("Loading data")
     snap = seren3.load_snapshot(path, iout)
-    snap.set_nproc(1)  # disbale multiprocessing/threading
+    # snap.set_nproc(1)  # disbale multiprocessing/threading
+    snap.set_nproc(8)
 
     halos = snap.halos()
     halo_ix = None
@@ -27,11 +27,9 @@ def main(path, iout, field, pickle_path=None):
 
         mpi.msg("Working on halo %i \t %i" % (i, h.hid))
 
-        halo_volume = h.sphere.get_volume()
-        halo_volume = snap.array(halo_volume, halo_volume.units)
-
-        dset = h.g[[field, "dx"]].flatten()
-        vw = _volume_weighted_average(field, dset, halo_volume)
+        vw = _volume_weighted_average(field, h)
+        # vw = _volume_weighted_average_cube(snap, field, h)
+        mpi.msg("%i \t %1.5f" % (h.hid, vw))
 
         sto.idx = h["id"]
         sto.result = {"vw" : vw}
@@ -43,6 +41,7 @@ def main(path, iout, field, pickle_path=None):
             os.mkdir(pickle_path)
         fname = "%s/%s_halo_av_%05i.p" % (pickle_path, field, iout)
         pickle.dump( mpi.unpack(dest), open( fname, "wb" ) )
+        mpi.msg("Done")
 
 
 if __name__ == "__main__":

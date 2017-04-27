@@ -108,6 +108,26 @@ class Halo(object):
         return self.base.get_sphere(pos, r)
 
     @property
+    def spherical_shell(self, r1, r2=None):
+        '''
+        Return a SphericalShell filter object with inner radius r1 and outer radius r2
+        All arguments must be in code units
+        '''
+        from pymses.utils.regions import SphericalShell
+
+        pos = self.pos
+        if r2 is None:
+            r2 = self.rvir
+
+        return SphericalShell(pos, r1, r2)
+
+    @property
+    def cube(self):
+        pos, r = self.pos_r_code_units
+        d = r*2
+        return self.base.get_cube(pos, d)
+
+    @property
     def subsnap(self):
         if self._subsnap is None:
             self._subsnap = self.base[self.sphere]

@@ -46,15 +46,22 @@ def amr_dSFR(context, dset, **kwargs):
 
 
 @seren3.derived_quantity(requires=["pos"])
-def amr_r(context, dset, center=None):
+def amr_spherical_pos(context, dset):
     '''
-    Radial position
+    Return position in spherical polar coordinates
     '''
-    pos = dset["pos"]
+    x,y,z = dset["pos"].T
 
-    if center is not None:
-        pos -= center
-    return ((pos ** 2).sum(axis=1)) ** (1,2)
+    center=[(max(x)+min(x))/2., (max(y)+min(y))/2., (max(z)+min(z))/2.]
+    x-= center[0]; y -= center[1]; z -= center[2]
+
+    r = np.sqrt(x**2 + y**2 + z**2)
+    theta = np.arctan(y/x)
+    phi = np.arccos(z/r)
+
+    res = np.array([r, theta, phi]).T
+    return context.array(res)
+    
 
 @seren3.derived_quantity(requires=["rho", "dx"])
 def amr_mass(context, dset):
