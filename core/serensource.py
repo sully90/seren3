@@ -17,6 +17,8 @@ _tracked_field_unit_registry = {"rho" : "unit_density",\
                                 "mass" : "unit_mass"}
 
 def is_tracked(field):
+    if field[-1].isdigit():
+        return field[:-1] in _tracked_field_unit_registry
     return field in _tracked_field_unit_registry
 
 def get_tracked_field_unit(family, field):

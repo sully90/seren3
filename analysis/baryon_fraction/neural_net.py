@@ -76,6 +76,7 @@ def load_training_arrays(snapshot, pickle_path=None):
     ftidal = np.zeros(len(fb_data_table)); xHII = np.zeros(len(fb_data_table))
     pid = np.zeros(len(fb_data_table));T = np.zeros(len(fb_data_table))
     np_dm = np.zeros(len(fb_data_table))#; np_cell = np.zeros(len(fb_data_table))
+    time_since_MM = np.zeros(len(fb_data_table))
 
     keys = fb_data_table.keys()
     for i in range(len(fb_data_table)):
@@ -89,19 +90,20 @@ def load_training_arrays(snapshot, pickle_path=None):
         T[i] = np.log10(res["T"]/res["Tvir"])
         pid[i] = res["pid"]
         np_dm[i] = res["np_dm"]
+        time_since_MM[i] = res["time_since_last_MM"]
 
     log_mvir = np.log10(mvir)
 
     idx = np.where(np.logical_and(pid == -1, np_dm >= 20))
 
     log_mvir = log_mvir[idx]; fb = fb[idx]; ftidal = ftidal[idx]
-    xHII = xHII[idx]; T = T[idx]
+    xHII = xHII[idx]; T = T[idx]; time_since_MM = time_since_MM[idx]
 
     cosmo = snapshot.cosmo
     fb_cosmic_mean = cosmo["omega_b_0"] / cosmo["omega_M_0"]
     fb /= fb_cosmic_mean  # cosmic mean units
 
-    return log_mvir, fb, ftidal, xHII, T
+    return log_mvir, fb, ftidal, xHII, T#, time_since_MM
 
 # Function to parse topology
 def _list_to_string(lst):
@@ -222,11 +224,12 @@ def write_prediction_file(snapshot, log_mvir, fb, ftidal, xHII, T, out_path=None
             d = xHII_hist[i]
             xHII_table[int(d.idx)] = d.result["volume_weighted"]
 
+        # val = np.log10(1. - xHII_table[snapshot.ioutput])
         val = xHII_table[snapshot.ioutput]
         # val = xHII.mean()
         print val
-        # xHII_global_scaled = _scale_z(xHII.max(), xHII.min(), val)
-        xHII_scaled = np.ones(len(xHII)) * val
+        xHII_global_scaled = _scale_z(xHII.max(), xHII.min(), val)
+        xHII_scaled = np.ones(len(xHII)) * xHII_global_scaled
 
     fname = '%s/fb_neural_net_%05i_prediction_data' % (net_dir, snapshot.ioutput)
     if (zero_ftidal):
@@ -251,3 +254,38 @@ def write_prediction_file(snapshot, log_mvir, fb, ftidal, xHII, T, out_path=None
             f.write("\n")
 
     f.close()
+
+def plot_fb_panels(snapshot, log_mvir, fb, ftidal, xHII, T, **kwargs):
+    import numpy as np
+    import matplotlib.pylab as plt
+
+    fig, axs = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(8,8))
+    fig.subplots_adjust(hspace=0.05)
+    fig.subplots_adjust(wspace=0)
+
+    fig.suptitle('z = %1.2f' % snapshot.z, fontsize=16)
+
+    mvir = 10**log_mvir
+
+    log_xHI = np.log10(1. - xHII)
+    log_ftidal = np.log10(ftidal)
+
+    def _plot(mvir, fb, carr, ax, **kwargs):
+        return ax.scatter(mvir, fb, c=carr, **kwargs)
+
+    labels = [r"log$_{10} \langle F_{\mathrm{tidal}} \rangle_{tdyn}$",\
+             # r"$\langle x_{\mathrm{HII}} \rangle_{V}$",\
+             r"log$_{10} \langle x_{\mathrm{HI}} \rangle_{V}$",\
+             r"log$_{10} \langle T \rangle_{V}$/$T_{\mathrm{vir}}$"]
+    for ax, carr, lab in zip(axs.flatten(), [log_ftidal, log_xHI, T], labels):
+        sp = _plot(mvir, fb, carr, ax, **kwargs)
+        cbar = fig.colorbar(sp, ax=ax)
+        cbar.set_label(lab)
+
+        # ax.set_xlabel(r"log$_{10}$ M$_{\mathrm{vir}}$ [M$_{\odot}$/h]")
+        ax.set_ylabel(r"f$_{\mathrm{b}}$[$\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$]")
+        ax.set_xscale("log")
+
+    axs[-1].set_xlabel(r"log$_{10}$ M$_{\mathrm{vir}}$ [M$_{\odot}$/h]")
+    
+    plt.show()

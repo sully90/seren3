@@ -40,9 +40,9 @@ def main(path, field, pickle_path):
         mpi.msg("Averaging field: %s" % field)
 
     dest = {}
-    for iout, sto in mpi.piter(simulation.numbered_outputs, storage=dest):
+    for iout, sto in mpi.piter(simulation.numbered_outputs, storage=dest, print_stats=True):
         mpi.msg("%05i" % iout)
-        snapshot = simulation.snapshot(iout, verbose=True)
+        snapshot = simulation.snapshot(iout, verbose=False)
         snapshot.set_nproc(1)
 
         # vw = snapshot.quantities.volume_weighted_average(field, mem_opt=mem_opt)
