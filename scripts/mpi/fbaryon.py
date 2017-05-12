@@ -359,7 +359,6 @@ def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, *args, **co
 
     output = {}
     for iout in iouts:
-        snap = sim[iout]
         fname = "%s/ConsistentTrees/fbaryon_tdyn_%05i.p" % (pickle_dir, iout)
         # fname = "%s/ConsistentTrees/tint_fbaryon_tdyn_%05i_fixed.p" % (pickle_dir, iout)
 
@@ -376,16 +375,20 @@ def fit_sim_iouts(iouts, pickle_dir, fix_alpha=True, use_lmfit=True, *args, **co
     return output
 
 
-def tmp_plot_bc03_bpass(fix_alpha=False):
+def tmp_plot_bc03_bpass(fix_alpha=False, **kwargs):
     import matplotlib.pylab as plt
     from seren3.core.simulation import Simulation
 
-    paths = ['/research/prace/david/bpass/bc03/', \
-            '/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc5']#, \
+    paths = ['/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc1/',\
+            '/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc1.5/',\
+            '/research/prace/david/bpass/bc03/',\
+            '/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc5/']#, \
             # '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/']#, \
             # '/research/prace/david/aton/256/']
 
-    ppaths = ['/lustre/scratch/astro/ds381/simulations/bpass/bc03/pickle/', \
+    ppaths = ['/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc1/pickle/',\
+            '/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc1.5/pickle/',\
+            '/lustre/scratch/astro/ds381/simulations/bpass/bc03/pickle/', \
             '/lustre/scratch/astro/ds381/simulations/bpass/bc03_fesc5/pickle/']#, \
             # '/lustre/scratch/astro/ds381/simulations/bpass/cosma/bin_sed/pickle/']#, \
             # '/lustre/scratch/astro/ds381/simulations/aton/256/pickle/']
@@ -401,25 +404,30 @@ def tmp_plot_bc03_bpass(fix_alpha=False):
         print iouts
         sim_iouts.append(iouts)
     # iouts = [60, 66, 70, 76, 80, 86, 90, 96, 100, 106]
-    labels = ["RT2", "RT5"]#, "ATON"]
-    cols = ['r', 'b']#, 'm']
+    labels = ["RT1", "RT1.5", "RT2", "RT5"]#, "ATON"]
+    cols = ['r', 'g', 'b', 'm']
 
-    plot_Mc_var(sims, sim_iouts, ppaths, labels, cols, fix_alpha)
+    plot_Mc_var(sims, sim_iouts, ppaths, labels, cols, fix_alpha, **kwargs)
     plt.show()
 
 
 def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tidal_force_cutoff=None):
     import pickle
     import matplotlib.pylab as plt
-    from seren3.analysis.plots import fit_scatter
+    # from seren3.analysis.plots import fit_scatter, obs_errors
+    from seren3.analysis import plots
     from seren3.utils import tau as tau_mod
     from scipy.interpolate import interp1d
 
+    reload(plots)
+
     # fig, axs = plt.subplots(2, 2, figsize=(11,10))
     fig1, axs1 = plt.subplots(1, 2, figsize=(10,5))
-    fig2, axs2 = plt.subplots(1, 2, figsize=(10,5))
+    fig2, axs2 = plt.subplots(2, 1, figsize=(6,10))
 
     plot_PLANCK=True
+    plot_obs=True
+    count = 0
     for sim, iouts, ppath, label, c in zip(sims, sim_iouts, pickle_paths, labels, cols):
         print ppath
         cosmo = sim[iouts[0]].cosmo
@@ -444,7 +452,7 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tid
         z = z[idx]
         var = var[idx]
 
-        bc, mean, std, stderr = fit_scatter(z, var, ret_sterr=True)
+        bc, mean, std, stderr = plots.fit_scatter(z, var, ret_sterr=True)
         # fn = interp1d(bc, mean, fill_value="extrapolate")
         fn = interp1d(z, var, fill_value="extrapolate")
 
@@ -471,7 +479,29 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tid
         axs1[1].errorbar(fn(z_sim), Mc, yerr=Mc_stderr, label=label, linewidth=2., color=c)
 
         # Plot neutral fraction
-        axs2[0].plot(z, 1.-var, label=label, color=c)
+        axs2[0].plot(z, 1.-var, color=c)
+
+        # # Gamma
+        # data = pickle.load( open("%s/Gamma_time_averaged.p" % ppath, "rb") )
+        # z = np.zeros(len(data))
+        # var = np.zeros(len(data))
+
+        # for i in range(len(data)):
+        #     res = data[i].result
+        #     z[i] = res['z']
+        #     # var[i] = res['mw']
+        #     var[i] = res["vw"]
+        #     # var[i] = res["mass_weighted"]
+
+        # axs2[2].plot(z, np.log10(var), color=c)
+
+        if (plot_obs):
+            plots.obs_errors("xv", ax=axs2[0])
+            # obs_errors("Gamma", ax=axs2[0])
+            plot_obs = False
+            axs2[0].legend(loc="lower right")
+
+        count += 1
         #p = axs[1,0].errorbar(bc, mean, yerr=stderr, linewidth=1, label=label)
         #children = p.get_children()
         #l = children[0]
@@ -513,13 +543,17 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tid
 
     axs2[0].set_xlabel(r"$z$")
     axs2[0].set_ylabel(r"$\langle x_{\mathrm{HI}} \rangle_{V}$")
+    # axs2[2].set_xlabel(r"$z$")
+    # axs2[2].set_ylabel(r"$\langle \Gamma \rangle_{V}$")
     # axs[1,0].set_xlim(6, 18)
-    axs2[0].set_xlim(6, 16)
-    axs2[1].set_xlim(0, 16)
+    axs2[0].set_xlim(5.5, 16)
+    axs2[1].set_xlim(5.5, 16)
+    # axs2[2].set_xlim(5.5, 16)
 
     axs1[0].set_yscale("log")
     axs1[1].set_yscale("log")
-    axs2[0].set_yscale("log")
+    # axs1[2].set_yscale("log")
+    # axs2[0].set_yscale("log")
 
     axs1[0].legend()
     # axs1[1].legend()
@@ -532,6 +566,8 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tid
 
     fig1.tight_layout()
     fig2.tight_layout()
+
+    fig2.savefig("./reion_hist_subplots_vert.pdf", format="pdf")
     # plt.tight_layout()
     # fig.savefig('./Mc_panel_plot_ftidal_pdf.pdf', format='pdf', dpi=10000)
 

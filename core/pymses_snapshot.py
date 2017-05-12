@@ -18,9 +18,10 @@ class PymsesSnapshot(Snapshot):
         self._nproc_multiprocessing = pymsesrc.multiprocessing_max_nproc
 
     def __getitem__(self, item):
+        from seren3.halos import Halo
         if hasattr(item, '__module__') and (item.__module__ == 'pymses.utils.regions'):
             return PymsesSubSnapshot(self, item)
-        elif isinstance(item, seren3.halos.Halo):
+        elif isinstance(item, Halo):
             sphere = item.sphere
             return PymsesSubSnapshot(self, sphere)
         else:

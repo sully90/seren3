@@ -29,6 +29,10 @@ def load_custom_cmaps(cmap_name):
     import glob, re
     from seren3 import config
 
+    if (cmap_name == "parula"):
+        from seren3.utils import parula
+        return parula.parula_map
+
     cmap_dir = "%s/cmaps/" % config.get("data", "data_dir")
 
     _REGEX = ".+?(?=_256)"

@@ -32,6 +32,11 @@ from seren3.core.simulation import load
 
 def init(path="./"):
     from seren3.core.simulation import Simulation
+
+    if (path == "./" or path == "."):
+        import os
+        path = os.getcwd()
+        
     return Simulation(path)
 
 def load_cwd(ioutput, **kwargs):

@@ -62,15 +62,14 @@ def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10.], ax=None, **kw
         ax.errorbar(x, y, yerr=stderr, label=label, linewidth=3., \
                 color=c, linestyle=ls, capsize=5)
 
-
     ax.set_xlabel(r"log$_{10}$ n$_{\mathrm{HI}}$ [m$^{-3}$]")
     ax.set_ylabel("CDF")
 
     if kwargs.pop("legend", True):
         # Shrink current axis by 20%
         box = ax.get_position()
-        ax.set_position([box.x0, box.y0 + box.height * 0.2,
-                         box.width, box.height * 0.8])
+        ax.set_position([box.x0, box.y0 + box.height * 0.15,
+                         box.width, box.height * 0.9])
 
         # Put a legend to the right of the current axis
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
@@ -83,7 +82,8 @@ def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10.], ax=None, **kw
         # ax1.text(np.log10(snapshot.info_rt['n_star'].express(snapshot.C.H_cc)) + xr*0.01, ymax/2. + .01, r"n$_{*}$", color='r', fontsize=fs)
         # ax1.text(np.log10(n_star) + xr*0.01, 0.076, r"n$_{*}$", color='r', fontsize=fs)
 
-    ax.set_ylim(0., 1.)
+    ax.set_ylim(-0.05, 1.05)
+    # ax.set_yscale("log")
 
     return binned_cdf
 
@@ -172,3 +172,4 @@ if __name__ == "__main__":
         pickle_path = sys.argv[3]
 
     main(path, iout, pickle_path)
+    

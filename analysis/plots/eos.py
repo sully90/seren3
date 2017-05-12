@@ -6,32 +6,59 @@ from seren3.array import SimArray
 from seren3.utils.plot_utils import add_colorbar
 
 def plot_baryfrac(pp1=None, pp2=None):
-    path = '/research/prace/david/bpass/bc03/'
-    sim = seren3.init(path)
+    from seren3.utils import plot_utils
+    reload(plot_utils)
 
-    snap1 = sim[60]
-    snap2 = sim[100]
+    cmap = plot_utils.load_custom_cmaps("parula")
+    path1 = '/lustre/scratch/astro/ds381/simulations/bpass/ramses/'
+    path2 = '/research/prace/david/bpass/bc03/'
+
+    sim1 = seren3.init(path1)
+    sim2 = seren3.init(path2)
+
+    snap1 = sim1[93]
+    snap2 = sim2[106]
 
     if (pp1 is None):
         pp1 = PhasePlot(snap1)
     if (pp2 is None):
         pp2 = PhasePlot(snap2)
 
-    fig, axs = plt.subplots(nrows=1, ncols=2)#, figsize=(18,8))
+    for pp in [pp1, pp2]:
+        pp.cmap = cmap
+        pp.annotate_nstar()
+        pp.annotate_T2_thresh()
+
+    for pp in [pp1, pp2]:
+        pp.vmin = -10
+        pp.vmax = -2
+
+    z = [pp1.snapshot.z, pp1.snapshot.z]
+
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14,6))
     pp1.draw(ax=axs[0], draw_cbar=False)
     pp2.draw(ax=axs[1], draw_cbar=False)
     # plt.tight_layout()
 
-    cbar1 = fig.colorbar(pp1.im, ax=axs[0])
-    cbar2 = fig.colorbar(pp2.im, ax=axs[1])
-    cbar1.set_label('f(mass)', labelpad=-5)
-    cbar2.set_label('f(mass)', labelpad=-5)
+    # cbar1 = fig.colorbar(pp1.im, ax=axs[0])
+    # cbar2 = fig.colorbar(pp2.im, ax=axs[1])
+    # cbar1.set_label('f(mass)', labelpad=-5)
+    # cbar2.set_label('f(mass)', labelpad=-5)
 
-    for ax, snap in zip(axs, [snap1, snap2]):
-        ax.set_title("z = %1.2f" % snap.z, fontsize=20)
+    plt.tight_layout()
+
+    fig.subplots_adjust(right=0.8)
+    cbar_ax = fig.add_axes([0.85, 0.15, 0.04, 0.8])
+    cbar = fig.colorbar(pp2.im, cax=cbar_ax, cmap=cmap)
+    cbar.set_label('f(mass)', labelpad=-5)
+
+    labels = ["HD1", "RT2"]
+    # for ax, snap, zi, l in zip(axs, [snap1, snap2], z, labels):
+        # ax.set_title("%s: z = %1.2f" % (l, zi), fontsize=20)
+        # ax.set_title(l, fontsize=18)
 
     # plt.show()
-    plt.savefig("./bc03_phase_diag.pdf", format="pdf", dpi=1000)
+    plt.savefig("./bc03_phase_diag_parula.pdf", format="pdf")
     return pp1, pp2
 
 
