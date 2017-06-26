@@ -39,8 +39,12 @@ def main(path, field, pickle_path):
     if mpi.host:
         mpi.msg("Averaging field: %s" % field)
 
+    iout_start = max(simulation.numbered_outputs[0], 20)
+    iouts = range(iout_start, max(simulation.numbered_outputs)+1)
+
+    mpi.msg("Starting with snapshot %05i" % iout_start)
     dest = {}
-    for iout, sto in mpi.piter(simulation.numbered_outputs, storage=dest, print_stats=True):
+    for iout, sto in mpi.piter(iouts, storage=dest, print_stats=True):
         mpi.msg("%05i" % iout)
         snapshot = simulation.snapshot(iout, verbose=False)
         snapshot.set_nproc(1)

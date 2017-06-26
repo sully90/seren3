@@ -1,0 +1,66 @@
+\hypertarget{namespaceseren3_1_1analysis_1_1interpolate}{
+\section{seren3::analysis::interpolate Namespace Reference}
+\label{namespaceseren3_1_1analysis_1_1interpolate}\index{seren3::analysis::interpolate@{seren3::analysis::interpolate}}
+}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespaceseren3_1_1analysis_1_1interpolate_a8b3daa90ae1ebb180b36061b583b3c86}{
+def {\bfseries extrap1d}}
+\label{namespaceseren3_1_1analysis_1_1interpolate_a8b3daa90ae1ebb180b36061b583b3c86}
+
+\item 
+def \hyperlink{namespaceseren3_1_1analysis_1_1interpolate_a6fd7ed3d3bb23ed9a25dd2bfa655ae66}{interpolate3d}
+\item 
+def \hyperlink{namespaceseren3_1_1analysis_1_1interpolate_a9da1592e0f683e03b44709c0f5cec544}{interpolate2d}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyVerb}
+interpolate
+===========
+
+2D and 3D Interpolation routines written in cython
+
+\end{DoxyVerb}
+ 
+
+\subsection{Function Documentation}
+\hypertarget{namespaceseren3_1_1analysis_1_1interpolate_a9da1592e0f683e03b44709c0f5cec544}{
+\index{seren3::analysis::interpolate@{seren3::analysis::interpolate}!interpolate2d@{interpolate2d}}
+\index{interpolate2d@{interpolate2d}!seren3::analysis::interpolate@{seren3::analysis::interpolate}}
+\subsubsection[{interpolate2d}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::analysis::interpolate::interpolate2d ( {\em x}, \/   {\em y}, \/   {\em x\_\-vals}, \/   {\em y\_\-vals}, \/   {\em vals})}}
+\label{namespaceseren3_1_1analysis_1_1interpolate_a9da1592e0f683e03b44709c0f5cec544}
+\begin{DoxyVerb}
+Interpolate on a 2D regular grid. 
+Yields results identical to scipy.interpolate.interpn. 
+
+Input
+-----
+
+x,y : points where the interpolation will be performed
+
+x_vals, y_vals : xy values of the reference grid
+
+vals : grid values
+\end{DoxyVerb}
+ \hypertarget{namespaceseren3_1_1analysis_1_1interpolate_a6fd7ed3d3bb23ed9a25dd2bfa655ae66}{
+\index{seren3::analysis::interpolate@{seren3::analysis::interpolate}!interpolate3d@{interpolate3d}}
+\index{interpolate3d@{interpolate3d}!seren3::analysis::interpolate@{seren3::analysis::interpolate}}
+\subsubsection[{interpolate3d}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::analysis::interpolate::interpolate3d ( {\em x}, \/   {\em y}, \/   {\em z}, \/   {\em x\_\-vals}, \/   {\em y\_\-vals}, \/   {\em z\_\-vals}, \/   {\em vals})}}
+\label{namespaceseren3_1_1analysis_1_1interpolate_a6fd7ed3d3bb23ed9a25dd2bfa655ae66}
+\begin{DoxyVerb}
+Interpolate on a 3D regular grid. 
+Yields results identical to scipy.interpolate.interpn. 
+
+Input
+-----
+
+x,y,z : points where the interpolation will be performed
+
+x_vals, y_vals, z_vals : xyz values of the reference grid
+
+vals : grid values
+\end{DoxyVerb}
+ 

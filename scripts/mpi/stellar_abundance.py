@@ -16,72 +16,132 @@ def unpack(path, iout):
 
     return np.array(star_mass), np.array(tot_mass)
 
-def plot(snap, fname, plot_baryon_fraction=True, compare=True, dm_particle_cutoff=100, star_particle_cutoff=1):
+def plot(simulations, ioutputs, labels, colours, nbins=10, plot_baryon_fraction=False, compare=True, dm_particle_cutoff=100, star_particle_cutoff=1, pickle_paths=None):
     import pickle
     from pynbody.plot.stars import moster, behroozi
     import matplotlib.pylab as plt
+    from seren3.analysis.plots import fit_scatter
 
-    cosmo = snap.cosmo
-    data = None
-    with open(fname, 'rb') as f:
-        data = pickle.load(f)
+    import matplotlib
+    matplotlib.rcParams['axes.linewidth'] = 1.5
+    matplotlib.rcParams['xtick.labelsize'] = 18
+    matplotlib.rcParams['ytick.labelsize'] = 18
+    matplotlib.rcParams['axes.labelsize'] = 22
 
-    nrecords = len(data)
-    mass = np.zeros(nrecords); stellar_mass = np.zeros(nrecords)
-    np_dm = np.zeros(nrecords); np_star = np.zeros(nrecords)
+    if (pickle_paths is None):
+        pickle_paths = ["%s/pickle/ConsistentTrees/" % sim.path for sim in simulations]
 
-    for i in range(nrecords):
-        res = data[i].result
-        mass[i] = res["tot_mass"]
-        stellar_mass[i] = res["star_mass"]
-        np_dm[i] = res["np_dm"]
-        np_star[i] = res["np_star"]
-        del res
+    fig, ax = plt.subplots(figsize=(8, 8))
+    # fig, ax = plt.subplots()
 
-    idx = np.where(np.logical_and( np_dm >= dm_particle_cutoff, np_star >= star_particle_cutoff ))
-    mass = mass[idx]; stellar_mass = stellar_mass[idx]
-
-    if plot_baryon_fraction:
+    for sim, ioutput, label, c, ppath in zip(simulations, ioutputs, labels, colours, pickle_paths):
+        snap = sim[ioutput]
+        cosmo = snap.cosmo
         cosmic_mean = cosmo["omega_b_0"]/cosmo["omega_M_0"]
-        baryon_fraction = mass*cosmic_mean
-        plt.loglog(mass, baryon_fraction, linestyle='dotted', label='f_b')
-        plt.loglog(mass, 0.1*baryon_fraction, linestyle='dotted', label='0.1f_b')
 
+        data = None
+        fname = "%s/abundance_%05i.p" % (ppath, snap.ioutput)
+        with open(fname, 'rb') as f:
+            data = pickle.load(f)
 
-    plt.title('(z = %f)'% snap.z )
+        nrecords = len(data)
+        mass = np.zeros(nrecords); stellar_mass = np.zeros(nrecords)
+        np_dm = np.zeros(nrecords); np_star = np.zeros(nrecords)
 
-    ax = plt.gca()
-    ax.scatter(mass, stellar_mass, color='k', alpha=0.5, zorder=10)
-    ax.set_xscale("log"); ax.set_yscale("log")
-    # plt.xlim(min(mass), max(mass))
+        for i in range(nrecords):
+            res = data[i].result
+            mass[i] = res["tot_mass"]
+            stellar_mass[i] = res["star_mass"]
+            np_dm[i] = res["np_dm"]
+            np_star[i] = res["np_star"]
+            del res
 
-    mass = snap.array(mass, _MASS_UNIT)
-    if compare:
-        ystarmasses, errors = moster(mass.in_units("Msol"), snap.z)
-        ystarmasses = snap.array(ystarmasses, "Msol").in_units(_MASS_UNIT)
-        plt.fill_between(mass, np.array(ystarmasses)/np.array(errors),
-                         y2=np.array(ystarmasses)*np.array(errors),
-                         facecolor='#BBBBBB',color='#BBBBBB')
-        plt.loglog(mass, ystarmasses, label='Moster et al (2013)', color='k')
+        # print np_star.min(), np_star.max()
+        idx = np.where(np.logical_and( np_dm >= dm_particle_cutoff, np_star >= star_particle_cutoff ))
+        mass = mass[idx]; stellar_mass = stellar_mass[idx]
 
-        ystarmasses, errors = behroozi(mass.in_units("Msol"), snap.z)
-        ystarmasses = snap.array(ystarmasses, "Msol").in_units(_MASS_UNIT)
-        plt.fill_between(mass, np.array(ystarmasses)/np.array(errors),
-                         y2=np.array(ystarmasses)*np.array(errors),
-                         facecolor='g',color='g')
-        plt.loglog(mass, ystarmasses, label='Behroozi et al (2013)', color='g', alpha=0.5)
+        stellar_mass = (stellar_mass / mass) / cosmic_mean
+        stellar_mass *= 100  # %
 
-    ax.set_xlabel(r'log$_{10}$(M$_{\mathrm{h}}$ [M$_{\odot}$/h])')
-    ax.set_ylabel(r'log$_{10}$(M$_{*}$ [M$_{\odot}$/h])')
+        bc, mean, std = fit_scatter(mass, stellar_mass, nbins=10)
+        bc, mean, log_std, log_sterr = fit_scatter(np.log10(mass), np.log10(stellar_mass), ret_sterr=True, nbins=nbins)
 
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0 + box.height * 0.1,
-                     box.width, box.height * 0.9])
+        # std = (log_std/0.434) * 10**mean
+        # sterr = (log_sterr/0.434) * 10**mean
 
-    # Put a legend below current axis
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.13),
-              fancybox=True, shadow=True, ncol=5, prop={'size':10.5})
+        if compare:
+            x = snap.array(np.logspace(np.log10(2.5e7), np.log10(1.5e10), 100), _MASS_UNIT)
+            ystarmasses, errors = moster(x.in_units("Msol"), snap.z)
+            ystarmasses = snap.array(ystarmasses, "Msol").in_units(_MASS_UNIT)
 
+            ystarmasses = (ystarmasses / x) / cosmic_mean
+            ystarmasses *= 100
+
+            # print errors.min(), errors.max()
+            moster_c = "#BBBBBB"
+            ax.fill_between(x, np.log10(np.array(ystarmasses)/np.array(errors)),
+                             y2=np.log10(np.array(ystarmasses)*np.array(errors)),
+                             facecolor=moster_c,color=moster_c,label='Moster et al (2013)',alpha=0.5)
+            ax.plot(x, np.log10(ystarmasses), color=moster_c)
+
+            # behroozi_c = "#F08080"
+            behroozi_c = "lightskyblue"
+            ystarmasses, errors = behroozi(x.in_units("Msol"), snap.z)
+            ystarmasses = snap.array(ystarmasses, "Msol").in_units(_MASS_UNIT)
+
+            ystarmasses = (ystarmasses / x) / cosmic_mean
+            ystarmasses *= 100
+
+            ax.fill_between(x, np.log10(np.array(ystarmasses)/np.array(errors)),
+                             y2=np.log10(np.array(ystarmasses)*np.array(errors)),
+                             facecolor=behroozi_c,color=behroozi_c,label='Behroozi et al (2013)',alpha=0.5)
+            ax.plot(x, np.log10(ystarmasses), color=behroozi_c)
+            compare = False
+
+        if plot_baryon_fraction:
+            baryon_fraction = x*cosmic_mean
+            y = ((0.1*baryon_fraction)/x)/cosmic_mean
+            y *= 100.
+            # ax.loglog(mass, baryon_fraction, linestyle='dotted', label=r'$\Omega_{\mathrm{b}} / \Omega_{\mathrm{M}}$')
+            ax.plot(x, y, linestyle='dotted', linewidth=3., label=r'0.1 $\Omega_{\mathrm{b}} / \Omega_{\mathrm{M}}$')
+            plot_baryon_fraction = False
+
+        # ax.scatter(mass, stellar_mass, color=c, alpha=0.4, s=15)
+        # ax.errorbar(10**bc, 10**mean, yerr=std, color=c, linewidth=3., linestyle="-", zorder=10, label=label)
+        # ax.plot(10**bc, 10**mean, color=c, linewidth=3., linestyle="-", zorder=10, label=label)
+        # ax.plot(10**bc, 10**(mean+std), color=c, linewidth=3., linestyle="--", zorder=10)
+        # ax.plot(10**bc, 10**(mean-std), color=c, linewidth=2., linestyle="--", zorder=10)
+        # ax.plot(10**bc, mean, color=c, linewidth=3., linestyle="-", zorder=10, label=label)
+        # ax.plot(10**bc, mean + log_std, color=c, linewidth=1.5, linestyle="--", zorder=10)
+        # ax.plot(10**bc, mean - log_std, color=c, linewidth=1.5, linestyle="--", zorder=10)
+        # ax.errorbar(10**bc, mean, yerr=log_std, color=c, linewidth=3., linestyle="none", zorder=10, label=label)
+        e = ax.errorbar(10**bc, mean, yerr=log_std, color=c, label=label,\
+             fmt="o", markerfacecolor=c, mec='k', capsize=2, capthick=2, elinewidth=2, linestyle='-', linewidth=2.)
+
+    text_pos = (4.5e7, np.log10(1))
+    text = 'z = %1.2f'% snap.z
+
+    ax.set_xlabel(r'M$_{\mathrm{h}}$ [M$_{\odot}$/h]')
+    # ax.set_ylabel(r'M$_{*}$ [M$_{\odot}$/h]')
+    ax.set_ylabel(r'log$_{10}$(M$_{*}$/M$_{\mathrm{h}}$)/($\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$) [%]')
+
+    # box = ax.get_position()
+    # ax.set_position([box.x0, box.y0 + box.height * 0.1,
+    #                  box.width, box.height * 0.9])
+
+    # # Put a legend below current axis
+    # ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.13),
+    #           fancybox=True, shadow=False, ncol=5, prop={'size':10.5})
+    ax.legend(prop={'size':15.}, loc="lower right")
+
+    ax.set_xscale("log")#; ax.set_yscale("log")
+    ax.text(text_pos[0], text_pos[1], text, color="k", size=18)
+
+    ax.set_xlim(x.min(), x.max())
+
+    plt.tight_layout()
+
+    plt.savefig("/home/ds381/RTX_HD_stellar_abundance.pdf", format="pdf")
     plt.show()
 
 
@@ -107,23 +167,31 @@ def main(path, iout, finder='ctrees', pickle_path=None):
     for i, sto in mpi.piter(halo_ix, storage=dest):
         h = halos[i]
 
-        mpi.msg("Working on halo %i \t %i" % (i, h.hid))
+        if len(h.s) > 0:
 
-        part_dset = h.p[["mass", "epoch", "id"]].flatten()
-        gas_dset = h.g["mass"].flatten()
-        gas_mass = gas_dset["mass"].in_units(_MASS_UNIT)
+            mpi.msg("Working on halo %i \t %i" % (i, h.hid))
 
-        star_idx = stars(part_dset)
-        part_mass = part_dset["mass"].in_units(_MASS_UNIT)
+            part_dset = h.p[["mass", "epoch", "id", "age"]].flatten()
+            gas_dset = h.g["mass"].flatten()
+            gas_mass = gas_dset["mass"].in_units(_MASS_UNIT)
 
-        tot_mass = part_mass.sum() + gas_mass.sum()
-        star_mass = part_mass[star_idx].sum()
+            star_idx = stars(part_dset)
+            part_mass = part_dset["mass"].in_units(_MASS_UNIT)
 
-        np_star = len(part_dset["mass"][star_idx])
-        np_dm = len(part_dset["mass"]) - np_star
+            idx_young_stars = np.where(part_dset["age"][star_idx].in_units("Myr") <= 10.)
 
-        sto.idx = h["id"]
-        sto.result = {"tot_mass" : tot_mass, "star_mass" : star_mass, "np_dm" : np_dm, "np_star" : np_star}
+            tot_mass = part_mass.sum() + gas_mass.sum()
+            star_mass = part_mass[star_idx][idx_young_stars].sum()
+
+            if (star_mass > 0):
+
+                np_star = len(part_dset["mass"][star_idx][idx_young_stars])
+                np_dm = len(part_dset["mass"]) - np_star
+
+                mpi.msg("%e \t %e \t %e" % (tot_mass, star_mass, star_mass/tot_mass))
+
+                sto.idx = h["id"]
+                sto.result = {"tot_mass" : tot_mass, "star_mass" : star_mass, "np_dm" : np_dm, "np_star" : np_star}
 
     if mpi.host:
         import os

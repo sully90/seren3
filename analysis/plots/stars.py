@@ -116,3 +116,124 @@ def schmidtlaw(subsnap, filename=None, center=True, pretime='50 Myr', diskheight
         plt.legend(loc=2)
     if (filename):
         plt.savefig(filename)
+
+def plot_dSFR_mvir(sims, iouts, labels, cols, pickle_paths=None, **kwargs):
+    '''
+    Plot star formation rate density against halo virial mass
+    '''
+    import pickle
+    import matplotlib.pylab as plt
+    from seren3.analysis.plots import fit_scatter
+
+    dSFR_units = kwargs.pop("units", "Msol yr**-1 kpc**-3")
+    nbins = kwargs.pop("nbins", 25)
+    legend_size = kwargs.pop("lsize", 18)
+
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14,6))
+
+    def get_fname_halos(ppath, iout):
+        return "%s/dSFR_halo_av_%05i.p" % (ppath, iout)
+
+    def get_fname(ppath):
+        return "%s/dSFR_time_averaged.p" % (ppath)
+
+    ax=axs[0]
+
+    if (pickle_paths is None):
+        pickle_paths = ["%s/pickle/" % sim.path for sim in sims]
+
+    for sim, iout, ppath, label, c in zip(sims, iouts, pickle_paths, labels, cols):
+        fname = get_fname_halos(ppath, iout)
+        data = pickle.load(open(fname, "rb"))
+
+        snap = sim[iout]
+        halos = snap.halos()
+
+        part_mass = snap.quantities.particle_mass()
+
+        mvir_dict = {}
+        for h in halos:
+            npdm = h["Mvir"] / part_mass
+            mvir_dict[int(h["id"])] = {"Mvir" : h["Mvir"], "np_dm" : npdm}
+
+        nrecrods = len(data)
+        dSFR_mw = np.zeros(nrecrods)
+        mvir = np.zeros(nrecrods)
+        np_dm = np.zeros(nrecrods)
+
+        for i in range(nrecrods):
+            res = data[i].result
+            dSFR_mw[i] = res["mw"].in_units(dSFR_units)
+            mvir[i] = mvir_dict[int(data[i].idx)]["Mvir"]
+            np_dm[i] = mvir_dict[int(data[i].idx)]["np_dm"]
+
+        idx = np.where(np.logical_and(np_dm >= 50, ~np.isnan(dSFR_mw)))
+        mvir = mvir[idx]; dSFR_mw = dSFR_mw[idx]
+
+        x = np.log10(mvir)
+        y = np.log10(dSFR_mw)
+
+        # Plot
+        # plt.scatter(10**x, y, color=c, **kwargs)
+
+        bc, mean, std, sterr = fit_scatter(x, y, ret_sterr=True, nbins=nbins)
+        ax.errorbar(10**bc, mean, yerr=sterr, color=c, linewidth=2., linestyle="-", label=label)
+
+    ax.legend(loc="lower right", prop={'size':legend_size})
+    # plt.yscale("log")
+    ax.set_xscale("log")
+
+    ax.set_xlabel(r"M$_{\mathrm{vir}}$ [M$_{\odot}$/h]")
+    ax.set_ylabel(r"log$_{10}$ $\langle \rho_{\mathrm{SFR}} \rangle_{M}$ [M$_{\odot}$ yr$^{-1}$ kpc$^{-3}$]")
+
+    # plt.xlim(1e7, 2e10)
+    # plt.ylim(5e-9, 5e-1)
+    # ax.set_ylim(-8, -2.5)
+    ax.set_ylim(-8, y.max())
+    # ax.set_title("z = %1.2f" % snap.z)
+
+    text_pos = (2e7, 1)
+    text = "z = %1.2f" % snap.z
+    ax.text(text_pos[0], text_pos[1], text, color="k", size="x-large")
+
+    # Time evol.
+    ax = axs[1]
+
+    min_v = np.inf
+    max_v = -np.inf
+    for sim, ppath, label, c in zip(sims, pickle_paths, labels, cols):
+        fname = get_fname(ppath)
+        data = pickle.load(open(fname, "rb"))
+
+        nrecords = len(data)
+        z = np.zeros(nrecords)
+        vw = np.zeros(nrecords)
+        mw = np.zeros(nrecords)
+
+        for i in range(nrecords):
+            res = data[i].result
+
+            if (res["z"] < 6):
+                break
+
+            z[i] = res["z"]
+            vw[i] = res["vw"].in_units(dSFR_units)
+            mw[i] = res["mw"].in_units(dSFR_units)
+
+        x = z
+        y = np.log10(mw)
+        # ax.plot(z, log_vw, linewidth=2., color=c, label=label, linestyle="-")
+        # ax.plot(z, log_mw, linewidth=2., color=c, label=label, linestyle="-")
+
+        bc, mean, std, sterr = fit_scatter(x, y, ret_sterr=True, nbins=nbins+2)
+        ax.errorbar(bc, mean, yerr=std, color=c, linewidth=2., linestyle="-", label=label)
+
+    ax.legend(loc="lower left", prop={'size':legend_size})
+
+    ax.set_xlabel(r"$z$")
+    ax.set_ylabel(r"log$_{10}$ $\langle \rho_{\mathrm{SFR}} \rangle_{M}$ [M$_{\odot}$ yr$^{-1}$ kpc$^{-3}$]")
+    ax.set_ylim(-7., 0.)
+
+    fig.tight_layout(w_pad=1.)
+
+    plt.show()

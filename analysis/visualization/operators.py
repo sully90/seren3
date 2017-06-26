@@ -1,4 +1,4 @@
-from pymses.analysis.operator import AbstractOperator, FractionOperator
+from pymses.analysis.operator import AbstractOperator, ScalarOperator, FractionOperator
 
 # Map operator : minimum temperature along line-of-sight
 class MinTempOperator(AbstractOperator):

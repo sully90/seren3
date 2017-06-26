@@ -1,0 +1,59 @@
+\hypertarget{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum}{
+\section{seren3::cosmology::power\_\-spectrum::PowerSpectrum Class Reference}
+\label{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum}\index{seren3::cosmology::power\_\-spectrum::PowerSpectrum@{seren3::cosmology::power\_\-spectrum::PowerSpectrum}}
+}
+
+
+Inherits pynbody::analysis::hmf::PowerSpectrumCAMB.\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a28c5ac63e656207586e3efe55784b174}{
+def {\bfseries \_\-\_\-init\_\-\_\-}}
+\label{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a28c5ac63e656207586e3efe55784b174}
+
+\item 
+def \hyperlink{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a86a39b95d4985a9fb82cecd613513024}{at\_\-z}
+\item 
+\hypertarget{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_ac017a68e32edc7211a008e952966f002}{
+def {\bfseries dimensionless}}
+\label{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_ac017a68e32edc7211a008e952966f002}
+
+\item 
+def \hyperlink{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a3e2a91cb58acc6f61f7ef4f17025a73c}{swap\_\-fourier\_\-convention}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyVerb}
+Class to wrap Pynbody PowerSpectrum and add support for MUSIC spectra
+
+Parameters:
+        * context (pynbody.snapshot): the snapshot containing desired cosmological parameters
+        * pstype = CAMB (string): Method used to produce power spectra (CAMB or MUSIC)
+        * species = None (string): baryons, cdm or None (total)
+        * kwargs (dict): arguments to be passed to pynbody.analysis.hmf.PowerSpectrumCAMB
+\end{DoxyVerb}
+ 
+
+\subsection{Member Function Documentation}
+\hypertarget{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a86a39b95d4985a9fb82cecd613513024}{
+\index{seren3::cosmology::power\_\-spectrum::PowerSpectrum@{seren3::cosmology::power\_\-spectrum::PowerSpectrum}!at\_\-z@{at\_\-z}}
+\index{at\_\-z@{at\_\-z}!seren3::cosmology::power_spectrum::PowerSpectrum@{seren3::cosmology::power\_\-spectrum::PowerSpectrum}}
+\subsubsection[{at\_\-z}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::cosmology::power\_\-spectrum::PowerSpectrum::at\_\-z ( {\em self}, \/   {\em z})}}
+\label{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a86a39b95d4985a9fb82cecd613513024}
+\begin{DoxyVerb}
+Compute linear evolution of power spectrum for all k
+\end{DoxyVerb}
+ \hypertarget{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a3e2a91cb58acc6f61f7ef4f17025a73c}{
+\index{seren3::cosmology::power\_\-spectrum::PowerSpectrum@{seren3::cosmology::power\_\-spectrum::PowerSpectrum}!swap\_\-fourier\_\-convention@{swap\_\-fourier\_\-convention}}
+\index{swap\_\-fourier\_\-convention@{swap\_\-fourier\_\-convention}!seren3::cosmology::power_spectrum::PowerSpectrum@{seren3::cosmology::power\_\-spectrum::PowerSpectrum}}
+\subsubsection[{swap\_\-fourier\_\-convention}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::cosmology::power\_\-spectrum::PowerSpectrum::swap\_\-fourier\_\-convention ( {\em self})}}
+\label{classseren3_1_1cosmology_1_1power__spectrum_1_1PowerSpectrum_a3e2a91cb58acc6f61f7ef4f17025a73c}
+\begin{DoxyVerb}
+Swap the Fourier convention from CAMB to MUSIC or vise versa
+\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file:\begin{DoxyCompactItemize}
+\item 
+cosmology/power\_\-spectrum.py\end{DoxyCompactItemize}

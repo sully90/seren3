@@ -8,7 +8,6 @@ def _volume_weighted_average(field, halo, npoints=100000):
 
 def _mass_weighted_average(field, halo, mass_units="Msol h**-1"):
     dset = halo.g[[field, "mass"]].flatten()
-
     cell_mass = dset["mass"].in_units(mass_units)
 
     return np.sum(dset[field]*cell_mass)/cell_mass.sum()
@@ -34,13 +33,17 @@ def main(path, iout, field, pickle_path=None):
 
         mpi.msg("Working on halo %i \t %i" % (i, h.hid))
 
-        vw = _volume_weighted_average(field, h)
+        # vw = _volume_weighted_average(field, h)
         mw = _mass_weighted_average(field, h)
+
+        if (np.isinf(mw) or np.isnan(mw)):
+            continue
         # vw = _volume_weighted_average_cube(snap, field, h)
-        mpi.msg("%i \t %1.5f" % (h.hid, vw))
+        mpi.msg("%i \t %1.2e" % (h.hid, mw))
 
         sto.idx = h["id"]
-        sto.result = {"vw" : vw, "mw" : mw}
+        # sto.result = {"vw" : vw, "mw" : mw}
+        sto.result = {"mw" : mw}
 
     if mpi.host:
         if pickle_path is None:

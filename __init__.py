@@ -1,3 +1,8 @@
+import matplotlib
+# matplotlib.use('Agg')
+
+# print "Using Agg backend"
+
 import abc
 from seren3.utils.derived_utils import *
 from seren3.core import derived
@@ -8,7 +13,6 @@ _jet_black_cdict = {
         'blue'  : ((0.,0.00,0.00),(0.001,0.,0.),(0.07, 0.500,0.500),(0.12,  0.900,0.900),(0.23,   1.000,1.000),(0.28, 1.000,1.000),(0.40, 0.722,0.722),(0.52,0.2778,0.2778),(0.64, 0.000,0.000),(1.,0.,0.))
 }
 
-import matplotlib
 import matplotlib.pylab as plt
 _jet_black_cm = matplotlib.colors.LinearSegmentedColormap('jet_black', _jet_black_cdict, 1e5)
 plt.register_cmap(cmap=_jet_black_cm)

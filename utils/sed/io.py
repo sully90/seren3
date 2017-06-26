@@ -6,6 +6,8 @@ def read_seds_from_lists(seddir, nGroups=3, nIons=3):
     Read SEDs from .list files
     '''
     # First, load bins to get nAge and nZ
+    from seren3.array import SimArray
+
     fname = "%s/SEDtable%d.list" % (seddir, 1)
     nAge = nZ = 0
     with open(fname, 'r') as f:
@@ -48,14 +50,14 @@ def read_seds_from_lists(seddir, nGroups=3, nIons=3):
                 SEDs[i, j, igroup, 8] = data[count][10]  # Ion3 cse
                 count += 1
 
-    return agebins, zbins, SEDs
+    return SimArray(agebins, "Gyr"), zbins, SEDs
 
 def read_bpass_seds(sed_type="bin"):
     import os
     seddir = os.getenv(
         'BPASS_RAW_SED_DIR', '/lustre/scratch/astro/ds381/SEDs/BPASS/SEDS/')
 
-    zbins = ["001", "004", "008", "020", "040"]
+    zbins = np.array(["001", "004", "008", "020", "040"])
     nZ = len(zbins)
 
     # Load one dset to get number of flux bins
@@ -78,12 +80,59 @@ def read_bpass_seds(sed_type="bin"):
     return agebins, zbins, Ls, SEDs
 
 
-def read_seds(seddir):
+def read_and_smooth_bpass_seds(sed_type="bin", nbins=6900):
+    from seren3.analysis import plots
+
+    agebins, zbins, Ls, SEDs = read_bpass_seds(sed_type=sed_type)
+
+    Ls_smoothed = np.zeros(nbins)
+    SEDs_smoothed = np.zeros((nbins, len(agebins), len(zbins)))
+
+    for i in range(len(agebins)):
+        for j in range(len(zbins)):
+            bc, mean, std = plots.fit_scatter(Ls, np.log10(SEDs[:,i,j]), nbins=nbins)
+            SEDs_smoothed[:,i,j] = 10**mean
+    Ls_smoothed = bc
+
+    return agebins, zbins, Ls_smoothed, SEDs_smoothed
+
+
+def interp_bpass_to_bc03(sed_type="bin", nbins=500):
+    # from seren3.analysis import interpolate
+    from scipy.interpolate import interp1d, interp2d
+
+    # agebins, zbins, Ls, SEDs = read_and_smooth_bpass_seds(sed_type=sed_type, nbins=nbins)
+    agebins, zbins, Ls, SEDs = read_bpass_seds(sed_type=sed_type)
+    bc03age, bc03z, bc03Ls, bc03SEDs = read_seds()
+
+    zbins = np.array(zbins)
+
+    SEDs_interpolated1 = np.zeros((len(Ls), len(bc03age), len(bc03z)))
+
+    for i in range(len(Ls)):
+        # print i
+        fn = interp2d(zbins, agebins, SEDs[i,:,:])
+        SEDs_interpolated1[i,:,:] = fn(bc03z, bc03age)
+
+    SEDs_interpolated2 = np.zeros((len(bc03Ls), len(bc03age), len(bc03z)))
+
+    # Do wavelength
+    for i in range(len(bc03age)):
+        for j in range(len(bc03z)):
+            fn = interp1d(Ls, SEDs_interpolated1[:,i,j], fill_value="extrapolate")
+            SEDs_interpolated2[:,i,j] = fn(bc03Ls)
+
+    idx = np.where(SEDs_interpolated2 < 0.)
+    SEDs_interpolated2[idx] = 0.
+
+    return bc03age, bc03z, bc03Ls, SEDs_interpolated2
+
+def read_seds():
     '''
     Read all_seds.dat file
     '''
-    #import os
-    # seddir = os.getenv('RAMSES_SED_DIR', './')
+    import os
+    seddir = os.getenv('RAMSES_SED_DIR', './')
     # seddir = './'
 
     agebins = np.delete(np.loadtxt('%s/age_bins.dat' % seddir), 0)
@@ -96,7 +145,7 @@ def read_seds(seddir):
         skip(f)
 
         #  Read nLs=
-        nLs = np.fromfile(file=f, dtype=np.int32, count=1)
+        nLs = np.fromfile(file=f, dtype=np.int32, count=1)[0]
 
         # Skip 3 records
         [skip(f) for i in range(3)]
@@ -108,6 +157,7 @@ def read_seds(seddir):
         # Skip two records
         skip(f)
 
+        print nLs, nAge, nZ
         SEDs = np.zeros((nLs, nAge, nZ))
         for i in range(nZ):
             for j in range(nAge):
@@ -184,7 +234,7 @@ def write_seds(agebins, zbins, Ls, SEDs, seddir=None):
             f._write_check(np.int32(len(Ls) * 8))
 
 
-def plot_sed(agebins, zbins, Ls, SEDs, label_ion_freqs=False, show_legend=False, **kwargs):
+def plot_sed(agebins, zbins, Ls, SEDs, ax=None, label_ion_freqs=False, show_legend=False, **kwargs):
     import numpy as np
     import matplotlib.pylab as plt
     import matplotlib.cm as cm
@@ -192,19 +242,26 @@ def plot_sed(agebins, zbins, Ls, SEDs, label_ion_freqs=False, show_legend=False,
 
     # ages = np.array([1, 11, 21, 31, 41])
     # ages=[1., 10., 100., 1000., 10000.]
-    ages = kwargs.pop("ages", [1., 5., 10., 20.])
-    colors = kwargs.pop("colors", ncols(len(ages), cmap=kwargs.pop("cmap", "rainbow")))
+    ages = kwargs.pop("ages", [1., 10., 20.])
+    # colors = kwargs.pop("colors", ncols(len(ages), cmap=kwargs.pop("cmap", "rainbow")))
+    # colors = kwargs.pop("colors", ncols(len(ages), cmap=kwargs.pop("cmap", "Set1")))
+    colors = ["r", "b", "darkorange"]
 
     zbins = np.array(zbins); agebins = np.array(agebins)
 
     Z_sun = 0.02  # Solar metallicity
     z_idx = (np.abs(Z_sun - zbins)).argmin()
 
-    ax = plt.gca()
+    if (ax is None):
+        fig, ax = plt.subplots(figsize=(8,8))
+    else:
+        ax = plt.gca()
 
     for age, c in zip(ages, colors):
         age_idx = (np.abs(age*1e6 - agebins)).argmin()
-        ax.semilogy(Ls, SEDs[:, age_idx, z_idx], label="%i Myr" % (float(agebins[age_idx])/1e6) if show_legend else None, color=c, **kwargs)
+        print age_idx
+        plot_every = 1
+        ax.semilogy(Ls[::plot_every], SEDs[:, age_idx, z_idx][::plot_every], label="%i Myr" % (float(agebins[age_idx])/1e6) if show_legend else None, color=c, **kwargs)
 
     plt.xlim(100, 1000)
 
@@ -216,7 +273,7 @@ def plot_sed(agebins, zbins, Ls, SEDs, label_ion_freqs=False, show_legend=False,
     # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': 12.})
 
     if show_legend:
-        ax.legend(loc='lower right')
+        ax.legend(loc='lower right', prop={"size":18})
     ax.set_yscale('log')
     plt.xlabel(r'$\lambda$ [$\AA$]')
     plt.ylabel(r'J$_{\lambda}$ [L$_{\odot}$/M$_{\odot}$/$\AA$]')
@@ -232,9 +289,12 @@ def plot_sed(agebins, zbins, Ls, SEDs, label_ion_freqs=False, show_legend=False,
 
         ypos = ax.get_ylim()[1]
         ypos *= 5.
-        ax.text(HI, ypos, r'x$_{\mathrm{HI}}$', fontsize=20, ha='center')
-        ax.text(HeI, ypos, r'x$_{\mathrm{HeI}}$', fontsize=20, ha='center')
-        ax.text(HeII, ypos, r'x$_{\mathrm{HeII}}$', fontsize=20, ha='center')
+        ax.text(HI, ypos, r'HI', fontsize=20, ha='center')
+        ax.text(HeI, ypos, r'HeI', fontsize=20, ha='center')
+        ax.text(HeII, ypos, r'HeII', fontsize=20, ha='center')
+
+    ax.set_ylim(1e-15, 1e1)
+    plt.tight_layout()
 
 
 def read_bouwens_2015(path='./'):

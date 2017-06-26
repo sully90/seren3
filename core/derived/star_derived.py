@@ -23,10 +23,10 @@ def star_Nion_d(context, dset, dt=0., group=1):
     verbose = config.get("general", "verbose")
 
     Z_sun = 0.02  # metallicity of the sun
-    nGroups = context.info_rt["nGroups"]
+    nGroups = context.info["nGroups"]
     
     if(verbose): print 'Computing Nion_d for photon group %i/%i' % (group, nGroups)
-    nIons = context.info_rt["nIons"]
+    nIons = context.info["nIons"]
     nPhotons_idx = 0  # index of photon number in SED
 
     # Load the SED table
@@ -39,6 +39,7 @@ def star_Nion_d(context, dset, dt=0., group=1):
     # Which star particles should we keep
     if dt != 0.:
         age -= dt.in_units("Gyr")
+        # keep = np.where( np.logical_and(age >= 0., age.in_units("Myr") <= 10.) )
         keep = np.where( age >= 0. )
         age = age[keep]
         Z = Z[keep]

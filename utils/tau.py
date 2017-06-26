@@ -194,14 +194,30 @@ def plot(tau, z, ax=None, color='k', label=None, plot_WMAP7=False, plot_PLANCK=F
     if ax is None:
         ax = plt.gca()
     p = ax.plot(z, tau, color=color, label=label, **kwargs)
-    tau_planck, err = (0.066, 0.016)  # http://arxiv.org/pdf/1502.01589v2.pdf
-    tau_WMAP7, err = (0.088, 0.015)  # http://arxiv.org/pdf/1502.01589v2.pdf
+    tau_planck_2015, err_planck_2015 = (0.066, 0.013)  # http://arxiv.org/pdf/1502.01589v2.pdf
+    tau_planck_2015_up = (tau_planck_2015 + err_planck_2015)
+    tau_planck_2015_down = (tau_planck_2015 - err_planck_2015)
+    tau_WMAP7, err_WMAP_7 = (0.088, 0.015)  # http://arxiv.org/pdf/1502.01589v2.pdf
 
-    if plot_PLANCK:    
+    z_p = range(5,22)
+    tau_planck_2016 = 0.058 # Planck (2016)
+    tau_planck_2016_up = (0.058+0.012)
+    tau_planck_2016_down = (0.058-0.012)
+
+    if plot_PLANCK:
+        # planck_2015_c = "lightskyblue"
+        # ax.hlines(
+        #     tau_planck_2015, 0., 99., label='Planck 2015 TT+lowP+lensing+BAO', linestyle='--', color=planck_2015_c)
+        # ax.fill_between(
+        #     z, tau_planck_2015_down, tau_planck_2015_up, color=planck_2015_c, alpha=0.25)
+
+        planck_2016_c = "k"
         ax.hlines(
-            tau_planck, 0., 99., label='Planck 2015 TT+lowP+lensing', linestyle='--')
+            tau_planck_2016, 0., 99., label='Planck 2016 TT+lowP+lensing+BAO', linestyle='--', color=planck_2016_c)
         ax.fill_between(
-            z, tau_planck - err, tau_planck + err, color='k', alpha=0.3)
+            z, tau_planck_2016_down, tau_planck_2016_up, color=planck_2016_c, alpha=0.25)
+
+
 
     if plot_WMAP7:
         ax.hlines(

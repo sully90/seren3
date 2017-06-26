@@ -1,0 +1,186 @@
+\hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile}{
+\section{seren3::utils::f90::fortranfile::FortranFile Class Reference}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile}\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_adbddc016568070013cb3a1a289ced73f}{\_\-\_\-init\_\-\_\-}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a7f95a2fb0c7fbc782fde369100e34ff8}{readRecord}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a6b02f2bee97855da0d7d712afe50b96a}{writeRecord}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a7746939efaf7d5c6029e9078b460bb14}{readString}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a195740ec1124270c43d7e832126fb66c}{writeString}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a4a59b61f7e55fe4bf4c4912acf0e6123}{readReals}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a97118a86f5a056d556e376e349695a59}{writeReals}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a3280686a5ad1ca9bda485433d63a547a}{readInts}
+\item 
+def \hyperlink{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_adc3a94cca262765578a17b9a3ae398f2}{writeInts}
+\end{DoxyCompactItemize}
+\subsection*{Properties}
+\begin{DoxyCompactItemize}
+\item 
+{\bfseries ENDIAN}
+\item 
+{\bfseries HEADER\_\-PREC}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyVerb}File with methods for dealing with fortran unformatted data files\end{DoxyVerb}
+ 
+
+\subsection{Member Function Documentation}
+\hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_adbddc016568070013cb3a1a289ced73f}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!\_\-\_\-init\_\-\_\-@{\_\-\_\-init\_\-\_\-}}
+\index{\_\-\_\-init\_\-\_\-@{\_\-\_\-init\_\-\_\-}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{\_\-\_\-init\_\-\_\-}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::\_\-\_\-init\_\-\_\- ( {\em self}, \/   {\em fname}, \/   {\em endian} = {\ttfamily '@'}, \/   {\em header\_\-prec} = {\ttfamily 'i'}, \/   {\em args}, \/   {\em kwargs})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_adbddc016568070013cb3a1a289ced73f}
+\begin{DoxyVerb}Open a Fortran unformatted file for writing.
+
+Parameters
+----------
+endian : character, optional
+    Specify the endian-ness of the file.  Possible values are
+    '>', '<', '@' and '='.  See the documentation of Python's
+    struct module for their meanings.  The deafult is '>' (native
+    byte order)
+header_prec : character, optional
+    Specify the precision used for the record headers.  Possible
+    values are 'h', 'i', 'l' and 'q' with their meanings from
+    Python's struct module.  The default is 'i' (the system's
+    default integer).
+
+\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a3280686a5ad1ca9bda485433d63a547a}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!readInts@{readInts}}
+\index{readInts@{readInts}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{readInts}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::readInts ( {\em self}, \/   {\em prec} = {\ttfamily 'i'})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a3280686a5ad1ca9bda485433d63a547a}
+\begin{DoxyVerb}Read an array of integers.
+
+Parameters
+----------
+prec : character, optional
+    Specify the precision of the data to be read using 
+    character codes from Python's struct module.  Possible
+    values are 'h', 'i', 'l' and 'q'
+    
+\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a4a59b61f7e55fe4bf4c4912acf0e6123}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!readReals@{readReals}}
+\index{readReals@{readReals}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{readReals}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::readReals ( {\em self}, \/   {\em prec} = {\ttfamily 'f'})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a4a59b61f7e55fe4bf4c4912acf0e6123}
+\begin{DoxyVerb}Read in an array of real numbers.
+
+Parameters
+----------
+prec : character, optional
+    Specify the precision of the array using character codes from
+    Python's struct module.  Possible values are 'd' and 'f'.
+    
+\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a7f95a2fb0c7fbc782fde369100e34ff8}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!readRecord@{readRecord}}
+\index{readRecord@{readRecord}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{readRecord}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::readRecord ( {\em self})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a7f95a2fb0c7fbc782fde369100e34ff8}
+\begin{DoxyVerb}Read a single fortran record\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a7746939efaf7d5c6029e9078b460bb14}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!readString@{readString}}
+\index{readString@{readString}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{readString}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::readString ( {\em self})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a7746939efaf7d5c6029e9078b460bb14}
+\begin{DoxyVerb}Read a string.\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_adc3a94cca262765578a17b9a3ae398f2}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!writeInts@{writeInts}}
+\index{writeInts@{writeInts}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{writeInts}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::writeInts ( {\em self}, \/   {\em ints}, \/   {\em prec} = {\ttfamily 'i'})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_adc3a94cca262765578a17b9a3ae398f2}
+\begin{DoxyVerb}Write an array of integers in given precision
+
+Parameters
+----------
+reals : array
+    Data to write
+prec : string
+    Character code for the precision to use in writing
+\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a97118a86f5a056d556e376e349695a59}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!writeReals@{writeReals}}
+\index{writeReals@{writeReals}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{writeReals}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::writeReals ( {\em self}, \/   {\em reals}, \/   {\em prec} = {\ttfamily 'f'})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a97118a86f5a056d556e376e349695a59}
+\begin{DoxyVerb}Write an array of floats in given precision
+
+Parameters
+----------
+reals : array
+    Data to write
+prec` : string
+    Character code for the precision to use in writing
+\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a6b02f2bee97855da0d7d712afe50b96a}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!writeRecord@{writeRecord}}
+\index{writeRecord@{writeRecord}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{writeRecord}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::writeRecord ( {\em self}, \/   {\em s})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a6b02f2bee97855da0d7d712afe50b96a}
+\begin{DoxyVerb}Write a record with the given bytes.
+
+Parameters
+----------
+s : the string to write
+
+\end{DoxyVerb}
+ \hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a195740ec1124270c43d7e832126fb66c}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!writeString@{writeString}}
+\index{writeString@{writeString}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{writeString}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::utils::f90::fortranfile::FortranFile::writeString ( {\em self}, \/   {\em s})}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a195740ec1124270c43d7e832126fb66c}
+\begin{DoxyVerb}Write a string
+
+Parameters
+----------
+s : the string to write
+
+\end{DoxyVerb}
+ 
+
+\subsection{Property Documentation}
+\hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a3be034482c2e575ba4a52c84b043211c}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!ENDIAN@{ENDIAN}}
+\index{ENDIAN@{ENDIAN}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{ENDIAN}]{\setlength{\rightskip}{0pt plus 5cm}seren3::utils::f90::fortranfile::FortranFile::ENDIAN\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_a3be034482c2e575ba4a52c84b043211c}
+{\bfseries Initial value:}
+\begin{DoxyCode}
+property(fset=_set_endian,
+                      fget=_get_endian,
+                      doc="Possible endian values are '<', '>', '@', '='"
+                     )
+\end{DoxyCode}
+\hypertarget{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_ac2d863bd48f988fd44a0354c4b539fc3}{
+\index{seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}!HEADER\_\-PREC@{HEADER\_\-PREC}}
+\index{HEADER\_\-PREC@{HEADER\_\-PREC}!seren3::utils::f90::fortranfile::FortranFile@{seren3::utils::f90::fortranfile::FortranFile}}
+\subsubsection[{HEADER\_\-PREC}]{\setlength{\rightskip}{0pt plus 5cm}seren3::utils::f90::fortranfile::FortranFile::HEADER\_\-PREC\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}}
+\label{classseren3_1_1utils_1_1f90_1_1fortranfile_1_1FortranFile_ac2d863bd48f988fd44a0354c4b539fc3}
+{\bfseries Initial value:}
+\begin{DoxyCode}
+property(fset=_set_header_prec,
+                           fget=_get_header_prec,
+                           doc="Possible header precisions are 'h', 'i', 'l', 'q'
+      "
+                          )
+\end{DoxyCode}
+
+
+The documentation for this class was generated from the following file:\begin{DoxyCompactItemize}
+\item 
+utils/f90/fortranfile.py\end{DoxyCompactItemize}

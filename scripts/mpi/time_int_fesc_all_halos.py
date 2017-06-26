@@ -9,8 +9,12 @@ def main(path, pickle_path):
     mpi.msg("Loading simulation...")
     sim = seren3.init(path)
 
-    # for snap in sim:
-    for iout in sim.numbered_outputs[::-1]:
+    iout_start = max(sim.numbered_outputs[0], 25)
+    back_to_z = sim[25].z
+    back_to_axep = 1. / (1. + back_to_z)
+    iouts = range(iout_start, max(sim.numbered_outputs)+1)
+
+    for iout in iouts[::-1]:
         snap = sim[iout]
         mpi.msg("Working on snapshot %05i" % snap.ioutput)
         snap.set_nproc(1)
@@ -24,24 +28,23 @@ def main(path, pickle_path):
         dest = {}
         for i, sto in mpi.piter(halo_ix, storage=dest):
             h = halos[i]
-
             dset = h.s["age"].flatten()
-            age_delay = dset["age"].in_units("Gyr") - h.dt.in_units("Gyr")
+            keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
 
-            # Check if all values are below zero i.e no stars dt ago
-            if len(age_delay) > 0 and any(age_delay >= 0.):
-                try:
+            age = dset["age"][keep]
+            
+            if len(age > 0):
+                age_delay = age.in_units("Gyr") - h.dt.in_units("Gyr")
+
+                # Check if all values are below zero i.e no stars dt ago
+                if len(age_delay) > 0 and any(age_delay >= 0.):
                     mpi.msg("%05i \t %i" % (snap.ioutput, h.hid))
-                    tint_fesc_hist, I1, I2, lbtime = time_integrated_fesc(h, 0., return_data=True, do_multigroup=True)
+                    tint_fesc_hist, I1, I2, lbtime = time_integrated_fesc(h, back_to_axep, return_data=True, do_multigroup=True)
 
                     fesc = I1/I2
                     sto.idx = h.hid
                     sto.result = {'tint_fesc_hist' : tint_fesc_hist, 'fesc' : fesc, 'I1' : I1, \
                             'I2' : I2, 'lbtime' : lbtime, 'Mvir' : h["Mvir"]}
-                except NoParticlesException as e:
-                    # mpi.msg(e.message)
-                    continue
-
         if mpi.host:
             import pickle, os
             # pickle_path = "%s/pickle/%s/" % (snap.path, halos.finder)
@@ -60,10 +63,10 @@ if __name__ == "__main__":
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         # main(path)
-        try:
-           main(path, pickle_path)
-        except Exception as e:
-           from seren3.analysis.parallel import mpi
-           mpi.msg("Caught exception - terminating")
-           mpi.terminate(500, e=e)
+        # try:
+        main(path, pickle_path)
+        # except Exception as e:
+        #    from seren3.analysis.parallel import mpi
+        #    mpi.msg("Caught exception - terminating")
+        #    mpi.terminate(500, e=e)
 

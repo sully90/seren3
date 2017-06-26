@@ -1,0 +1,48 @@
+\hypertarget{classseren3_1_1array_1_1RemoteKeyboardInterrupt}{
+\section{seren3::array::RemoteKeyboardInterrupt Class Reference}
+\label{classseren3_1_1array_1_1RemoteKeyboardInterrupt}\index{seren3::array::RemoteKeyboardInterrupt@{seren3::array::RemoteKeyboardInterrupt}}
+}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+def \hyperlink{classseren3_1_1array_1_1RemoteKeyboardInterrupt_a465c9a54d5b8b38699014c9d4dca8b35}{shared\_\-array\_\-remote}
+\item 
+def \hyperlink{classseren3_1_1array_1_1RemoteKeyboardInterrupt_aff7e4bd891bea9300aa525620a14e490}{remote\_\-map}
+\item 
+def \hyperlink{classseren3_1_1array_1_1RemoteKeyboardInterrupt_a07c542d0d324f612b172cee29290c4f3}{exit\_\-cleanup}
+\end{DoxyCompactItemize}
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classseren3_1_1array_1_1RemoteKeyboardInterrupt_a07c542d0d324f612b172cee29290c4f3}{
+\index{seren3::array::RemoteKeyboardInterrupt@{seren3::array::RemoteKeyboardInterrupt}!exit\_\-cleanup@{exit\_\-cleanup}}
+\index{exit\_\-cleanup@{exit\_\-cleanup}!seren3::array::RemoteKeyboardInterrupt@{seren3::array::RemoteKeyboardInterrupt}}
+\subsubsection[{exit\_\-cleanup}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::array::RemoteKeyboardInterrupt::exit\_\-cleanup ()}}
+\label{classseren3_1_1array_1_1RemoteKeyboardInterrupt_a07c542d0d324f612b172cee29290c4f3}
+\begin{DoxyVerb}Clean up any shared memory that has not yet been freed. In
+theory this should not be required, but it is here as a safety
+net.\end{DoxyVerb}
+ \hypertarget{classseren3_1_1array_1_1RemoteKeyboardInterrupt_aff7e4bd891bea9300aa525620a14e490}{
+\index{seren3::array::RemoteKeyboardInterrupt@{seren3::array::RemoteKeyboardInterrupt}!remote\_\-map@{remote\_\-map}}
+\index{remote\_\-map@{remote\_\-map}!seren3::array::RemoteKeyboardInterrupt@{seren3::array::RemoteKeyboardInterrupt}}
+\subsubsection[{remote\_\-map}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::array::RemoteKeyboardInterrupt::remote\_\-map ( {\em pool}, \/   {\em fn}, \/   {\em iterables})}}
+\label{classseren3_1_1array_1_1RemoteKeyboardInterrupt_aff7e4bd891bea9300aa525620a14e490}
+\begin{DoxyVerb}A replacement for python's in-built map function, sending out tasks
+to the pool and performing the magic required to transport shared memory arrays
+correctly. The function *fn* must be wrapped with the *shared_array_remote*
+decorator to interface correctly with this magic.\end{DoxyVerb}
+ \hypertarget{classseren3_1_1array_1_1RemoteKeyboardInterrupt_a465c9a54d5b8b38699014c9d4dca8b35}{
+\index{seren3::array::RemoteKeyboardInterrupt@{seren3::array::RemoteKeyboardInterrupt}!shared\_\-array\_\-remote@{shared\_\-array\_\-remote}}
+\index{shared\_\-array\_\-remote@{shared\_\-array\_\-remote}!seren3::array::RemoteKeyboardInterrupt@{seren3::array::RemoteKeyboardInterrupt}}
+\subsubsection[{shared\_\-array\_\-remote}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::array::RemoteKeyboardInterrupt::shared\_\-array\_\-remote ( {\em fn})}}
+\label{classseren3_1_1array_1_1RemoteKeyboardInterrupt_a465c9a54d5b8b38699014c9d4dca8b35}
+\begin{DoxyVerb}A decorator for functions returning a new function that is
+suitable for use remotely. Inputs to and outputs from the function
+can be transferred efficiently if they are backed onto shared
+memory. Ownership of any shared memory returned by the function
+is transferred.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file:\begin{DoxyCompactItemize}
+\item 
+array.py\end{DoxyCompactItemize}

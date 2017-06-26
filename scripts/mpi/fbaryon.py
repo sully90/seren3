@@ -394,7 +394,10 @@ def tmp_plot_bc03_bpass(fix_alpha=False, **kwargs):
             # '/lustre/scratch/astro/ds381/simulations/aton/256/pickle/']
 
     sims = [Simulation(p) for p in paths]
-    z=[12, 9.520844871763828,9.1183961742776667,8.870301819250594,8.637584547306572,8.478813937808214,7.970466391120848,\
+    # z=[12, 9.520844871763828,9.1183961742776667,8.870301819250594,8.637584547306572,8.478813937808214,7.970466391120848,\
+    #     7.649564270488902,7.243141404330228,7.020725505646379,6.6678946695209875,\
+    #     6.435186929659703,6.152974042392178]
+    z=[9.520844871763828,9.1183961742776667,8.870301819250594,8.637584547306572,8.478813937808214,7.970466391120848,\
         7.649564270488902,7.243141404330228,7.020725505646379,6.6678946695209875,\
         6.435186929659703,6.152974042392178]
 
@@ -409,6 +412,19 @@ def tmp_plot_bc03_bpass(fix_alpha=False, **kwargs):
 
     plot_Mc_var(sims, sim_iouts, ppaths, labels, cols, fix_alpha, **kwargs)
     plt.show()
+
+
+def _tmp_2():
+    import seren3
+
+    sim_names = ["RT2_nohm", "RT5_nohm"]
+    sims = [seren3.load(n) for n in sim_names]
+    ioutputs = [42, 48, 60, 70, 80, 90, 100, 106]
+
+    ppaths = ["%s/pickle/" % sim.path for sim in sims]
+    cols = ["r", "b"]
+
+    plot_Mc_var(sims, [ioutputs, ioutputs], ppaths, sim_names, cols, False, **kwargs)
 
 
 def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tidal_force_cutoff=None):
@@ -567,7 +583,7 @@ def plot_Mc_var(sims, sim_iouts, pickle_paths, labels, cols, fix_alpha=True, tid
     fig1.tight_layout()
     fig2.tight_layout()
 
-    fig2.savefig("./reion_hist_subplots_vert.pdf", format="pdf")
+    # fig2.savefig("./reion_hist_subplots_vert.pdf", format="pdf")
     # plt.tight_layout()
     # fig.savefig('./Mc_panel_plot_ftidal_pdf.pdf', format='pdf', dpi=10000)
 

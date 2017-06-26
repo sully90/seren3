@@ -26,6 +26,8 @@ class MassBin(object):
 def halo_photon_relative_contribution(simulation, ioutputs, the_mass_bins=[8., 9., 10.]):
     import numpy as np
 
+    print "Use plt.bar for relative contribution!!!!!!!!!!!!!!"
+
     if not isinstance(the_mass_bins, np.ndarray):
         the_mass_bins = np.array(the_mass_bins)
 

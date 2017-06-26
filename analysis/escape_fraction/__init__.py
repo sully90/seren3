@@ -4,7 +4,7 @@ of halos (or subsnaps in general).
 Uses the pynbody python module to create healpix maps
 '''
 
-def fesc(subsnap, filt=False, do_multigroup=False, ret_flux_map=False, **kwargs):
+def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=False, **kwargs):
     '''
     Computes halo escape fraction of hydrogen ionising photons
     '''
@@ -26,11 +26,17 @@ def fesc(subsnap, filt=False, do_multigroup=False, ret_flux_map=False, **kwargs)
     integrated_flux = 0.
     nPhot = 0.
 
+    # print "Only keeping stars < 10 Myr old"
+
     dset = subsnap.s[["mass", "age", "metal"]].flatten()
-    keep = np.where(dset["age"].in_units("Gyr") - dt.in_units("Gyr") >= 0.)
+    age = dset["age"].in_units("Gyr") - dt.in_units("Gyr")
+    # keep = np.where( np.logical_and(age >= 0., age.in_units("Myr") <= 10.) )
+    keep = np.where( age >= 0. )
     mass = dset["mass"][keep]
 
     star_Nion_d = derived_utils.get_derived_field(subsnap.s, "Nion_d")
+
+    in_units = "s**-1 m**-2"
 
     if do_multigroup:
         for ii in range(nIons):
@@ -41,19 +47,17 @@ def fesc(subsnap, filt=False, do_multigroup=False, ret_flux_map=False, **kwargs)
             nPhot += (Nion_d * mass).sum()
 
             # Compute integrated flux out of the virial sphere
-            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, units="s**-1 m**-2", ret_mag=False, filt=filt, **kwargs)
+            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, in_units=in_units, out_units=in_units, ret_mag=False, filt=filt, **kwargs)
             integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir)# * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
     else:
         # Compute number of ionising photons from stars at time
         # t - rvir/rt_c (assuming halo is a point source)
         # dset = subsnap.s[["Nion_d", "mass", "age"]].flatten(group=1, dt=dt)
         Nion_d = star_Nion_d(subsnap, dset, dt=dt, group=1)
-        keep = np.where(dset["age"] - dt >= 0.)
-        mass = dset["mass"][keep]
         nPhot += (Nion_d * mass).sum()
 
         # Compute integrated flux out of the virial sphere
-        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", units="s**-1 m**-2", ret_mag=False, filt=filt, **kwargs)
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", in_units=in_units, out_units=in_units, ret_mag=False, filt=filt, **kwargs)
         integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir)# * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
 
     fesc = integrated_flux.in_units("s**-1") / nPhot.in_units("s**-1")
@@ -61,6 +65,8 @@ def fesc(subsnap, filt=False, do_multigroup=False, ret_flux_map=False, **kwargs)
     # return the escape fraction
     if ret_flux_map:
         return fesc, flux_map
+    elif ret_dset:
+        return fesc, dset
     return fesc
 
 def integrate_fesc(I1, I2, lbtime):
@@ -85,12 +91,13 @@ def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True, **kwa
     age_dict = {}
 
     def _compute(h):
-        dset = h.s[["Nion_d", "mass"]]
-        fesc_h = fesc(h.subsnap, nside=nside, **kwargs)
-        # if fesc_h > 1.:
-            # fesc_h = random.uniform(0.9, 1.0)
+        fesc_h, dset = fesc(h.subsnap, nside=nside, ret_dset=True, **kwargs)
+        keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
+
+        if fesc_h > 1.:
+            fesc_h = random.uniform(0.9, 1.0)
         fesc_dict[h.base.ioutput] = fesc_h
-        Nion_d_dict[h.base.ioutput] = (dset["Nion_d"] * dset["mass"]).sum()  # at t=0, not dt=rvir/c !!!
+        Nion_d_dict[h.base.ioutput] = (dset["Nion_d"][keep] * dset["mass"][keep]).sum()  # at t=0, not dt=rvir/c !!!
         age_dict[h.base.ioutput] = h.base.age
 
     # Compute fesc for this halo (snapshot)
@@ -98,8 +105,12 @@ def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True, **kwa
 
     # Iterate through the most-massive progenitor line
     for prog in catalogue.iterate_progenitors(halo, back_to_aexp=back_to_aexp):
-        if len(prog.s) > 0.:
-            _compute(prog)
+        dset = prog.s["age"].flatten()
+        keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
+        if len(dset["age"][keep]) == 0:
+            break
+        print prog.base.ioutput
+        _compute(prog)
 
     # I1/I2 = numerator/denominator to be integrated
     I1 = np.zeros(len(fesc_dict)); I2 = np.zeros(len(fesc_dict)); age_array = np.zeros(len(age_dict))

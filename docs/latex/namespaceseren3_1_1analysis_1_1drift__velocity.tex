@@ -1,0 +1,74 @@
+\hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity}{
+\section{seren3::analysis::drift\_\-velocity Namespace Reference}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity}\index{seren3::analysis::drift\_\-velocity@{seren3::analysis::drift\_\-velocity}}
+}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_a101e66857a11f9b89d7c30ecd628579e}{
+def {\bfseries fft\_\-sample\_\-spacing}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_a101e66857a11f9b89d7c30ecd628579e}
+
+\item 
+\hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_aadd743488a80d667d90c86e54837e747}{
+def {\bfseries fft\_\-sample\_\-spacing\_\-components}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_aadd743488a80d667d90c86e54837e747}
+
+\item 
+def \hyperlink{namespaceseren3_1_1analysis_1_1drift__velocity_a00907fa38afd32b500ba8526a85cc3a5}{vbc\_\-rms}
+\item 
+\hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_a5aedcbcb5e95482105d7e59b5c1357b9}{
+def {\bfseries vbc\_\-ps\_\-fname}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_a5aedcbcb5e95482105d7e59b5c1357b9}
+
+\item 
+\hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_a69ab6f0d08f50e2a7b0dcd6f8eee8a7a}{
+def {\bfseries run\_\-cicsass}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_a69ab6f0d08f50e2a7b0dcd6f8eee8a7a}
+
+\item 
+def \hyperlink{namespaceseren3_1_1analysis_1_1drift__velocity_a1af4a4187aeed3a597ca4c733d18993e}{compute\_\-bias}
+\item 
+def \hyperlink{namespaceseren3_1_1analysis_1_1drift__velocity_ae09934064016aa37522bd7bcda3d1b63}{apply\_\-density\_\-bias}
+\item 
+\hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_a0ae157d294355bfca622a561854aa423}{
+def {\bfseries cube\_\-positions}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_a0ae157d294355bfca622a561854aa423}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyVerb}
+Utility functions to include drift velocity in grafIC ics by computing/convolving density
+power spectrum k dependent bias. Contains routines to run CICsASS
+\end{DoxyVerb}
+ 
+
+\subsection{Function Documentation}
+\hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_ae09934064016aa37522bd7bcda3d1b63}{
+\index{seren3::analysis::drift\_\-velocity@{seren3::analysis::drift\_\-velocity}!apply\_\-density\_\-bias@{apply\_\-density\_\-bias}}
+\index{apply\_\-density\_\-bias@{apply\_\-density\_\-bias}!seren3::analysis::drift_velocity@{seren3::analysis::drift\_\-velocity}}
+\subsubsection[{apply\_\-density\_\-bias}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::analysis::drift\_\-velocity::apply\_\-density\_\-bias ( {\em ics}, \/   {\em k\_\-bias}, \/   {\em b}, \/   {\em N}, \/   {\em delta\_\-x} = {\ttfamily None})}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_ae09934064016aa37522bd7bcda3d1b63}
+\begin{DoxyVerb}Apply a bias to the realisations power spectrum, and recompute the 3D field.
+Parameters:
+    b (array): bias to deconvolve with the delta_x field, such that:
+    delta_x = ifft(delta_k/b)
+\end{DoxyVerb}
+ \hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_a1af4a4187aeed3a597ca4c733d18993e}{
+\index{seren3::analysis::drift\_\-velocity@{seren3::analysis::drift\_\-velocity}!compute\_\-bias@{compute\_\-bias}}
+\index{compute\_\-bias@{compute\_\-bias}!seren3::analysis::drift_velocity@{seren3::analysis::drift\_\-velocity}}
+\subsubsection[{compute\_\-bias}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::analysis::drift\_\-velocity::compute\_\-bias ( {\em ics}, \/   {\em vbc})}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_a1af4a4187aeed3a597ca4c733d18993e}
+\begin{DoxyVerb}Calculate the bias to the density power spectrum assuming
+COHERENT vbc at z=1000. \end{DoxyVerb}
+ \hypertarget{namespaceseren3_1_1analysis_1_1drift__velocity_a00907fa38afd32b500ba8526a85cc3a5}{
+\index{seren3::analysis::drift\_\-velocity@{seren3::analysis::drift\_\-velocity}!vbc\_\-rms@{vbc\_\-rms}}
+\index{vbc\_\-rms@{vbc\_\-rms}!seren3::analysis::drift_velocity@{seren3::analysis::drift\_\-velocity}}
+\subsubsection[{vbc\_\-rms}]{\setlength{\rightskip}{0pt plus 5cm}def seren3::analysis::drift\_\-velocity::vbc\_\-rms ( {\em vbc\_\-field})}}
+\label{namespaceseren3_1_1analysis_1_1drift__velocity_a00907fa38afd32b500ba8526a85cc3a5}
+\begin{DoxyVerb}
+Computes the rms vbc in the box
+\end{DoxyVerb}
+ 

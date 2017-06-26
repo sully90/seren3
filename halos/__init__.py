@@ -192,6 +192,26 @@ class Halo(object):
         Tvir = 1./2. * (mu*mH/kB) * Vc**2
         return self.base.array(Tvir, Tvir.units)
 
+    def clumping_factor(self):
+        '''
+        Computes the volume weighted clumping factor
+        (as done in Park et al. http://arxiv.org/pdf/1602.06472v1.pdf)
+        '''
+        dset = self.g[['nHII', 'mass']].flatten()
+
+        nHII = dset["nHII"]
+        mass = dset["mass"]
+
+        def _mass_weighted_average(field, mass, mass_units="Msol"):
+            cell_mass = mass.in_units(mass_units)
+            return np.sum(field*cell_mass)/cell_mass.sum()
+
+        num = _mass_weighted_average(nHII**2, mass)
+        denom = _mass_weighted_average(nHII, mass)**2
+
+        C = num/denom
+        return C
+
     def fesc(self, **kwargs):
         from seren3.analysis import escape_fraction
         return escape_fraction.fesc(self.subsnap, **kwargs)
@@ -380,6 +400,27 @@ class HaloCatalogue(object):
 
         sigma = np.sqrt(var)
         return sigma, mvir
+
+    def with_id(self, id):
+        '''
+        Returns halo(s) with the desired id.
+        Slow, but preserves id order
+        '''
+        # halos = []
+        # for i in id:
+        #     ix = np.where(self._haloprops[:]['id'] == i)
+        #     halos.append(self[ix])
+        # return halos
+        if hasattr(id, "__iter__"):
+            keep = []
+            for h in self:
+                if h['id'] in id:
+                    keep.append(h)
+            return keep
+        else:
+            func = lambda h: h['id'] == id
+            idx = np.where(func(self._haloprops))[0][0]
+            return self[idx]
 
     def halo_ix(self, shuffle=False):
         '''

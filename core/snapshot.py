@@ -33,11 +33,7 @@ class Snapshot(object):
         if self.metals:
             self.particle_field_list.append("metal")
         # Patch?
-        self.patch = None
-        if os.path.isfile("%s/output_%05i/info_rt_%05i.txt" % (self.path, self.ioutput, self.ioutput)):
-            self.patch = "rt"
-        elif os.path.isfile("%s/output_%05i/rad_%05i.out00001" % (self.path, self.ioutput, self.ioutput)):
-            self.patch = "aton"
+        self.patch = self.detect_rt_module()
 
         # Init friedmann dict variable
         self._friedmann = None
@@ -140,8 +136,8 @@ class Snapshot(object):
         Checks if RAMSES-RT or RAMSES-CUDATON simulation.
         Retuns string 'rt' or 'cudaton'
         '''
-        import os
-        if os.path.isfile(self.info_rt_fname):
+        import os, glob
+        if len(glob.glob("%s/output_%05i/rt_*.out*" % (self.path, self.ioutput))):
             return 'rt'
         elif os.path.isfile("%s/output_%05i/rad_%05i.out00001" % (self.path, self.ioutput, self.ioutput)):
             return 'cudaton'
@@ -162,12 +158,15 @@ class Snapshot(object):
         '''
         Expose info API
         '''
+        import os
+
         if self._info is None:
             fname = self.info_fname
             from pymses.sources.ramses import info as info_utils
 
             info_dict = info_utils.read_ramses_info_file(fname)
-            if self.patch == 'rt':
+            # if self.patch == 'rt':
+            if (os.path.isfile(self.info_rt_fname)):
                 full_info = info_dict.copy()
                 full_info.update(self.info_rt)
                 self._info = full_info

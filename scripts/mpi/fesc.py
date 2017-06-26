@@ -13,6 +13,10 @@ def _plot(fesc, tot_mass, label, alpha, ax, c, nbins):
     # from seren3.analysis.plots import fit_scatter
     from seren3.analysis import plots
 
+    reload(plots)
+
+    print len(fesc)
+
     # Deal with fesc>1. following Kimm & Cen 2014
     bad = np.where( fesc > 1. )
     nbad = float(len(bad[0]))
@@ -20,24 +24,44 @@ def _plot(fesc, tot_mass, label, alpha, ax, c, nbins):
     for ix in bad:
         fesc[ix] = random.uniform(0.9, 1.0)
 
-    # keep = np.where( np.logical_and(fesc >= 0., fesc <=1.) )
-    # fesc = fesc[keep]
-    # tot_mass = tot_mass[keep]
+    keep = np.where( np.logical_and(fesc >= 0., fesc <=1.) )
+    fesc = fesc[keep]
+    tot_mass = tot_mass[keep]
 
     log_tot_mass = np.log10(tot_mass)
     log_fesc = np.log10(100. * fesc)
 
+    fesc_percent = fesc * 100.
+
     remove = np.where( np.logical_or( np.isinf(log_fesc), np.isnan(log_fesc) ) )
 
     log_fesc = np.delete( log_fesc, remove )
+    fesc_percent = np.delete( fesc_percent, remove )
     log_tot_mass = np.delete( log_tot_mass, remove )
 
-    bin_centres, mean, std_dev, std_err = plots.fit_scatter(log_tot_mass, log_fesc, nbins=nbins, ret_sterr=True)
+    remove = np.where( log_fesc < -1. ) 
+
+    log_fesc = np.delete( log_fesc, remove )
+    fesc_percent = np.delete( fesc_percent, remove )
+    log_tot_mass = np.delete( log_tot_mass, remove )
+
+    print len(log_fesc)
+
+    # bin_centres, mean, std_dev, std_err = plots.fit_scatter(log_tot_mass, log_fesc, nbins=nbins, ret_sterr=True)
+    bin_centres, mean, std_dev, std_err = plots.fit_scatter(log_tot_mass, fesc_percent, nbins=nbins, ret_sterr=True)
+    # bin_centres, median = plots.fit_median(log_tot_mass, fesc_percent, nbins=nbins)
     # print bin_centres, mean
 
     # Plot
-    ax.scatter(log_tot_mass, log_fesc, marker='+', color=c, alpha=alpha)
-    ax.errorbar(bin_centres, mean, yerr=std_err, color=c, label=label, linewidth=2.)
+    ax.scatter(log_tot_mass, fesc_percent, marker='+', color=c, alpha=alpha)
+    # ax.errorbar(bin_centres, mean, yerr=std_dev, color=c, label=label, linewidth=2.)
+
+    e = ax.errorbar(bin_centres, mean, yerr=std_dev, color=c, label=label,\
+         fmt="o", markerfacecolor=c, mec='k', capsize=2, capthick=2, elinewidth=2, linestyle='-')
+
+    # e = ax.plot(bin_centres, median, color=c, label=label, linestyle='-', linewidth=2.)
+
+    ax.set_yscale("log")
 
 def plot_neighbouring_snaps(paths, ioutputs, labels, nbins=5, num_neighbours=2, alpha=0.25, ax=None, cols=None):
     import seren3
@@ -92,7 +116,11 @@ def plot(paths, ioutputs, labels, nbins=5, alpha=0.25, ax=None, cols=None):
         cols = plot_utils.ncols(len(paths))
 
     for path, iout, label, c in zip(paths, ioutputs, labels, cols):
-        fname = "%s/pickle/fesc_%05i.p" % (path, iout)
+        
+        # fname = "%s/pickle/ConsistentTrees/fesc_filt_%05i.p" % (path, iout)
+        # fname = "%s/pickle/ConsistentTrees/fesc_filt_no_age_limit%05i.p" % (path, iout)
+        # fname = "%s/pickle/ConsistentTrees/fesc_multi_group_filt_%05i.p" % (path, iout)
+        fname = "%s/pickle/ConsistentTrees/fesc_multi_group_filt_no_age_limit%05i.p" % (path, iout)
         with open(fname, "rb") as f:
             dset = pickle.load( f )
 
@@ -133,7 +161,6 @@ def main(path, iout, finder, pickle_path):
     from seren3.analysis.escape_fraction import fesc
     from seren3.analysis.parallel import mpi
     from seren3.exceptions import NoParticlesException
-    from pynbody.units import UnitsException
     import pickle, os, random
 
     mpi.msg("Loading snapshot")
@@ -148,9 +175,9 @@ def main(path, iout, finder, pickle_path):
         halo_ix = halos.halo_ix(shuffle=True)
 
     dest = {}
-    for i, sto in mpi.piter(halo_ix, storage=dest):
+    for i, sto in mpi.piter(halo_ix, storage=dest, print_stats=True):
         h = halos[i]
-        if len(h.s) > 0:
+        if (h["pid"] == -1 and len(h.s) > 0):
             sto.idx = h.hid
             mpi.msg("%i" % h.hid)
             try:
@@ -160,15 +187,13 @@ def main(path, iout, finder, pickle_path):
                 tot_mass = pdset["mass"].in_units("Msol h**-1").sum()\
                                  + gdset["mass"].in_units("Msol h**-1").sum()
 
-                h_fesc = fesc(h.subsnap, nside=2**5, filt=True, do_multigroup=False)
-                sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass}
+                h_fesc = fesc(h.subsnap, nside=2**3, filt=True, do_multigroup=True)
+                mpi.msg("%1.2e \t %1.2e" % (h["Mvir"], h_fesc))
+                sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass, "hprops" : h.properties}
             except NoParticlesException as e:
                 mpi.msg(e.message)
             except IndexError:
                 mpi.msg("Index error - skipping")
-            except UnitsException as e:
-                print pdset['mass'].conversion_context(), h.hid
-                mpi.terminate(500, e=e)
 
     if mpi.host:
         if pickle_path is None:
@@ -176,7 +201,8 @@ def main(path, iout, finder, pickle_path):
         # pickle_path = "%s/" % path
         if os.path.isdir(pickle_path) is False:
             os.mkdir(pickle_path)
-        pickle.dump( mpi.unpack(dest), open( "%s/fesc_filt_%05i.p" % (pickle_path, iout), "wb" ) )
+        # pickle.dump( mpi.unpack(dest), open( "%s/fesc_multi_group_filt_%05i.p" % (pickle_path, iout), "wb" ) )
+        pickle.dump( mpi.unpack(dest), open( "%s/fesc_do_multigroup_filt_no_age_limit%05i.p" % (pickle_path, iout), "wb" ) )
 
 if __name__ == "__main__":
     import sys

@@ -20,22 +20,21 @@ def plot_baryfrac(pp1=None, pp2=None):
     snap2 = sim2[106]
 
     if (pp1 is None):
-        pp1 = PhasePlot(snap1)
+        pp1 = PhasePlot(snap1, nbins=500)
     if (pp2 is None):
-        pp2 = PhasePlot(snap2)
+        pp2 = PhasePlot(snap2, nbins=500)
 
     for pp in [pp1, pp2]:
         pp.cmap = cmap
         pp.annotate_nstar()
         pp.annotate_T2_thresh()
-
-    for pp in [pp1, pp2]:
+        # pp.annotate_fit()
         pp.vmin = -10
         pp.vmax = -2
 
     z = [pp1.snapshot.z, pp1.snapshot.z]
 
-    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14,6))
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(15,6))
     pp1.draw(ax=axs[0], draw_cbar=False)
     pp2.draw(ax=axs[1], draw_cbar=False)
     # plt.tight_layout()
@@ -52,7 +51,9 @@ def plot_baryfrac(pp1=None, pp2=None):
     cbar = fig.colorbar(pp2.im, cax=cbar_ax, cmap=cmap)
     cbar.set_label('f(mass)', labelpad=-5)
 
-    labels = ["HD1", "RT2"]
+    labels = ["HD", "RT2"]
+
+    axs[1].set_ylabel('')
     # for ax, snap, zi, l in zip(axs, [snap1, snap2], z, labels):
         # ax.set_title("%s: z = %1.2f" % (l, zi), fontsize=20)
         # ax.set_title(l, fontsize=18)
@@ -95,6 +96,7 @@ class PhasePlot(object):
         kwargs['xlogrange'] = True
         kwargs['ylogrange'] = True
         self.kwargs = kwargs
+        self.nbins = kwargs.pop("nbins", 100)
 
         if limit_axes:
             self.vmin = kwargs.get('vmin', -10)
@@ -151,9 +153,9 @@ class PhasePlot(object):
         self.ax = None
         self.im = None
 
-    @property
-    def nbins(self):
-        return self.kwargs.get('nbins', 500)
+    # @property
+    # def nbins(self):
+    #     return self.kwargs.get('nbins', 500)
 
     def fit(self, nbins_fit):
         from seren3.analysis.plots import fit_scatter
@@ -230,7 +232,8 @@ class PhasePlot(object):
         # Get appropiate latex
         # temp_latex = seren3.get_derived_field_latex(seren3.Field(('amr', self.temp_field)))
         # den_latex = seren3.get_derived_field_latex(seren3.Field(('amr', self.den_field)))
-        temp_latex = self.ys.latex
+        # temp_latex = self.ys.latex
+        temp_latex = "T/$\mu$ [K]"
         den_latex = self.xs.latex
 
         if label_axes:

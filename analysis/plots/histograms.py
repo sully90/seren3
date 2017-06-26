@@ -331,7 +331,7 @@ def pdf_cdf(snapshot, field, field_latex=None, bins=50, logscale=True, density=F
 
 def plot_pdf_cdf(snapshot, P, bincenters, dx, logscale, field_latex, \
             ax1 = None, C=None, show=False, P_y_range=None, barcol='dimgrey', \
-            cumul_col="b", label_nstar=False, label_T_star=False, color_ax2_y=True):
+            cumul_col="b", label_nstar=False, label_T_star=False, color_ax2_y=True, label=True):
 
     import seren3
     import numpy as np
@@ -343,7 +343,7 @@ def plot_pdf_cdf(snapshot, P, bincenters, dx, logscale, field_latex, \
     if C is not None:
         ax2 = ax1.twinx()
 
-    ax1.bar(bincenters, P, width=dx, color=barcol, edgecolor='w')
+    ax1.bar(bincenters, P, width=dx, color=barcol, edgecolor="w")
 
     ymin = ymax = None
     if P_y_range:
@@ -354,12 +354,13 @@ def plot_pdf_cdf(snapshot, P, bincenters, dx, logscale, field_latex, \
     xr = (xmax - xmin)
 
     if C is not None:
-        ax2.plot(bincenters, C, linewidth=1.5, color=cumul_col)
+        ax2.plot(bincenters, C, linewidth=3., color=cumul_col, linestyle="-")
         ax2.set_ylim(0., 1.)
 
-    ax1.set_ylabel("P")
+    if label:
+        ax1.set_ylabel("P")
 
-    if C is not None:
+    if C is not None and label:
         ax2.set_ylabel("Cumulative")
         #ax2.set_ylim([0.0, 1.0])
 
@@ -396,10 +397,12 @@ def plot_pdf_cdf(snapshot, P, bincenters, dx, logscale, field_latex, \
             ax1.text(T_th + xr*0.01, ymax/1.5 + .01, r"T$_{\mathrm{sf}}$", color='r', fontsize=fs)
 
 
-    if logscale:
+    if logscale and label:
         ax1.set_xlabel(r"log$_{10}$(%s)" % field_latex)
-    else:
+    elif label:
         ax1.set_xlabel(field_latex)
 
     if show:
         plt.show()
+
+    return ax1, ax2

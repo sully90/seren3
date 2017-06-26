@@ -29,7 +29,7 @@ class ProjectionEngine(object):
         """
         self.family = family
         self.field = field
-        self.info = self.family.base.ro.info
+        self.info = self.family.ro.info
 
 
     def _units(self):
@@ -96,7 +96,7 @@ class ProjectionEngine(object):
         if processor._operator.is_max_alos() != self.IsMaxAlos():
             processor._operator._max_alos = self.IsMaxAlos()
 
-        if "surf_qty" not in kwargs:
+        if ("surf_qty" not in kwargs):
             kwargs["surf_qty"] = self.IsSurfQuantity()
 
         if ("random_shift" not in kwargs) and (self.DoRandomShift()):
@@ -235,7 +235,6 @@ class SplatterEngine(ProjectionEngine):
         sp = splatting.SplatterProcessor(source, self.info, op)
         return sp
 
-
     def DoRandomShift(self):
         return True
 
@@ -316,6 +315,17 @@ class SurfaceDensitySplatterEngine(SplatterEngine):
     @classmethod
     def is_map_engine_for(cls, map_type):
         return map_type == "Sigma"
+
+
+    def get_operator(self):
+        from pymses.analysis import ScalarOperator
+        '''
+        Here will won't pass the dset through the DerivedDataset for the projection,
+        we'll just handle the raw dataset ourselves
+        '''
+        unit = self.info["unit_density"]
+        op = ScalarOperator(lambda dset: dset["rho"] * dset.get_sizes()**3, unit)
+        return op
 
 
     def get_map_unit(self):

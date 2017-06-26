@@ -195,9 +195,36 @@ def amr_mu(context, dset):
 
 @seren3.derived_quantity(requires=["T2", "mu"])
 def amr_T(context, dset):
+
     T = dset["T2"]/dset["mu"]
     T.set_field_latex("$\\mathrm{T}$")
     return context.array(T, "K")
+
+@seren3.derived_quantity(requires=["nH"])
+def amr_TJ(context, dset):
+    '''
+    Computes densty dependent Jeans temperature floor
+    '''
+    from seren3.core.snapshot import NML
+
+    nH = dset["nH"]
+
+    nml = context.nml
+    PHYSICS_PARAMS = nml[NML.PHYSICS_PARAMS]
+    n_star = SimArray(PHYSICS_PARAMS['n_star'], "cm**-3").in_units(nH.units)
+    T2_star = PHYSICS_PARAMS['T2_star']
+    g_star = PHYSICS_PARAMS.get('g_star', 2.0)
+
+    return SimArray(T2_star * (nH / n_star) ** (g_star-1.0), "K")
+
+@seren3.derived_quantity(requires=["T2", "TJ"])
+def amr_T2_minus_Tpoly(context, dset):
+    '''
+    Returns T2 + TJ
+    '''
+    Tpoly = dset["T2"] - dset["TJ"]
+    Tpoly.set_field_latex("$\\mathrm{Tpoly}$")
+    return context.array(Tpoly, "K")
 
 @seren3.derived_quantity(requires=["ne", "alpha_A"])
 def amr_trec(context, dset):

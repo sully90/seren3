@@ -20,7 +20,7 @@ def test_sfr():
     assert(np.allclose(mstar_tot, integrated_mstar, rtol=1e-2)), "Error: Integrated stellar mass not close to actual."
     print "Passed"
 
-def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
+def sfr(context, dset=None, ret_sSFR=False, nbins=100, **kwargs):
     '''
     Compute the (specific) star formation rate within this context.
     '''
@@ -28,7 +28,8 @@ def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
     from seren3.array import SimArray
     from seren3.exceptions import NoParticlesException
 
-    dset = context.s[["age", "mass"]].flatten()
+    if (dset is None):
+        dset = context.s[["age", "mass"]].flatten()
     age = dset["age"].in_units("Gyr")
     mass = dset["mass"].in_units("Msol")
 
@@ -54,12 +55,13 @@ def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
     sfrhist, lookback_time, binsize = compute_sfr(age, mass, **kwargs)
     SFR = sfrhist.in_units("Msol Gyr**-1")
 
-    if ret_sSFR:
-        SFR /= mass.sum()  # specific star formation rate
-
     SFR.set_field_latex("$\\mathrm{SFR}$")
     lookback_time.set_field_latex("$\\mathrm{Lookback-Time}$")
     binsize.set_field_latex("$\Delta$")
+
+    if ret_sSFR:
+        sSFR = SFR / mass.sum()  # specific star formation rate
+        return sSFR, SFR, lookback_time, binsize
     return SFR, lookback_time, binsize  # SFR [Msol Gyr^-1] (sSFR [Gyr^-1]), Lookback Time [Gyr], binsize [Gyr]
 
 def gas_SFR_density(context, impose_criterion=True):

@@ -106,7 +106,12 @@ class Quantity(object):
         rho_mean = self.rho_mean(species)  # kg / m^3
         boxsize = snap.info['unit_length'].express(snap.C.m)
         mass = rho_mean * boxsize**3.  # kg
-        return SimArray(mass, "kg")
+        return self.base.array(mass, "kg")
+
+    def particle_mass(self):
+        boxmass = self.box_mass(species="cdm")
+        npart = (2**self.base.info["levelmin"])**3
+        return boxmass.in_units("Msol h**-1") / npart
 
     def age_of_universe_gyr(self):
         fr = self.base.friedmann

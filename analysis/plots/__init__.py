@@ -103,6 +103,22 @@ def obs_errors(quantity, ax=None):
     else:
         print 'ERROR: Invalid quantity flag'
 
+def annotate_rvir(ax, rvir, color="lightsteelblue", facecolor="none", alpha=1):
+    '''
+    Annotates the virial radius on the axis.
+    Assumes zero centred, rvir and extent must have the same units
+    '''
+    from matplotlib.patches import Circle
+    
+    xy = (0, 0)
+    e = Circle(xy=xy, radius=rvir)
+
+    ax.add_artist( e )
+    e.set_clip_box( ax.bbox )
+    e.set_edgecolor( color )
+    e.set_facecolor( facecolor )  # "none" not None
+    e.set_alpha( alpha )
+
 def fit_scatter(x, y, ret_n=False, ret_sterr=False, nbins=10):
     '''
     Bins scattered points and fits with error bars
@@ -128,6 +144,22 @@ def fit_scatter(x, y, ret_n=False, ret_sterr=False, nbins=10):
     return bin_centres, mean, std
 
 
+def fit_median(X, Y, nbins=10):
+    '''
+    Fit the median line to a scatter
+    '''
+
+    import numpy as np
+    bins = np.linspace(X.min(),X.max(), nbins)
+    delta = bins[1]-bins[0]
+    idx  = np.digitize(X,bins)
+    running_median = [np.median(Y[idx==k]) for k in range(nbins)]
+
+    bc = bins-delta/2
+
+    return bc, running_median
+
+
 def grid(x, y, z, resX=100, resY=100):
     """
     Convert 3 column data to matplotlib grid.
@@ -141,6 +173,222 @@ def grid(x, y, z, resX=100, resY=100):
     Z = griddata(x, y, z, xi, yi)
     X, Y = np.meshgrid(xi, yi)
     return X, Y, Z
+
+# def plot_RT2_self_shielding(snapshot, csvfilename, projections=None):
+def plot_self_shielding(h, projections=None):
+    import matplotlib
+
+    matplotlib.rcParams['axes.linewidth'] = 1.5
+    matplotlib.rcParams['xtick.labelsize'] = 12
+    matplotlib.rcParams['ytick.labelsize'] = 12
+    matplotlib.rcParams['axes.labelsize'] = 18
+
+    import numpy as np
+    import matplotlib.pylab as plt
+    from matplotlib.ticker import IndexLocator, FormatStrFormatter
+    from matplotlib.colors import Colormap, LinearSegmentedColormap
+    from matplotlib.patches import Circle
+    from seren3.analysis.visualization import engines, operators
+    from seren3.utils import camera_utils, plot_utils
+
+    from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+    from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+
+    from matplotlib_scalebar.scalebar import ScaleBar
+    from matplotlib_scalebar.dimension import SILengthDimension
+
+    reload(engines)
+
+    snapshot = h.base
+    C = snapshot.C
+
+    # Use snap 100 of RT2, shalos[1]
+
+    # subsnap = camera_utils.legacy_cam_to_region(snapshot, csvfilename)
+    # camera = subsnap.camera()
+    subsnap = h.subsnap
+    camera = subsnap.camera()
+    camera_zoom = subsnap.camera()
+
+    camera.map_max_size = 512
+    camera_zoom.map_max_size = 1024
+    camera_zoom.region_size *= .25
+    camera_zoom.distance *= .25
+    camera_zoom.far_cut_depth *= .25
+
+    los = camera_utils.find_los(subsnap, camera=camera)
+    camera.los_axis = los
+    camera_zoom.los_axis = los
+
+    length_fac = 3.
+    camera.region_size *= length_fac
+    camera.distance *= length_fac
+    camera.far_cut_depth *= length_fac
+
+    rvir = h["rvir"].in_units("kpc")
+    dx = snapshot.array(camera.region_size[0], subsnap.info["unit_length"]).in_units("kpc")
+
+    cm = plot_utils.load_custom_cmaps('blues_black_test')
+
+    # fig = plt.figure(figsize=(6.5,12))
+
+    eng_zoom = engines.SurfaceDensitySplatterEngine(subsnap.g)
+    proj_zoom = eng_zoom.process(camera_zoom, random_shift=True)
+
+    unit_sd = subsnap.info["unit_density"] * subsnap.info["unit_length"]
+    unit_sd = unit_sd.express(C.Msun * C.kpc**-2)
+    proj_zoom_map = proj_zoom.map * unit_sd
+
+    if (projections is None):
+        projections = []
+        for i in range(4):  # 3 plots
+            if i == 0:
+                # Density
+                eng = engines.SurfaceDensitySplatterEngine(subsnap.g)
+                proj = eng.process(camera, random_shift=True)
+
+                projections.append(proj)
+            elif i == 1:
+                # op = operators.MinTempOperator(C.K)
+                # eng = engines.MassWeightedSplatterEngine(subsnap.g, "T")
+                eng = engines.RayTraceMinTemperatureEngine(subsnap.g)
+                proj = eng.process(camera)
+
+                projections.append(proj)
+            elif i == 2:
+                op = operators.MinxHIIOperator(C.none)
+                eng = engines.CustomRayTraceEngine(subsnap.g, "xHII", op)
+
+                proj = eng.process(camera)
+
+                projections.append(proj)
+
+    # gs = gridspec.GridSpec(2, 4)
+    # ax1 = plt.subplot(gs[0, 0:2])
+    # ax2 = plt.subplot(gs[0,2:])
+    # ax3 = plt.subplot(gs[1,1:3])
+
+    # axs = [ax1, ax2, ax3]
+    kpc_dim = SILengthDimension()
+    kpc_dim.add_units("kpc", 3.08567758147e+19)
+
+    def _annotate_rvir(ax, rvir, color="lightsteelblue", facecolor="none", alpha=1):
+        xy = (0, 0)
+        e = Circle(xy=xy, radius=rvir)
+
+        ax.add_artist( e )
+        e.set_clip_box( ax.bbox )
+        e.set_edgecolor( color )
+        e.set_facecolor( facecolor )  # "none" not None
+        e.set_alpha( alpha )
+
+    one_pixel_kpc = dx / float(camera.map_max_size)  # size of one pixel
+    N_kpc_scale_bar = 20
+    length_scale_bar = float(N_kpc_scale_bar) / one_pixel_kpc
+
+    extent = [ -dx/2., dx/2, -dx/2., dx/2 ]
+
+    # fig, axs = plt.subplots(3, 1, figsize=(5,12))
+    fig, axs = plt.subplots(1, 3, figsize=(16,5))
+    # fig.subplots_adjust(hspace=0.15)
+    fig.subplots_adjust(wspace=0.3)
+
+    for i, proj in zip(range(3), projections):  # 3 plots
+        ax = axs[i]
+        sb = ScaleBar(dx / float(camera.map_max_size), "kpc", dimension=kpc_dim)
+        sb.dimension._latexrepr['Zm'] = 'kpc'
+        sb.dimension._latexrepr['Em'] = 'kpc'
+
+        proj = projections[i]
+        if i == 0:
+            # Density
+            proj_map = proj.map * unit_sd
+
+            im = ax.imshow( np.log10(proj_map), cmap="RdBu_r", extent=extent, vmin=6. )
+            cbar = fig.colorbar(im, ax=ax)
+            cbar.set_label(r"log$_{10}$ $\rho$ [M$_{\odot}$ kpc$^{-2}$]")
+        elif i == 1:
+            proj_map = proj.map * subsnap.info["unit_temperature"].express(C.K)
+
+            im = ax.imshow( np.log10(proj_map), cmap="jet_black", extent=extent, vmin=3. )
+            cbar = fig.colorbar(im, ax=ax)
+            cbar.set_label(r"log$_{10}$ min(T$_{2}$) [K/$\mu$]")
+        elif i == 2:
+            im = ax.imshow( np.log10(proj.map), vmin=-2, vmax=0, cmap="jet_black", extent=extent )
+            cbar = fig.colorbar(im, ax=ax)
+            cbar.set_label(r"log$_{10}$ min(x$_{\mathrm{HII}}$)")
+
+        # h.annotate_rvir(proj, ax=ax)
+        _annotate_rvir(ax, rvir)
+
+        ax.set_xlabel(r"x [kpc]")
+        # ax.set_ylabel(r"y [kpc]")
+
+        # ax.add_artist(sb)
+        # Scale bar
+        # x_start = 300; y_start = 100
+        # print length_scale_bar
+        # ax.plot([x_start, x_start+length_scale_bar], [y_start, y_start], color="w", linestyle="-", linewidth=2.)
+        # ax.set_axis_off()
+
+    # plt.subplot(111)
+    ax = axs[0]
+    # ax = plt.gca()
+    # im = ax.imshow( np.log10(proj_map.T), cmap="RdBu_r", extent=extent )
+    # axins = zoomed_inset_axes(ax, 6, loc=1) # zoom = 6
+
+    # sub region of the original image
+    dx_zoom = snapshot.array(camera_zoom.region_size[0], subsnap.info["unit_length"]).in_units("kpc")
+    extent_zoom = [ -dx_zoom/2., dx_zoom/2, -dx_zoom/2., dx_zoom/2 ]
+
+    # Small offset
+    extent_zoom[0] -= 0.1
+    extent_zoom[1] -= 0.1
+    extent_zoom[2] += 0.3
+    extent_zoom[3] += 0.3
+
+    axins = zoomed_inset_axes(ax, 4, loc=1) # zoom = 6
+    axins.imshow(np.log10(proj_zoom_map.T), extent=extent_zoom, cmap="RdBu_r", vmin=6. )
+
+    # x1, x2, y1, y2 = extent_zoom
+
+    # Small offset
+    x1, x2, y1, y2 = -1.97123744833-0.1, 1.97123744833-0.1, -1.97123744833+0.3, 1.97123744833+0.3
+
+    print x1, x2, y1, y2
+    axins.set_xlim(x1, x2)
+    axins.set_ylim(y1, y2)
+
+    plt.setp(axins.get_xticklabels(), visible=False)
+    plt.setp(axins.get_yticklabels(), visible=False)
+    axins.xaxis.set_visible('False')
+    axins.yaxis.set_visible('False')
+
+    # mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
+    mark_inset(ax, axins, loc1=2, loc2=4, fc="w", ec="0.5", color="w")
+
+    text_pos = (-20, 15)
+    ax.text(text_pos[0], text_pos[1], "z = %1.2f" % snapshot.z, color="w", size="x-large")
+
+    for ax in [axs[1], axs[2]]:
+        plt.setp(ax.get_yticklabels(), visible=False)
+        # plt.setp(ax.get_yticklabels(), visible=False)
+
+    # axs[-1].set_xlabel(r"x [kpc]")
+    axs[0].set_ylabel(r"y [kpc]")
+
+    # plt.tight_layout()
+    plt.draw()
+    # plt.savefig("./self_shielding.pdf", format="pdf")
+    plt.show()
+
+    # plt.xticks(visible=False)
+    # plt.yticks(visible=False)
+
+    return projections, proj_zoom, extent, camera, camera_zoom
+
+
+
 
 def baryfrac_xHII_panel_plot(sim, z, proj_list=None):
     import matplotlib as mpl

@@ -1,6 +1,49 @@
 import numpy as np
 from pymses.filters import RegionFilter
 
+def legacy_cam_to_region(snapshot, fname):
+    '''
+    Read a (legacy) camera CSV and return a subsnapshot (cube)
+    '''
+    import ast
+
+    with open(fname, 'r') as f:
+        center = None
+        width = 0.
+        distance = 0.
+        far_cut_depth = 0.
+
+        count = 0
+        lines = f.readlines()
+        for row in lines:
+            if count == 1:
+                center = ast.literal_eval(row[8:-3])
+            elif count == 4:
+                width = ast.literal_eval(row[13:-3])[0]
+            # elif count == 5:
+            #     distance = float(row.split(",")[-1])
+            # elif count == 6:
+            #     far_cut_depth = float(row.split(",")[-1])
+            count += 1
+
+    cube = snapshot.get_cube(center, width)
+    return snapshot[cube]
+
+
+def extent(context, camera, base_length="kpc"):
+    '''
+    Returns the extent of this camera in comoving coordinates
+    '''
+
+    x_length = context.array(camera.region_size[0], context.info["unit_length"])
+    y_length = context.array(camera.region_size[1], context.info["unit_length"])
+
+    x_length.convert_units("%s a h**-1" % base_length)
+    y_length.convert_units("%s a h**-1" % base_length)
+
+    return [-x_length/2., x_length/2., -y_length/2., y_length/2.]
+
+
 def find_galaxy_axis(subsnap, camera=None, nbSample=2000):
     '''
     Provides data access to _find_galaxy_axis function

@@ -131,15 +131,21 @@ class PymsesSubSnapshot(PymsesSnapshot):
     def camera(self, **kwargs):
         from pymses.analysis import Camera
 
-        radius = kwargs.pop("radius", self.region.radius)
+        width = None
+        if hasattr(self.region, "width"):
+            width = self.region.width
+        elif hasattr(self.region, "radius"):
+            width = 2 * self.region.radius
+        else:
+            raise Exception("Could not determine width for camera object (region is: %s)" % self.region)
 
         kwargs["center"] = self.region.center
         if "region_size" not in kwargs:
-            kwargs["region_size"] = [2*radius, 2*radius]
+            kwargs["region_size"] = [width, width]
         if "distance" not in kwargs:
-            kwargs["distance"] = 2*radius
+            kwargs["distance"] = width/2
         if "far_cut_depth" not in kwargs:
-            kwargs["far_cut_depth"] = 2*radius
+            kwargs["far_cut_depth"] = width/2
         if "map_max_size" not in kwargs:
             kwargs["map_max_size"] = min(2**self.info["levelmax"], 1024)
 
@@ -175,13 +181,13 @@ class PymsesSubSnapshot(PymsesSnapshot):
             s = s[pynbody.filt.Sphere(self.region.radius)]
 
         # Deal with GMC particles and stellar age
-        if all(i > 0 for i in s.s['iord']) and remove_gmc:
+        # if all(i > 0 for i in s.s['iord']) and remove_gmc:
             # We have GMC particles -> setup new family
             # gmc = pynbody.family.Family("gmc")  # not working
             # s.gmc = s.s[np.where(s.s['iord'] < 0)]
 
-            # Just remove GMC for now, until a better solution is found
-            s.s = s.s[s.s['iord'] >= 0]
+        # Just remove GMC for now, until a better solution is found
+        s.s = s.s[s.s['iord'] >= 0]
 
         # Create age field for star particles
         if len(s.s) > 0:
