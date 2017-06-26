@@ -92,7 +92,8 @@ def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True, **kwa
 
     def _compute(h):
         fesc_h, dset = fesc(h.subsnap, nside=nside, ret_dset=True, **kwargs)
-        keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
+        # keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
+        keep = np.where( dset["age"] >= 0. )
 
         if fesc_h > 1.:
             fesc_h = random.uniform(0.9, 1.0)
@@ -106,7 +107,8 @@ def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True, **kwa
     # Iterate through the most-massive progenitor line
     for prog in catalogue.iterate_progenitors(halo, back_to_aexp=back_to_aexp):
         dset = prog.s["age"].flatten()
-        keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
+        # keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
+        keep = np.where( dset["age"] >= 0. )
         if len(dset["age"][keep]) == 0:
             break
         print prog.base.ioutput
