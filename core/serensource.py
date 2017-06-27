@@ -2,6 +2,7 @@
 Module to handle implementation of derived fields and I/O
 '''
 import seren3
+from seren3.array import SimArray
 from seren3 import config
 from seren3.array import units
 from pynbody.units import UnitsException
@@ -47,12 +48,23 @@ class DerivedDataset(object):
         self.indexed_fields = {}
         # keys = indexed_fields.fields if hasattr(indexed_fields, "fields") else indexed_fields.keys()
 
-        for field in dset.fields:
+        fields = None
+        if hasattr(dset, "fields"):
+            fields = dset.fields
+        elif isinstance(dset, dict):
+            fields = dset.keys()
+        else:
+            raise Exception("Cannot extract fields from dset of type: %s" % type(dset))
+
+        for field in fields:
             if is_tracked(field):
                 unit = get_tracked_field_unit(self.family, field)
                 self.indexed_fields[field] = self.family.array(dset[field], unit)
             else:
-                self.indexed_fields[field] = self.family.array(dset[field])
+                if (isinstance(dset[field], SimArray)):
+                    self.indexed_fields[field] = dset[field]
+                else:
+                    self.indexed_fields[field] = self.family.array(dset[field])
 
         if hasattr(dset, "points"):
             self["pos"] = self.family.array(dset.points, get_tracked_field_unit(self.family, "pos"))
