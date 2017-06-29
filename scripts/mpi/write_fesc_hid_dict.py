@@ -4,6 +4,26 @@ Writes out a pickle dictionary where keys and halo ids and values are fesc data
 
 import numpy as np
 
+def load_db(path, ioutput):
+    import pickle
+
+    pickle_path = "%s/pickle/ConsistentTrees/" % path
+    return pickle.load( open("%s/fesc_database_%05i.p" % (pickle_path, ioutput), "rb") )
+
+def load_halo(halo):
+    import pickle
+
+    path = halo.base.path
+    ioutput = halo.base.ioutput
+
+    db = load_db(path, ioutput)
+
+    hid = int(halo["id"])
+    if (hid in db.keys()):
+        return db[int(halo["id"])]
+    else:
+        return None
+
 def main(path, iout, pickle_path):
     import seren3
     from seren3.core.serensource import DerivedDataset

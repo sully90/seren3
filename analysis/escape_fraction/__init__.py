@@ -73,66 +73,70 @@ def integrate_fesc(I1, I2, lbtime):
     from scipy.integrate import trapz
     return trapz(I1, lbtime) / trapz(I2, lbtime)
 
-def time_integrated_fesc(halo, back_to_aexp, nside=2**3, return_data=True, **kwargs):
+def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
     '''
     Computes the time integrated escapte fraction across
     the history of the halo, a la Kimm & Cen 2014
     '''
+    import random
     import numpy as np
-    import random    
-    from seren3.exceptions import NoParticlesException
+    from seren3.scripts.mpi import write_fesc_hid_dict
 
-    # Need to compute fesc(t) and \dot{Nion} at each snapshot
-    catalogue = halo.base.halos(finder="ctrees")
+    db = write_fesc_hid_dict.load_db(halo.base.path, halo.base.ioutput)
+    if (int(halo["id"]) in db.keys()):
+        catalogue = halo.base.halos(finder="ctrees")
 
-    # dicts to store results
-    fesc_dict = {}
-    Nion_d_dict = {}
-    age_dict = {}
+        # dicts to store results
+        fesc_dict = {}
+        Nphoton_dict = {}
+        age_dict = {}
 
-    def _compute(h):
-        fesc_h, dset = fesc(h.subsnap, nside=nside, ret_dset=True, **kwargs)
-        # keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
-        keep = np.where( dset["age"] >= 0. )
+        def _compute(h, db):
+            hid = int(h["id"])
+            result = db[hid]
 
-        if fesc_h > 1.:
-            fesc_h = random.uniform(0.9, 1.0)
-        fesc_dict[h.base.ioutput] = fesc_h
-        Nion_d_dict[h.base.ioutput] = (dset["Nion_d"][keep] * dset["mass"][keep]).sum()  # at t=0, not dt=rvir/c !!!
-        age_dict[h.base.ioutput] = h.base.age
+            fesc_h = result["fesc"]
 
-    # Compute fesc for this halo (snapshot)
-    _compute(halo)
+            if (fesc_h > 1.):
+                fesc_h = random.uniform(0.9, 1.0)
+            Nphotons = (result["Nion_d_now"] * result["star_dict"]["mass"].in_units("Msol")).sum()
 
-    # Iterate through the most-massive progenitor line
-    for prog in catalogue.iterate_progenitors(halo, back_to_aexp=back_to_aexp):
-        dset = prog.s["age"].flatten()
-        # keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
-        keep = np.where( dset["age"] >= 0. )
-        if len(dset["age"][keep]) == 0:
-            break
-        print prog.base.ioutput
-        _compute(prog)
+            fesc_dict[h.base.ioutput] = fesc_h
+            Nphoton_dict[h.base.ioutput] = Nphotons # at t=0, not dt=rvir/c !!!
+            age_dict[h.base.ioutput] = h.base.age
 
-    # I1/I2 = numerator/denominator to be integrated
-    I1 = np.zeros(len(fesc_dict)); I2 = np.zeros(len(fesc_dict)); age_array = np.zeros(len(age_dict))
+        # Compute fesc for this halo (snapshot)
+        _compute(halo, db)
+        # Iterate through the most-massive progenitor line
+        for prog in catalogue.iterate_progenitors(halo, back_to_aexp=back_to_aexp):
+            db = write_fesc_hid_dict.load_db(prog.base.path, prog.base.ioutput)
+            # print prog
 
-    # Populate the arrays
-    for key, i in zip( sorted(fesc_dict.keys(), reverse=True), range(len(fesc_dict)) ):
-        I1[i] = fesc_dict[key] * Nion_d_dict[key]
-        I2[i] = Nion_d_dict[key]
-        age_array[i] = age_dict[key]
+            if (int(prog["id"]) in db.keys()):
+                _compute(prog, db)
+            else:
+                break
 
-    # Calculate lookback-time
-    lbtime = halo.base.age - age_array
+        # I1/I2 = numerator/denominator to be integrated
+        I1 = np.zeros(len(fesc_dict)); I2 = np.zeros(len(fesc_dict)); age_array = np.zeros(len(age_dict))
 
-    # Integrate back in time for each snapshot
-    tint_fesc_hist = np.zeros(len(lbtime))
-    for i in xrange(len(tint_fesc_hist)):
-        tint_fesc_hist[i] = integrate_fesc( I1[i:], I2[i:], lbtime[i:] )
+        # Populate the arrays
+        for key, i in zip( sorted(fesc_dict.keys(), reverse=True), range(len(fesc_dict)) ):
+            I1[i] = fesc_dict[key] * Nphoton_dict[key]
+            I2[i] = Nphoton_dict[key]
+            age_array[i] = age_dict[key]
 
-    # fesc at each time step can be computed by taking I1/I2
-    if return_data:    
-        return tint_fesc_hist, I1, I2, lbtime
-    return tint_fesc_hist
-    
+        # Calculate lookback-time
+        lbtime = halo.base.age - age_array
+
+        # Integrate back in time for each snapshot
+        tint_fesc_hist = np.zeros(len(lbtime))
+        for i in xrange(len(tint_fesc_hist)):
+            tint_fesc_hist[i] = integrate_fesc( I1[i:], I2[i:], lbtime[i:] )
+
+        # fesc at each time step can be computed by taking I1/I2
+        if return_data:    
+            return tint_fesc_hist, I1, I2, lbtime
+        return tint_fesc_hist
+    else:
+        return None

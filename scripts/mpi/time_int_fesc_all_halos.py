@@ -5,14 +5,16 @@ def main(path, pickle_path):
     from seren3.analysis.parallel import mpi
     from seren3.exceptions import NoParticlesException
     from seren3.analysis.escape_fraction import time_integrated_fesc
+    from seren3.scripts.mpi import write_fesc_hid_dict
 
     mpi.msg("Loading simulation...")
     sim = seren3.init(path)
 
-    iout_start = max(sim.numbered_outputs[0], 25)
-    back_to_z = sim[25].z
-    back_to_axep = 1. / (1. + back_to_z)
-    iouts = range(iout_start, max(sim.numbered_outputs)+1)
+    iout_start = max(sim.numbered_outputs[0], 61)
+    back_to_aexp = sim[60].info["aexp"]
+    # iouts = range(iout_start, max(sim.numbered_outputs)+1)
+    print "IOUT RANGE HARD CODED"
+    iouts = range(iout_start, 110)
 
     for iout in iouts[::-1]:
         snap = sim[iout]
@@ -20,31 +22,24 @@ def main(path, pickle_path):
         snap.set_nproc(1)
         halos = snap.halos(finder="ctrees")
 
-        halo_ix = None
+        halo_ids = None
         if mpi.host:
-            halo_ix = range(len(halos))
-            random.shuffle(halo_ix)
+            db = write_fesc_hid_dict.load_db(path, iout)
+            halo_ids = db.keys()
+            random.shuffle(halo_ids)
 
         dest = {}
-        for i, sto in mpi.piter(halo_ix, storage=dest):
-            h = halos[i]
-            dset = h.s["age"].flatten()
-            keep = np.where( np.logical_and(dset["age"] >= 0., dset["age"].in_units("Myr") <= 10.) )
+        for i, sto in mpi.piter(halo_ids, storage=dest, print_stats=True):
+            h = halos.with_id(i)
+            res = time_integrated_fesc(h, back_to_aexp, return_data=True)
+            if (res is not None):
+                mpi.msg("%05i \t %i \t %i" % (snap.ioutput, h.hid, i))
+                tint_fesc_hist, I1, I2, lbtime = res
 
-            age = dset["age"][keep]
-            
-            if len(age > 0):
-                age_delay = age.in_units("Gyr") - h.dt.in_units("Gyr")
-
-                # Check if all values are below zero i.e no stars dt ago
-                if len(age_delay) > 0 and any(age_delay >= 0.):
-                    mpi.msg("%05i \t %i" % (snap.ioutput, h.hid))
-                    tint_fesc_hist, I1, I2, lbtime = time_integrated_fesc(h, back_to_axep, return_data=True, do_multigroup=True)
-
-                    fesc = I1/I2
-                    sto.idx = h.hid
-                    sto.result = {'tint_fesc_hist' : tint_fesc_hist, 'fesc' : fesc, 'I1' : I1, \
-                            'I2' : I2, 'lbtime' : lbtime, 'Mvir' : h["Mvir"]}
+                fesc = I1/I2
+                sto.idx = h.hid
+                sto.result = {'tint_fesc_hist' : tint_fesc_hist, 'fesc' : fesc, 'I1' : I1, \
+                        'I2' : I2, 'lbtime' : lbtime, 'Mvir' : h["Mvir"]}
         if mpi.host:
             import pickle, os
             # pickle_path = "%s/pickle/%s/" % (snap.path, halos.finder)

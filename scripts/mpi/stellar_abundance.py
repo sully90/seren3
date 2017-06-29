@@ -82,7 +82,10 @@ def plot(simulations, ioutputs, labels, colours, nbins=10, plot_baryon_fraction=
             ax.fill_between(x, np.log10(np.array(ystarmasses)/np.array(errors)),
                              y2=np.log10(np.array(ystarmasses)*np.array(errors)),
                              facecolor=moster_c,color=moster_c,label='Moster et al (2013)',alpha=0.5)
-            ax.plot(x, np.log10(ystarmasses), color=moster_c)
+            idx_extrap = np.where(np.log10(x) < np.log10(1e10*0.702))
+            idx_no_extrap = np.where(np.log10(x) >= np.log10(1e10*0.702))
+            ax.plot(x[idx_no_extrap], np.log10(ystarmasses)[idx_no_extrap], color="#909497", linewidth=5.)
+            ax.plot(x[idx_extrap], np.log10(ystarmasses)[idx_extrap], color="#909497", linestyle="--", linewidth=5.)
 
             # behroozi_c = "#F08080"
             behroozi_c = "lightskyblue"
@@ -95,7 +98,10 @@ def plot(simulations, ioutputs, labels, colours, nbins=10, plot_baryon_fraction=
             ax.fill_between(x, np.log10(np.array(ystarmasses)/np.array(errors)),
                              y2=np.log10(np.array(ystarmasses)*np.array(errors)),
                              facecolor=behroozi_c,color=behroozi_c,label='Behroozi et al (2013)',alpha=0.5)
-            ax.plot(x, np.log10(ystarmasses), color=behroozi_c)
+            idx_extrap = np.where(np.log10(x) < np.log10(1e10*0.702))
+            idx_no_extrap = np.where(np.log10(x) >= np.log10(1e10*0.702))
+            ax.plot(x[idx_no_extrap], np.log10(ystarmasses)[idx_no_extrap], color="#3498DB", linewidth=5.)
+            ax.plot(x[idx_extrap], np.log10(ystarmasses)[idx_extrap], color="#3498DB", linestyle="--", linewidth=5.)
             compare = False
 
         if plot_baryon_fraction:
@@ -115,13 +121,13 @@ def plot(simulations, ioutputs, labels, colours, nbins=10, plot_baryon_fraction=
         # ax.plot(10**bc, mean + log_std, color=c, linewidth=1.5, linestyle="--", zorder=10)
         # ax.plot(10**bc, mean - log_std, color=c, linewidth=1.5, linestyle="--", zorder=10)
         # ax.errorbar(10**bc, mean, yerr=log_std, color=c, linewidth=3., linestyle="none", zorder=10, label=label)
-        e = ax.errorbar(10**bc, mean, yerr=log_std, color=c, label=label,\
+        e = ax.errorbar(10**bc[1:], mean[1:], yerr=log_std[1:], color=c, label=label,\
              fmt="o", markerfacecolor=c, mec='k', capsize=2, capthick=2, elinewidth=2, linestyle='-', linewidth=2.)
 
-    text_pos = (4.5e7, np.log10(1))
+    text_pos = (1.e8, np.log10(1))
     text = 'z = %1.2f'% snap.z
 
-    ax.set_xlabel(r'M$_{\mathrm{h}}$ [M$_{\odot}$/h]')
+    ax.set_xlabel(r'M$_{\mathrm{vir}}$ [M$_{\odot}$/h]')
     # ax.set_ylabel(r'M$_{*}$ [M$_{\odot}$/h]')
     ax.set_ylabel(r'log$_{10}$(M$_{*}$/M$_{\mathrm{h}}$)/($\Omega_{\mathrm{b}}$/$\Omega_{\mathrm{M}}$) [%]')
 
@@ -137,7 +143,7 @@ def plot(simulations, ioutputs, labels, colours, nbins=10, plot_baryon_fraction=
     ax.set_xscale("log")#; ax.set_yscale("log")
     ax.text(text_pos[0], text_pos[1], text, color="k", size=18)
 
-    ax.set_xlim(x.min(), x.max())
+    ax.set_xlim(6.5e7, x.max())
 
     plt.tight_layout()
 
