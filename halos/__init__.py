@@ -509,7 +509,7 @@ class HaloCatalogue(object):
         return SortedHaloCatalogue(self, key.lower())
 
     def plot_mass_function(self, units='Msol h**-1', kern='ST', ax=None,\
-                     plot_Tvir=True, label_z=False, nbins=100, label=None, show=True, **kwargs):
+                     plot_Tvir=False, label_z=False, nbins=100, label=None, show=True, **kwargs):
         '''
         Plot the Halo mass function and (optionally) Tvir on twinx axis
 
@@ -528,14 +528,8 @@ class HaloCatalogue(object):
         if label_z:
             label = "%s z=%1.3f" % (label, self.base.z)
 
-        # Compute HMF from realization and plot
-        # boxsize = self.boxsize  # Mpccm/h
-        boxsize = self.base.boxsize.in_units("Mpc a h**-1")
-
-        mbinmps, mhist, mbinsize = self.mass_function(units=units, nbins=nbins)
-        y = self.base.array(mhist/(boxsize**3)/mbinsize, "Mpc**-3 h**3 a**-3")
+        mbinmps, y, mbinsize = self.mass_function(units=units, nbins=nbins)
         ax.semilogy(mbinmps, y, 'o', label=label, color='b')
-        # ax.set_xlim(6, 8)
 
         bin_centers, mean, std = fit_scatter(mbinmps, y)
         ax.errorbar(bin_centers, mean, yerr=std, color='b')
@@ -553,34 +547,32 @@ class HaloCatalogue(object):
             ax2.set_xticklabels(Tvir)
             ax2.set_xlabel(r"log$_{10}$(T$_{\mathrm{vir}}$ [K])")
 
-            # ax.set_xlim(M_ticks[0], M_ticks[-1])
-
         if kern is not None:
             import pynbody
 
             # We only need to load one CPU to setup the params dict
             s = pynbody.snapshot.ramses.RamsesSnap("%s/output_%05d" % (snapshot.path, snapshot.ioutput), cpus=[1])
-            M_kern, sigma_kern, N_kern = pynbody.analysis.halo_mass_function(s, kern=kern)
+            M_kern, sigma_kern, N_kern = pynbody.analysis.halo_mass_function(s, kern=kern, log_M_min=mbinmps.min(), log_M_max=mbinmps.max())
+
+            # Convert to correct units
+            M_kern.convert_units(mbinmps.units)
+            N_kern.convert_units(y.units)
 
             # ax.semilogy(np.log10(M_kern*(snapshot.info['H0']/100)), N_kern, label=kern)
-            ax.semilogy(np.log10(M_kern*self.base.cosmo["h"]), N_kern, label=kern, color="k")
+            ax.semilogy(np.log10(M_kern), N_kern, label=kern, color="k")
 
-        ax.set_xlabel(r'log$_{10}$(M [M$_{\odot}$/h])')
-        ax.set_ylabel('dN / dlog$_{10}$(M [Mpc$^{-3}$ h$^{3}$])')
+        ax.set_xlabel(r'log$_{10}$(M [$%s$])' % mbinmps.units.latex())
+        ax.set_ylabel('dN / dlog$_{10}$(M [$%s$])' % y.units.latex())
 
         if "title" in kwargs:
             ax.set_title(kwargs.get("title"))
-
-        ax.set_xlim(mbinmps.min(), mbinmps.max())
-        ax.set_ylim(1e-1, 1e3)
-        # ax.set_ylim(y.min(), y.max())
 
         if show:
             ax.legend()
             plt.show()
 
 
-    def mass_function(self, units='Msun/h', nbins=100):
+    def mass_function(self, units='Msol h**-1', nbins=100):
         '''
         Compute the halo mass function for the given catalogue
         '''
@@ -597,7 +589,11 @@ class HaloCatalogue(object):
             mbinmps[i] = np.mean([mbin_edges[i], mbin_edges[i + 1]])
             mbinsize[i] = mbin_edges[i + 1] - mbin_edges[i]
 
-        return mbinmps, mhist, mbinsize
+        # Compute HMF from realization and plot
+        boxsize = self.base.boxsize.in_units("Mpc h**-1 a")
+        hmf = self.base.array(mhist/(boxsize**3)/mbinsize, "Mpc**-3 h**3 a**-3")
+
+        return SimArray(mbinmps, units), hmf, SimArray(mbinsize, units)
 
     def dump(self, fname):
         '''
