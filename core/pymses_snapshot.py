@@ -155,12 +155,15 @@ class PymsesSubSnapshot(PymsesSnapshot):
         #         distance=distance, far_cut_depth=far_cut_depth, \
         #         map_max_size=map_max_size, **kwargs)
 
-    def pynbody_snapshot(self, filt=False, remove_gmc=True):
+    def pynbody_snapshot(self, filt=True, remove_gmc=True):
         '''
         Load a pynbody snapshot using only the CPUs that bound this subsnapshot
         '''
         import pynbody
         import numpy as np
+
+        if (filt):
+            print "Filtering pynbody snapshot"
 
         bbox = self.region.get_bounding_box()
         cpus = self.cpu_list(bbox)

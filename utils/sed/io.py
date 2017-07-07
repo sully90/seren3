@@ -157,7 +157,7 @@ def read_seds():
         # Skip two records
         skip(f)
 
-        print nLs, nAge, nZ
+        # print nLs, nAge, nZ
         SEDs = np.zeros((nLs, nAge, nZ))
         for i in range(nZ):
             for j in range(nAge):
@@ -297,12 +297,12 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, label_ion_freqs=False, show_lege
     plt.tight_layout()
 
 
-def read_bouwens_2015(path='./'):
+def read_bouwens_2015():
     import os
-    from seren import config
+    from seren3 import config
 
     fname = "bouwens_2015.csv"
-    data_dir = os.path.join(config.get("DATA_DIR", path), "obs/")
+    data_dir = os.path.join(config.get("data", "data_dir"), "obs/")
     data = {}
 
     with open("%s/%s" % (data_dir, fname), "Urb") as f:

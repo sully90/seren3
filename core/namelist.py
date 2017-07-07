@@ -102,6 +102,9 @@ class Namelist():
     def __repr__(self):
         return self.__str__()
 
+    def __contains__(self, item):
+        return item in self._nml
+
     def get_param(self, block, key):
         vals = self._nml[block][key]
         if isinstance(vals, list):

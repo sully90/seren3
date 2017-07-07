@@ -7,6 +7,16 @@ from seren3.array import SimArray
 class Quantity(object):
     def __init__(self, snapshot):
         self.base = snapshot
+        self._additional_quantities = {}
+
+    def has_attr(self, key):
+        return key in self._additional_quantities
+
+    def add_attr(self, key, value):
+        self._additional_quantities[key] = value
+
+    def get_attr(self, key):
+        return self._additional_quantities[key]
 
     @property
     def t_star(self):

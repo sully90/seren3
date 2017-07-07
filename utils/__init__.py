@@ -3,6 +3,19 @@ import re
 
 heaviside = lambda x: 0.5 if x == 0 else 0 if x < 0 else 1  # step function
 
+
+def symlog(arr):
+    '''
+    Returns the symmertirc log of an array
+    '''
+    symlog_arr = np.zeros(len(arr))
+    idx = np.where(arr >= 0.)
+    symlog_arr[idx] = np.log10(arr[idx])
+
+    idx = np.where(arr < 0.)
+    symlog_arr[idx] = np.log10(np.abs(arr[idx])) * -1.
+    return symlog_arr
+
 def aout(zmin, zmax, noutput, zstep=0.001, **cosmo):
     '''
     Function which returns list of expansion factors to output at, evenly spaced in proper time
