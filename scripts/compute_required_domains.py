@@ -9,9 +9,10 @@ class RegionMode(Enum):
     SPHERE = 2
 
 # Filter cube or spherical regions? -> Spheres will (possible) require less domains
-REGION_MODE = RegionMode.CUBE
+_REGION_MODE = RegionMode.CUBE
+#_REGION_MODE = RegionMode.SPHERE
 
-def main(path, ioutput, txt_fname, out_fname=None):
+def main(path, ioutput, txt_fname, REGION_MODE=_REGION_MODE, out_fname=None):
     '''
     Reads the snapshot (to compute domain decomposition at this time)
     and outputs a set of idomains required.
