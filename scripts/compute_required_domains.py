@@ -12,7 +12,7 @@ class RegionMode(Enum):
 _REGION_MODE = RegionMode.CUBE
 #_REGION_MODE = RegionMode.SPHERE
 
-def main(path, ioutput, txt_fname, REGION_MODE=_REGION_MODE, out_fname=None):
+def main(path, ioutput, txt_fname, out_fname=None, REGION_MODE=_REGION_MODE):
     '''
     Reads the snapshot (to compute domain decomposition at this time)
     and outputs a set of idomains required.
