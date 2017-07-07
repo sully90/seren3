@@ -14,7 +14,8 @@ REGION_MODE = RegionMode.CUBE
 def main(path, ioutput, txt_fname, out_fname=None):
     '''
     Reads the snapshot (to compute domain decomposition at this time)
-    and outputs a set of idomains required
+    and outputs a set of idomains required.
+    You can either specify 
     '''
     import csv, seren3
 
@@ -70,7 +71,7 @@ if __name__ == "__main__":
     import sys
 
     def usage():
-        print "Usage: python compute_required_domains.py <path> <ioutput> <regions_filename>"
+        print "Usage: python compute_required_domains.py <path> <ioutput> <regions_filename> (optional) <output_filename>"
         sys.exit()
 
     if (len(sys.argv) == 1):
