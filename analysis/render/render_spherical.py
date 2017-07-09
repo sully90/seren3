@@ -2,7 +2,7 @@ import pynbody
 import numpy as np
 from seren3.utils import unit_vec_r, heaviside
 
-def render_quantity(family, qty, in_units=None, nside=2**5, kernel=pynbody.sph.Kernel(), filt=True, ret_mag=False, **kwargs):
+def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbody.sph.Kernel(), filt=True, ret_mag=False, **kwargs):
     '''
     Renders a quantity on a healpix surface using pynbody.
     Must supply a subsnapshot
@@ -16,7 +16,8 @@ def render_quantity(family, qty, in_units=None, nside=2**5, kernel=pynbody.sph.K
 
     _pymses_to_pynbody_family = {"amr" : "g", "dm" : "d", "star" : "s"}
 
-    s = family.base.pynbody_snapshot(filt=filt)  # centered and filtered to virial sphere
+    if (s is None):
+        s = family.base.pynbody_snapshot(filt=filt)  # centered and filtered to virial sphere
     s.physical_units()  # change unit system
 
     # print "Rotating..."
@@ -34,7 +35,7 @@ def render_quantity(family, qty, in_units=None, nside=2**5, kernel=pynbody.sph.K
 
     ndim = len(s_family[qty].shape)
 
-    kwargs["denoise"] = False
+    kwargs["denoise"] = True
     kwargs["threaded"] = False
     kwargs["kernel"] = kernel
     if ndim == 1:
@@ -53,17 +54,6 @@ def render_quantity(family, qty, in_units=None, nside=2**5, kernel=pynbody.sph.K
             return np.sqrt( im['x']**2 + im['y']**2 + im['z']**2 )
         return SimArray( [im['x'], im['y'], im['z']], in_units, dtype=np.float32 ).T
 
-def _compute_step(i, theta, phi, flux_map):
-    th, ph = (theta[i], phi[i])
-    unit_r = unit_vec_r(th, ph)
-    val = np.sin(th)\
-     * np.dot(flux_map[i], unit_r)\
-     * heaviside(np.dot(flux_map[i], unit_r))
-
-    # import os
-    # print("[Worker %d] Result for i %d is %f" % (os.getpid(), i, val))
-    return val
-
 def integrate_surface_flux(flux_map, r, smooth=False, ret_map=False, **smooth_kwargs):
     '''
     Integrates a healpix surface flux to compute the total
@@ -74,12 +64,15 @@ def integrate_surface_flux(flux_map, r, smooth=False, ret_map=False, **smooth_kw
     from scipy.integrate import trapz
     from seren3.array import SimArray
 
-    if not (isinstance(flux_map, SimArray) or isinstance(r, SimArray)):
+    raise Exception("Function deprecated")
+
+    if not ((isinstance(flux_map, SimArray) or isinstance(r, SimArray))):
         raise Exception("Must pass SimArrays")
 
     # Compute theta/phi
     npix = len(flux_map)
     nside = hp.npix2nside(npix)
+    # theta, phi = hp.pix2ang(nside, range(npix))
     theta, phi = hp.pix2ang(nside, range(npix))
     r = r.in_units("m")  # make sure r is in meters
 
@@ -96,7 +89,6 @@ def integrate_surface_flux(flux_map, r, smooth=False, ret_map=False, **smooth_kw
         integrand[i] = r**2 * np.sin(th)\
          * np.dot(flux_map[i], unit_r)\
          * heaviside(np.dot(flux_map[i], unit_r))
-    # integrand *= r**2
 
     integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
 

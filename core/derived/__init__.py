@@ -39,5 +39,158 @@ def nH(sim):
 
 @pynbody.derived_array
 def nHI(sim):
-
     return sim.g["nH"] * (1. - sim.g["xHII"])
+
+@pynbody.derived_array
+def rho_HI(sim):
+    return sim.g["rho"] * (1. - sim.g["xHII"])
+
+@pynbody.derived_array
+def rho_HII(sim):
+    return sim.g["rho"] * sim.g["xHII"]
+
+@pynbody.derived_array
+def mfx(sim):
+    return sim.g["rho"].in_units("Msol km**-3") * sim.g["vx"].in_units("km s**-1")
+
+@pynbody.derived_array
+def mfy(sim):
+    return sim.g["rho"].in_units("Msol km**-3") * sim.g["vy"].in_units("km s**-1")
+
+@pynbody.derived_array
+def mfz(sim):
+    return sim.g["rho"].in_units("Msol km**-3") * sim.g["vz"].in_units("km s**-1")
+
+@pynbody.derived_array
+def mass_flux_radial(sim):
+    import numpy as np
+    from pynbody.array import SimArray
+    from seren3.utils import unit_vec_r, heaviside
+
+    flux = []
+    units = None
+    for i in 'xyz':
+        #print i
+        fi = sim.g["mf%s" % i]
+        flux.append(fi)
+        units = fi.units
+    flux = np.array(flux).T
+
+    x,y,z = sim.g["pos"].T
+    # r = np.sqrt(x**2 + y**2 + z**2)
+    r = sim.g["r"]
+    phi = sim.g["sp_g_phi"]
+    theta = sim.g["sp_g_theta"]
+
+    mass_flux_scalar = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        mass_flux_scalar[i] = np.dot(flux[i], unit_r)
+
+    return SimArray( mass_flux_scalar, units )
+
+@pynbody.derived_array
+def rad_0_flux_radial(sim):
+    import numpy as np
+    from pynbody.array import SimArray
+    from seren3.utils import unit_vec_r, heaviside
+
+    flux = []
+    units = None
+    for i in 'xyz':
+        #print i
+        fi = sim.g["rad_0_flux_%s" % i]
+        flux.append(fi)
+        units = fi.units
+    flux = np.array(flux).T
+
+    x,y,z = sim.g["pos"].T
+    # r = np.sqrt(x**2 + y**2 + z**2)
+    r = sim.g["r"]
+    phi = sim.g["sp_g_phi"]
+    theta = sim.g["sp_g_theta"]
+
+    flux_scalar = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        # Compute outward flux (should always be positive)
+        flux_scalar[i] = np.abs(np.dot(flux[i], unit_r)\
+                * heaviside(np.dot(flux[i], unit_r)))
+
+    return SimArray( flux_scalar, units )
+
+@pynbody.derived_array
+def rad_1_flux_radial(sim):
+    import numpy as np
+    from pynbody.array import SimArray
+    from seren3.utils import unit_vec_r, heaviside
+
+    flux = []
+    units = None
+    for i in 'xyz':
+        #print i
+        fi = sim.g["rad_1_flux_%s" % i]
+        flux.append(fi)
+        units = fi.units
+    flux = np.array(flux).T
+
+    x,y,z = sim.g["pos"].T
+    # r = np.sqrt(x**2 + y**2 + z**2)
+    r = sim.g["r"]
+    phi = sim.g["sp_g_phi"]
+    theta = sim.g["sp_g_theta"]
+
+    flux_scalar = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        # Compute outward flux (should always be positive)
+        flux_scalar[i] = np.abs(np.dot(flux[i], unit_r)\
+                * heaviside(np.dot(flux[i], unit_r)))
+
+    return SimArray( flux_scalar, units )
+
+@pynbody.derived_array
+def rad_2_flux_radial(sim):
+    import numpy as np
+    from pynbody.array import SimArray
+    from seren3.utils import unit_vec_r, heaviside
+
+    flux = []
+    units = None
+    for i in 'xyz':
+        #print i
+        fi = sim.g["rad_2_flux_%s" % i]
+        flux.append(fi)
+        units = fi.units
+    flux = np.array(flux).T
+
+    x,y,z = sim.g["pos"].T
+    # r = np.sqrt(x**2 + y**2 + z**2)
+    r = sim.g["r"]
+    phi = sim.g["sp_g_phi"]
+    theta = sim.g["sp_g_theta"]
+
+    flux_scalar = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        # Compute outward flux (should always be positive)
+        flux_scalar[i] = np.abs(np.dot(flux[i], unit_r)\
+                * heaviside(np.dot(flux[i], unit_r)))
+
+    return SimArray( flux_scalar, units )
+
+@pynbody.derived_array
+def sp_g_theta(sim):
+    x,y,z = sim.g["pos"].T
+    r = sim.g["r"]
+    return np.arccos(z/r)
+
+@pynbody.derived_array
+def sp_g_phi(sim):
+    x,y,z = sim.g["pos"].T
+    return np.arctan(y/x)
+

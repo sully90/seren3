@@ -4,6 +4,38 @@ of halos (or subsnaps in general).
 Uses the pynbody python module to create healpix maps
 '''
 
+def integrate_surface_flux(flux_map, r):
+    '''
+    Integrates a healpix surface flux to compute the total
+    net flux out of the sphere.
+    r is the radius of the sphere in meters
+    '''
+    import numpy as np
+    import healpy as hp
+    from scipy.integrate import trapz
+    from seren3.array import SimArray
+
+    if not ((isinstance(flux_map, SimArray) or isinstance(r, SimArray))):
+        raise Exception("Must pass SimArrays")
+
+    # Compute theta/phi
+    npix = len(flux_map)
+    nside = hp.npix2nside(npix)
+    # theta, phi = hp.pix2ang(nside, range(npix))
+    theta, phi = hp.pix2ang(nside, range(npix))
+    r = r.in_units("m")  # make sure r is in meters
+
+    # Compute the integral
+    integrand = np.zeros(len(theta))
+
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        integrand[i] = r**2 * np.sin(th) * flux_map[i]  # rad_%i_flux_radial function already deals with unit vev and heaviside func.
+
+    integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
+    I = trapz(trapz(integrand, phi), theta)
+    return SimArray(I, "s**-1")
+
 def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=False, **kwargs):
     '''
     Computes halo escape fraction of hydrogen ionising photons
@@ -38,6 +70,8 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=Fa
 
     in_units = "s**-1 m**-2"
 
+    s = subsnap.pynbody_snapshot(filt=filt)
+
     if do_multigroup:
         for ii in range(nIons):
             # Compute number of ionising photons from stars at time
@@ -47,8 +81,8 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=Fa
             nPhot += (Nion_d * mass).sum()
 
             # Compute integrated flux out of the virial sphere
-            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, in_units=in_units, out_units=in_units, ret_mag=False, filt=filt, **kwargs)
-            integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir)# * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
+            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux_radial" % ii, s=s, in_units=in_units, out_units=in_units, **kwargs)
+            integrated_flux += integrate_surface_flux(flux_map, rvir)
     else:
         # Compute number of ionising photons from stars at time
         # t - rvir/rt_c (assuming halo is a point source)
@@ -57,8 +91,8 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=Fa
         nPhot += (Nion_d * mass).sum()
 
         # Compute integrated flux out of the virial sphere
-        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", in_units=in_units, out_units=in_units, ret_mag=False, filt=filt, **kwargs)
-        integrated_flux += render_spherical.integrate_surface_flux(flux_map, rvir)# * subsnap.info_rt["rt_c_frac"]  # scaled by reduced speed of light  -- is this right?
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux_radial", s=s, in_units=in_units, out_units=in_units, **kwargs)
+        integrated_flux += integrate_surface_flux(flux_map, rvir)
 
     fesc = integrated_flux.in_units("s**-1") / nPhot.in_units("s**-1")
 
