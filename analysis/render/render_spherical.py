@@ -35,7 +35,7 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
 
     ndim = len(s_family[qty].shape)
 
-    kwargs["denoise"] = True
+    kwargs["denoise"] = False
     kwargs["threaded"] = False
     kwargs["kernel"] = kernel
     if ndim == 1:

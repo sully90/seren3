@@ -56,15 +56,9 @@ def main(path, iout, pickle_path):
             tot_mass = dm_dset["mass"].in_units("Msol h**-1").sum() + star_dset["mass"].in_units("Msol h**-1").sum()\
                              + gas_dset["mass"].in_units("Msol h**-1").sum()
 
-            h_dm_by_dt, h_im = outflows.dm_by_dt(h.subsnap, filt=True, nside=2**5)
-
-            idx = np.where(h_im < 0.)
-            outflow_im = h_im.copy()
-            outflow_im[idx] = 0.
-            outflow_dm_by_dt = outflows.integrate_surface_flux(outflow_im, h.rvir)
+            F, h_im = outflows.dm_by_dt(h.subsnap, filt=True, nside=2**3)
             mpi.msg("%1.2e \t %1.2e" % (h["Mvir"], h_dm_by_dt))
-            sto.result = {"dm_by_dt" : h_dm_by_dt, "out_dm_by_dt" : outflow_dm_by_dt,\
-                "h_im" : h_im, "tot_mass" : tot_mass, \
+            sto.result = {"F" : F, "h_im" : h_im, "tot_mass" : tot_mass, \
                 "hprops" : h.properties}
 
     if mpi.host:

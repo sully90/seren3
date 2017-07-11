@@ -30,12 +30,16 @@ def integrate_surface_flux(flux_map, r):
     I = trapz(trapz(integrand, phi), theta)
     return SimArray(I, "Msol yr**-1")
 
+
 def dm_by_dt(subsnap, filt=True, **kwargs):
     '''
     Compute mass flux at the virial sphere
     '''
+    import numpy as np
     from seren3.array import SimArray
     from seren3.analysis.render import render_spherical
+
+    reload(render_spherical)
 
     rvir = SimArray(subsnap.region.radius, subsnap.info["unit_length"])
     in_units = "kg s**-1 m**-2"
@@ -44,8 +48,24 @@ def dm_by_dt(subsnap, filt=True, **kwargs):
     im = render_spherical.render_quantity(subsnap.g, "mass_flux_radial", s=s, in_units=in_units, out_units=in_units, **kwargs)
     im.convert_units("Msol yr**-1 kpc**-2")
 
-    dm_dt = integrate_surface_flux(im, rvir)
-    return dm_dt, im
+    def _compute_flux(im, rvir, direction=None):
+        im_tmp = im.copy()
+        ix = None
+        if ("out" == direction):
+            ix = np.where(im_tmp < 0)
+            im_tmp[ix] = 1e-12
+        elif ("in" == direction):
+            ix = np.where(im_tmp > 0)
+            im_tmp[ix] = -1e-12
+        else:
+            return integrate_surface_flux(im, rvir)    
+
+        return integrate_surface_flux(im_tmp, rvir)
+
+    F = _compute_flux(im, rvir)
+    F_plus = _compute_flux(im, rvir, direction="out")
+    F_minus = _compute_flux(im, rvir, direction="in")
+    return (F, F_plus, F_minus), im
 
 
 def integrate_dm_by_dt(I1, I2, lbtime):
