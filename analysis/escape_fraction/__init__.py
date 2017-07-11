@@ -124,6 +124,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
         fesc_dict = {}
         Nphoton_dict = {}
         age_dict = {}
+        hid_dict = {}
 
         def _compute(h, db):
             hid = int(h["id"])
@@ -138,6 +139,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
             fesc_dict[h.base.ioutput] = fesc_h
             Nphoton_dict[h.base.ioutput] = Nphotons # at t=0, not dt=rvir/c !!!
             age_dict[h.base.ioutput] = h.base.age
+            hid_dict[h.base.ioutput] = int(h["id"])
 
         # Compute fesc for this halo (snapshot)
         _compute(halo, db)
@@ -153,12 +155,14 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
 
         # I1/I2 = numerator/denominator to be integrated
         I1 = np.zeros(len(fesc_dict)); I2 = np.zeros(len(fesc_dict)); age_array = np.zeros(len(age_dict))
+        hid_array = np.zeros(len(fesc_dict))
 
         # Populate the arrays
         for key, i in zip( sorted(fesc_dict.keys(), reverse=True), range(len(fesc_dict)) ):
             I1[i] = fesc_dict[key] * Nphoton_dict[key]
             I2[i] = Nphoton_dict[key]
             age_array[i] = age_dict[key]
+            hid_array[i] = hid_dict[key]
 
         # Calculate lookback-time
         lbtime = halo.base.age - age_array
@@ -170,7 +174,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
 
         # fesc at each time step can be computed by taking I1/I2
         if return_data:    
-            return tint_fesc_hist, I1, I2, lbtime
+            return tint_fesc_hist, I1, I2, lbtime, hid_array
         return tint_fesc_hist
     else:
         return None

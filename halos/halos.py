@@ -653,6 +653,8 @@ class ConsistentTreesCatalogue(HaloCatalogue):
         idx_start = np.abs( aexp_hlist - self.base.info["aexp"] ).argmin()
         idx_end = np.abs( aexp_hlist - back_to_aexp ).argmin()
 
+        # print idx_start, idx_end
+
         hid = int(halo.hid)
 
         # Loop through hlists in reverse and locate progenitors
@@ -660,9 +662,11 @@ class ConsistentTreesCatalogue(HaloCatalogue):
             mmp_props = None
             mmp_mass = 0.
             with open( outputs[i], "r" ) as f:
+                # print outputs[i]
                 haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
                 for props in haloprops:
-                    if (props["desc_id"] == hid) and (props["mvir"] > mmp_mass):
+                    # if (props["desc_id"] == hid) and (props["mvir"] > mmp_mass):
+                    if (props["desc_id"] == hid) and (props["mmp"]):
                         # This halo is a candidate for mmp
                         mmp_props = props
                         mmp_mass = props["mvir"]

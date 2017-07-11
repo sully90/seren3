@@ -1,105 +1,7 @@
-def plot_outflow_fesc(halo):
-    '''
-    Plot outflow rate (dm/dt) and fesc for this
-    halo
-    '''
-    import random
-    import numpy as np
-    import matplotlib.pylab as plt
-    from seren3.scripts.mpi import time_int_mass_flux_all_halos
-    from seren3.analysis.stars import sfr as sfr_fn
-
-    from matplotlib import rcParams
-    rcParams['figure.figsize'] = 16, 6
-    rcParams['axes.linewidth'] = 1.5
-    rcParams['xtick.labelsize'] = 14
-    rcParams['ytick.labelsize'] = 14
-
-    rcParams['axes.labelsize'] = 20
-    rcParams['xtick.major.pad'] = 10
-    rcParams['ytick.major.pad'] = 10
-
-    # def _compute_rho_sfr(halo, halo_catalogue, back_to_aexp):
-    #     from seren3.analysis import stars
-    #     from seren3.array import SimArray
-    #     rho_sfr = []
-    #     age = []
-    #     age_now = halo.base.age
-
-    #     sfr, vw, mw = stars.gas_SFR_density(halo, return_averages=True)
-    #     rho_sfr.append(mw)
-    #     age.append(halo.base.age)
-
-    #     for prog in halo_catalogue.iterate_progenitors(halo, back_to_aexp=back_to_aexp):
-    #         sfr, vw, mw = stars.gas_SFR_density(prog, return_averages=True)
-    #         rho_sfr.append(mw)
-    #         age.append(prog.base.age)
-
-    #     lbtime = SimArray(age_now - np.array(age), "Gyr")
-    #     return SimArray(rho_sfr, mw.units), lbtime
-
-    # if (rho_sfr is None) or (rho_sfr_lbtime is None):
-    #     rho_sfr, rho_sfr_lbtime = _compute_rho_sfr(halo, halo_catalogue, back_to_aexp)
-
-    # ax2_col = '#CB4335'
-    ax2_col = 'darkorange'
-    # sSFR_col = '#0099cc'
-    sSFR_col = 'dodgerblue'
-
-    age_now = halo.base.age
-
-    ax1 = plt.gca()
-    ax2 = ax1.twinx()
-
-    fesc_res = load_halo(halo)
-    mass_flux_res = time_int_mass_flux_all_halos.load_halo(halo)
-
-    fesc = fesc_res["fesc"]
-    fesc_lbtime = fesc_res["lbtime"]
-
-    dm_by_dt = mass_flux_res["out_dm_by_dt"]
-    mass_flux_lbtime = mass_flux_res["lbtime"]
-
-    nbins=150
-    agerange = [0, fesc_lbtime.max()]
-    sSFR, SFR, sSFR_lookback_time, sSFR_binsize = sfr_fn(halo, ret_sSFR=True, nbins=nbins, agerange=agerange)
-
-    ix = np.where(fesc > 1.)[0]
-    for ii in ix:
-        fesc[ii] = random.uniform(0.9, 1.0)
-
-    fesc_time = fesc_lbtime.in_units("Myr")[::-1]
-    mass_flux_time = mass_flux_lbtime.in_units("Myr")[::-1]
-    sSFR_time = sSFR_lookback_time.in_units("Myr")[::-1]
-
-    ax1.plot(fesc_time, fesc, color="r", linewidth=2.)
-    ax2.plot(mass_flux_time, dm_by_dt, color=ax2_col, linewidth=4., linestyle='-.')
-    # ax2.fill_between(rho_sfr_lbtime.in_units("Myr"), rho_sfr, color=sSFR_col, alpha=0.2)
-    ax2.fill_between(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, alpha=0.2)
-    ax2.plot(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, linewidth=3.)
-
-    ax1.set_xlabel(r"t [Myr]")
-    ax1.set_ylabel(r"f$_{\mathrm{esc}}$")
-    ax2.set_ylabel(r"$dM/dt$ [M$_{\odot}$/h]")
-
-    for tl in ax2.get_yticklabels():
-        tl.set_color(ax2_col)
-    ax2.yaxis.label.set_color(ax2_col)
-
-    for tl in ax1.get_yticklabels():
-        tl.set_color('r')
-    ax1.yaxis.label.set_color('r')
-
-    ax1.grid(True)
-    plt.show()
-    # return rho_sfr, rho_sfr_lbtime
-    return fesc_res, mass_flux_res
-
-
 def load(snap):
     import pickle
 
-    data = pickle.load( open("%s/pickle/ConsistentTrees/time_int_fesc_all_halos_%05i.p" % (snap.path, snap.ioutput), "rb") )
+    data = pickle.load( open("%s/pickle/ConsistentTrees/time_int_mass_flux_all_halos_%05i.p" % (snap.path, snap.ioutput), "rb") )
     return data
 
 
@@ -147,6 +49,7 @@ def plot(snap, idata, data=None):
 
     nbins=75
     agerange = [0, lbtime.max()]
+    # sSFR = h.s["sSFR"].flatten(nbins=nbins, agerange=agerange)
     sSFR, SFR, sSFR_lookback_time, sSFR_binsize = sfr_fn(h, ret_sSFR=True, nbins=nbins, agerange=agerange)
 
     ax1 = plt.gca()
@@ -187,9 +90,8 @@ def main(path, pickle_path):
     import numpy as np
     import seren3
     from seren3.analysis.parallel import mpi
-    from seren3.exceptions import NoParticlesException
-    from seren3.analysis.escape_fraction import time_integrated_fesc
-    from seren3.scripts.mpi import write_fesc_hid_dict
+    from seren3.analysis.outflows import time_integrated_dm_by_dt
+    from seren3.scripts.mpi import write_mass_flux_hid_dict
 
     mpi.msg("Loading simulation...")
     sim = seren3.init(path)
@@ -209,28 +111,28 @@ def main(path, pickle_path):
 
         halo_ids = None
         if mpi.host:
-            db = write_fesc_hid_dict.load_db(path, iout)
+            db = write_mass_flux_hid_dict.load_db(path, iout)
             halo_ids = db.keys()
             random.shuffle(halo_ids)
 
         dest = {}
         for i, sto in mpi.piter(halo_ids, storage=dest, print_stats=True):
             h = halos.with_id(i)
-            res = time_integrated_fesc(h, back_to_aexp, return_data=True)
+            res = time_integrated_dm_by_dt(h, back_to_aexp)
             if (res is not None):
                 mpi.msg("%05i \t %i \t %i" % (snap.ioutput, h.hid, i))
-                tint_fesc_hist, I1, I2, lbtime, hids = res
+                tint_fesc_hist, I1, I2, lbtime = res
 
-                fesc = I1/I2
+                out_dm_by_dt = I1/I2
                 sto.idx = h.hid
-                sto.result = {'tint_fesc_hist' : tint_fesc_hist, 'fesc' : fesc, 'I1' : I1, \
-                        'I2' : I2, 'lbtime' : lbtime, 'Mvir' : h["Mvir"], 'hids' : hids}
+                sto.result = {'tint_dm_by_dt_hist' : tint_fesc_hist, 'out_dm_by_dt' : out_dm_by_dt, 'I1' : I1, \
+                        'I2' : I2, 'lbtime' : lbtime, 'Mvir' : h["Mvir"]}
         if mpi.host:
             import pickle, os
             # pickle_path = "%s/pickle/%s/" % (snap.path, halos.finder)
             if not os.path.isdir(pickle_path):
                 os.mkdir(pickle_path)
-            pickle.dump( mpi.unpack(dest), open("%s/time_int_fesc_all_halos_%05i.p" % (pickle_path, snap.ioutput), "wb") )
+            pickle.dump( mpi.unpack(dest), open("%s/time_int_mass_flux_all_halos_%05i.p" % (pickle_path, snap.ioutput), "wb") )
 
         mpi.msg("Waiting...")
         mpi.comm.Barrier()

@@ -64,7 +64,7 @@ def sfr(context, dset=None, ret_sSFR=False, nbins=100, **kwargs):
         return sSFR, SFR, lookback_time, binsize
     return SFR, lookback_time, binsize  # SFR [Msol Gyr^-1] (sSFR [Gyr^-1]), Lookback Time [Gyr], binsize [Gyr]
 
-def gas_SFR_density(context, impose_criterion=True):
+def gas_SFR_density(context, impose_criterion=True, return_averages=False):
     '''
     Computes the (instantaneous) star formation rate density, in Msun/yr/kpc^3, from the gas
     '''
@@ -80,7 +80,12 @@ def gas_SFR_density(context, impose_criterion=True):
     H_frac = mH/X_fraction  # fractional mass of hydrogen
 
     nml = context.nml
-    dset = context.g[["nH", "T2"]].flatten()
+    dset = None
+    if (return_averages):
+        dset = context.g[["nH", "T2", "mass", "dx"]].flatten()
+    else:
+        dset = context.g[["nH", "T2"]].flatten()
+
     nH = dset["nH"].in_units("cm**-3")
 
     # Load star formation model params from the namelist
@@ -104,6 +109,11 @@ def gas_SFR_density(context, impose_criterion=True):
         Tmu = dset["T2"] - Tpoly  # Remove non-thermal polytropic temperature floor
         idx = np.where(Tmu > 2e4)
         sfr[idx] = 0.
+
+    if (return_averages):
+        from seren3.analysis import volume_mass_weighted_average
+        vw, mw = volume_mass_weighted_average(context, sfr, dset)
+        return sfr, vw, mw
 
     return sfr 
 
