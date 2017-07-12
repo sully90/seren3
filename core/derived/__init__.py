@@ -62,7 +62,7 @@ def mfz(sim):
     return sim.g["rho"].in_units("Msol km**-3") * sim.g["vz"].in_units("km s**-1")
 
 @pynbody.derived_array
-def mass_flux_radial2(sim):
+def mass_flux_radial(sim):
     import numpy as np
     from pynbody.array import SimArray
     from seren3.utils import unit_vec_r, heaviside
