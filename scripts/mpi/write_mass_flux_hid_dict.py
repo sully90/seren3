@@ -9,6 +9,7 @@ def load_db(path, ioutput):
 
     pickle_path = "%s/pickle/ConsistentTrees/" % path
     return pickle.load( open("%s/mass_flux_database_%05i.p" % (pickle_path, ioutput), "rb") )
+    # return pickle.load( open("%s/mass_flux_database_no_filt_%05i.p" % (pickle_path, ioutput), "rb") )
 
 def load_halo(halo):
     import pickle
@@ -23,6 +24,34 @@ def load_halo(halo):
         return db[int(halo["id"])]
     else:
         return None
+
+def plot_dm_by_dt_fesc(snapshot):
+    import random
+    import matplotlib.pylab as plt
+    from seren3.scripts.mpi import write_fesc_hid_dict
+
+    fesc_db = write_fesc_hid_dict.load_db(snapshot.path, snapshot.ioutput)
+    mass_flux_db = load_db(snapshot.path, snapshot.ioutput)
+
+    hids = fesc_db.keys()
+    fesc = np.zeros(len(hids))
+    outflow_dm_by_dt = np.zeros(len(hids))
+
+    i = 0
+    for hid in hids:
+        ifesc = fesc_db[hid]["fesc"]
+        if (ifesc > 1.):
+            ifesc = random.uniform(0.9, 1.0)
+        fesc[i] = ifesc
+        F, F_plus, F_minus = mass_flux_db[hid]["F"]
+        outflow_dm_by_dt[i] = F_plus
+        i += 1
+
+    plt.scatter(outflow_dm_by_dt, fesc)
+    plt.ylabel(r"f$_{\mathrm{esc}}$")
+    plt.xlabel(r"$dM/dt$ [M$_{\odot}$/h]")
+    plt.show()
+
 
 def main(path, iout, pickle_path):
     import seren3
@@ -56,8 +85,7 @@ def main(path, iout, pickle_path):
             tot_mass = dm_dset["mass"].in_units("Msol h**-1").sum() + star_dset["mass"].in_units("Msol h**-1").sum()\
                              + gas_dset["mass"].in_units("Msol h**-1").sum()
 
-            F, h_im = outflows.dm_by_dt(h.subsnap, filt=True, nside=2**3)
-            mpi.msg("%1.2e \t %1.2e" % (h["Mvir"], h_dm_by_dt))
+            F, h_im = outflows.dm_by_dt(h.subsnap, filt=False, nside=2**4)
             sto.result = {"F" : F, "h_im" : h_im, "tot_mass" : tot_mass, \
                 "hprops" : h.properties}
 
@@ -71,7 +99,7 @@ def main(path, iout, pickle_path):
         fesc_dict = {}
         for i in range(len(unpacked_dest)):
             fesc_dict[int(unpacked_dest[i].idx)] = unpacked_dest[i].result
-        pickle.dump( fesc_dict, open( "%s/mass_flux_database_%05i.p" % (pickle_path, iout), "wb" ) )
+        pickle.dump( fesc_dict, open( "%s/mass_flux_database_no_filt_%05i.p" % (pickle_path, iout), "wb" ) )
 
 
 if __name__ == "__main__":

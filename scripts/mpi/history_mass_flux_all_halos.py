@@ -1,7 +1,7 @@
 def load(snap):
     import pickle
 
-    data = pickle.load( open("%s/pickle/ConsistentTrees/time_int_mass_flux_all_halos_%05i.p" % (snap.path, snap.ioutput), "rb") )
+    data = pickle.load( open("%s/pickle/ConsistentTrees/history_mass_flux_all_halos_%05i.p" % (snap.path, snap.ioutput), "rb") )
     return data
 
 

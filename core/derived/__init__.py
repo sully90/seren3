@@ -62,7 +62,7 @@ def mfz(sim):
     return sim.g["rho"].in_units("Msol km**-3") * sim.g["vz"].in_units("km s**-1")
 
 @pynbody.derived_array
-def mass_flux_radial(sim):
+def mass_flux_radial2(sim):
     import numpy as np
     from pynbody.array import SimArray
     from seren3.utils import unit_vec_r, heaviside
@@ -79,8 +79,8 @@ def mass_flux_radial(sim):
     x,y,z = sim.g["pos"].T
     # r = np.sqrt(x**2 + y**2 + z**2)
     r = sim.g["r"]
-    phi = sim.g["sp_g_phi"]
-    theta = sim.g["sp_g_theta"]
+    theta = sim.g["theta"]
+    phi = sim.g["az"]
 
     mass_flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -108,8 +108,8 @@ def rad_0_flux_radial(sim):
     x,y,z = sim.g["pos"].T
     # r = np.sqrt(x**2 + y**2 + z**2)
     r = sim.g["r"]
-    phi = sim.g["sp_g_phi"]
-    theta = sim.g["sp_g_theta"]
+    theta = sim.g["theta"]
+    phi = sim.g["az"]
 
     flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -139,8 +139,8 @@ def rad_1_flux_radial(sim):
     x,y,z = sim.g["pos"].T
     # r = np.sqrt(x**2 + y**2 + z**2)
     r = sim.g["r"]
-    phi = sim.g["sp_g_phi"]
-    theta = sim.g["sp_g_theta"]
+    theta = sim.g["theta"]
+    phi = sim.g["az"]
 
     flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -170,8 +170,8 @@ def rad_2_flux_radial(sim):
     x,y,z = sim.g["pos"].T
     # r = np.sqrt(x**2 + y**2 + z**2)
     r = sim.g["r"]
-    phi = sim.g["sp_g_phi"]
-    theta = sim.g["sp_g_theta"]
+    theta = sim.g["theta"]
+    phi = sim.g["az"]
 
     flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -182,15 +182,4 @@ def rad_2_flux_radial(sim):
                 * heaviside(np.dot(flux[i], unit_r)))
 
     return SimArray( flux_scalar, units )
-
-@pynbody.derived_array
-def sp_g_theta(sim):
-    x,y,z = sim.g["pos"].T
-    r = sim.g["r"]
-    return np.arccos(z/r)
-
-@pynbody.derived_array
-def sp_g_phi(sim):
-    x,y,z = sim.g["pos"].T
-    return np.arctan(y/x)
 
