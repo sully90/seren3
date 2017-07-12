@@ -78,11 +78,10 @@ def mass_flux_radial(sim):
 
     x,y,z = sim.g["pos"].T
     r = np.sqrt(x**2 + y**2 + z**2)
-    # r = sim.g["r"]
-    # theta = sim.g["theta"]
-    # phi = sim.g["az"]
-    theta = sim.g["sg_theta"]
-    phi = sim.g["sg_az"]
+    # theta = sim.g["sg_theta"]
+    # phi = sim.g["sg_az"]
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
 
     mass_flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -109,11 +108,10 @@ def rad_0_flux_radial(sim):
 
     x,y,z = sim.g["pos"].T
     r = np.sqrt(x**2 + y**2 + z**2)
-    # r = sim.g["r"]
-    # theta = sim.g["theta"]
-    # phi = sim.g["az"]
-    theta = sim.g["sg_theta"]
-    phi = sim.g["sg_az"]
+    # theta = sim.g["sg_theta"]
+    # phi = sim.g["sg_az"]
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
 
     flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -142,11 +140,10 @@ def rad_1_flux_radial(sim):
 
     x,y,z = sim.g["pos"].T
     r = np.sqrt(x**2 + y**2 + z**2)
-    # r = sim.g["r"]
-    # theta = sim.g["theta"]
-    # phi = sim.g["az"]
-    theta = sim.g["sg_theta"]
-    phi = sim.g["sg_az"]
+    # theta = sim.g["sg_theta"]
+    # phi = sim.g["sg_az"]
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
 
     flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -175,11 +172,10 @@ def rad_2_flux_radial(sim):
 
     x,y,z = sim.g["pos"].T
     r = np.sqrt(x**2 + y**2 + z**2)
-    # r = sim.g["r"]
-    # theta = sim.g["theta"]
-    # phi = sim.g["az"]
-    theta = sim.g["sg_theta"]
-    phi = sim.g["sg_az"]
+    # theta = sim.g["sg_theta"]
+    # phi = sim.g["sg_az"]
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
 
     flux_scalar = np.zeros(len(theta))
     for i in range(len(theta)):
@@ -194,14 +190,18 @@ def rad_2_flux_radial(sim):
 @pynbody.derived_array
 def sg_theta(sim):
     import numpy as np
-    x,y,z = sim.g["pos"].transpose()
+    from pynbody.array import SimArray
+
+    x,y,z = sim["pos"].transpose()
     r = np.sqrt(x**2 + y**2 + z**2)
-    return np.arccos(z / r)
+    return SimArray(np.arccos(z / r))
 
 @pynbody.derived_array
 def sg_az(sim):
     import numpy as np
+    from pynbody.array import SimArray
+
     x,y,z = sim.g["pos"].transpose()
-    return np.arctan2(y, x)
+    return SimArray(np.arctan2(y, x))
 
 
