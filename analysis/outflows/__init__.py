@@ -42,13 +42,17 @@ def dm_by_dt(subsnap, filt=True, **kwargs):
     reload(render_spherical)
 
     rvir = SimArray(subsnap.region.radius, subsnap.info["unit_length"])
+    to_distance = rvir/2.
     in_units = "kg s**-1 m**-2"
     s = subsnap.pynbody_snapshot(filt=filt)
 
+    if "nside" not in kwargs:
+        kwargs["nside"] = 2**3
+    kwargs["radius"] = to_distance
     im = render_spherical.render_quantity(subsnap.g, "mass_flux_radial", s=s, in_units=in_units, out_units=in_units, **kwargs)
     im.convert_units("Msol yr**-1 kpc**-2")
 
-    def _compute_flux(im, rvir, direction=None):
+    def _compute_flux(im, to_distance, direction=None):
         im_tmp = im.copy()
         ix = None
         if ("out" == direction):
@@ -58,13 +62,13 @@ def dm_by_dt(subsnap, filt=True, **kwargs):
             ix = np.where(im_tmp > 0)
             im_tmp[ix] = -1e-12
         else:
-            return integrate_surface_flux(im, rvir)    
+            return integrate_surface_flux(im, to_distance)    
 
-        return integrate_surface_flux(im_tmp, rvir)
+        return integrate_surface_flux(im_tmp, to_distance)
 
-    F = _compute_flux(im, rvir)
-    F_plus = _compute_flux(im, rvir, direction="out")
-    F_minus = _compute_flux(im, rvir, direction="in")
+    F = _compute_flux(im, to_distance)
+    F_plus = _compute_flux(im, to_distance, direction="out")
+    F_minus = _compute_flux(im, to_distance, direction="in")
     return (F, F_plus, F_minus), im
 
 
@@ -87,6 +91,7 @@ def mass_flux_hist(halo, back_to_aexp, return_data=True):
         F = []
         age_arr = []
         hids = []
+        iouts = []
 
         def _compute(h, db):
             hid = int(h["id"])
@@ -95,6 +100,7 @@ def mass_flux_hist(halo, back_to_aexp, return_data=True):
             F.append(res["F"])
             age_arr.append(h.base.age)
             hids.append(hid)
+            iouts.append(h.base.ioutput)
 
         _compute(halo, db)
 
@@ -107,12 +113,13 @@ def mass_flux_hist(halo, back_to_aexp, return_data=True):
                 break
         F = np.array(F)
         age_arr = np.array(age_arr)
-        hids = np.array(hids)
+        hids = np.array(hids, dtype=np.int64)
+        iouts = np.array(iouts)
 
         lbtime = halo.base.age - age_arr
 
         if return_data:    
-            return F, age_arr, lbtime, hids
+            return F, age_arr, lbtime, hids, iouts
         return F
     else:
         return None

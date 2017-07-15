@@ -28,7 +28,7 @@ def main(path, pickle_path):
     back_to_aexp = sim[iout_start].info["aexp"]
     # iouts = range(iout_start, max(sim.numbered_outputs)+1)
     print "IOUT RANGE HARD CODED"
-    iouts = range(iout_start, 110)
+    iouts = range(iout_start, 109)
     # iouts = [109]
 
     for iout in iouts[::-1]:
@@ -47,11 +47,11 @@ def main(path, pickle_path):
         for i, sto in mpi.piter(halo_ids, storage=dest, print_stats=True):
             h = halos.with_id(i)
             
-            F, age_arr, lbtime, hids = mass_flux_hist(h, back_to_aexp, return_data=True)
+            F, age_arr, lbtime, hids, iouts = mass_flux_hist(h, back_to_aexp, return_data=True)
 
             sto.idx = h.hid
             sto.result = {'F' : F, 'age_array' : age_arr, 'lbtime' : lbtime, \
-                    'hids' : hids, 'Mvir' : h["Mvir"]}
+                    'hids' : hids, 'iouts' : iouts, 'Mvir' : h["Mvir"]}
         if mpi.host:
             import pickle, os
             # pickle_path = "%s/pickle/%s/" % (snap.path, halos.finder)

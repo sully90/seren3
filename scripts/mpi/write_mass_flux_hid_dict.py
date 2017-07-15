@@ -8,8 +8,8 @@ def load_db(path, ioutput):
     import pickle
 
     pickle_path = "%s/pickle/ConsistentTrees/" % path
-    return pickle.load( open("%s/mass_flux_database_%05i.p" % (pickle_path, ioutput), "rb") )
-    # return pickle.load( open("%s/mass_flux_database_no_filt_%05i.p" % (pickle_path, ioutput), "rb") )
+    # return pickle.load( open("%s/mass_flux_database_%05i.p" % (pickle_path, ioutput), "rb") )
+    return pickle.load( open("%s/mass_flux_database_no_filt_half_rvir_%05i.p" % (pickle_path, ioutput), "rb") )
 
 def load_halo(halo):
     import pickle
@@ -85,7 +85,7 @@ def main(path, iout, pickle_path):
             tot_mass = dm_dset["mass"].in_units("Msol h**-1").sum() + star_dset["mass"].in_units("Msol h**-1").sum()\
                              + gas_dset["mass"].in_units("Msol h**-1").sum()
 
-            F, h_im = outflows.dm_by_dt(h.subsnap, filt=False, nside=2**4)
+            F, h_im = outflows.dm_by_dt(h.subsnap, filt=False, nside=2**3)
             sto.result = {"F" : F, "h_im" : h_im, "tot_mass" : tot_mass, \
                 "hprops" : h.properties}
 
@@ -99,7 +99,7 @@ def main(path, iout, pickle_path):
         fesc_dict = {}
         for i in range(len(unpacked_dest)):
             fesc_dict[int(unpacked_dest[i].idx)] = unpacked_dest[i].result
-        pickle.dump( fesc_dict, open( "%s/mass_flux_database_no_filt_%05i.p" % (pickle_path, iout), "wb" ) )
+        pickle.dump( fesc_dict, open( "%s/mass_flux_database_no_filt_half_rvir_%05i.p" % (pickle_path, iout), "wb" ) )
 
 
 if __name__ == "__main__":

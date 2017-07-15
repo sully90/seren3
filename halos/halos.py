@@ -533,7 +533,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
             return False, "Unable to locate hlists files"
 
     def get_filename(self, **kwargs):
-        import glob
+        import glob, math
         from seren3.exceptions import CatalogueNotFoundException
         # Filename is hlist_aexp.list
         # Look through the outputs and find the closest expansion factor
@@ -561,7 +561,7 @@ class ConsistentTreesCatalogue(HaloCatalogue):
         # Find the closest match
         idx = np.argmin(np.abs(aexp_hlist - aexp))
 
-        if min(aexp_hlist[idx] / aexp, aexp / aexp_hlist[idx]) < 0.985:
+        if min(aexp_hlist[idx] / aexp, aexp / aexp_hlist[idx]) < 0.995:
           raise CatalogueNotFoundException("Unable to locate catalogue close to this snapshot.\nHlist aexp: %f, Snap aexp: %f" % (aexp_hlist[idx], aexp))
 
         return outputs[idx]
@@ -656,30 +656,71 @@ class ConsistentTreesCatalogue(HaloCatalogue):
         # print idx_start, idx_end
 
         hid = int(halo.hid)
+        sim = Simulation(halo.base.path)
 
-        # Loop through hlists in reverse and locate progenitors
-        for i in range(idx_end, idx_start)[::-1]:
+        aexp_to_z = lambda aexp: (1./aexp) - 1.
+        z_start = aexp_to_z(aexp_hlist[idx_start])
+        z_end = aexp_to_z(aexp_hlist[idx_end])
+
+        # return idx_start, idx_end, z_start, z_end, outputs, aexp_hlist
+
+        iout_start = sim.redshift(z_start)
+        iout_end = sim.redshift(z_end)
+
+        for iout in range(iout_end, iout_start)[::-1]:
+            isnap = sim[iout]
+            ihalos = isnap.halos()
+
             mmp_props = None
             mmp_mass = 0.
-            with open( outputs[i], "r" ) as f:
-                # print outputs[i]
-                haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
-                for props in haloprops:
-                    # if (props["desc_id"] == hid) and (props["mvir"] > mmp_mass):
-                    if (props["desc_id"] == hid) and (props["mmp"]):
-                        # This halo is a candidate for mmp
-                        mmp_props = props
-                        mmp_mass = props["mvir"]
 
-            if (mmp_props != None):
-                sim = Simulation(halo.base.path)
-                # print aexp_hlist[::-1][i]
-                # z = (1./aexp_hlist[::-1][i]) - 1.
-                z = (1./aexp_hlist[i]) - 1.
-                prog_snap = sim[sim.redshift(z)]
-                yield Halo(mmp_props, prog_snap, self.units, self.get_boxsize())  # the mmp
-                hid = int(mmp_props["id"])
+            ihalo = None
+            for i in range(len(ihalos)):
+                props = ihalos._haloprops[i]
+                # if (props["desc_id"] == hid) and (props["mvir"] > mmp_mass):
+                if (props["desc_id"] == hid) and (props["mmp"]):
+                    # This halo is a candidate for mmp
+                    # mmp_props = props
+                    # mmp_mass = props["mvir"]
+                    ihalo = i
+                    break
+
+            # if (mmp_props != None):
+                # yield Halo(mmp_props, isnap, self.units, self.get_boxsize())  # the mmp
+                # hid = int(mmp_props["id"])
+            if (ihalo != None):
+                iprog = ihalos[ihalo]
+                yield iprog
+                hid = int(iprog["id"])
+
             else:
                 if (verbose):
                     print "No descentent found - exiting"
                 break
+
+        # Loop through hlists in reverse and locate progenitors
+        # for i in range(idx_end, idx_start+1)[::-1]:
+        #     mmp_props = None
+        #     mmp_mass = 0.
+        #     with open( outputs[i], "r" ) as f:
+        #         # print outputs[i]
+        #         haloprops = np.loadtxt(f, dtype=self.halo_type, comments="#")
+        #         for props in haloprops:
+        #             # if (props["desc_id"] == hid) and (props["mvir"] > mmp_mass):
+        #             if (props["desc_id"] == hid) and (props["mmp"]):
+        #                 # This halo is a candidate for mmp
+        #                 mmp_props = props
+        #                 mmp_mass = props["mvir"]
+
+        #     if (mmp_props != None):
+        #         sim = Simulation(halo.base.path)
+        #         # print aexp_hlist[::-1][i]
+        #         # z = (1./aexp_hlist[::-1][i]) - 1.
+        #         z = (1./aexp_hlist[i]) - 1.
+        #         prog_snap = sim[sim.redshift(z)]
+        #         yield Halo(mmp_props, prog_snap, self.units, self.get_boxsize())  # the mmp
+        #         hid = int(mmp_props["id"])
+        #     else:
+        #         if (verbose):
+        #             print "No descentent found - exiting"
+        #         break

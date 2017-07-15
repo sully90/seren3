@@ -27,7 +27,10 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
     s_family = getattr(s, _pymses_to_pynbody_family[family.family])
 
     # Radius from subsnap center to the healpix surface
-    radius = SimArray(family.base.region.radius, family.info["unit_length"]).in_units("kpc")
+    radius = kwargs.pop("radius", SimArray(family.base.region.radius, family.info["unit_length"]).in_units("kpc"))
+
+    if (isinstance(radius, SimArray) is False):
+        raise Exception("Radius must be a SimArray")
 
     if in_units is not None:
         s_family[qty].convert_units(in_units)
@@ -35,7 +38,8 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
 
     ndim = len(s_family[qty].shape)
 
-    kwargs["denoise"] = False
+    if ("denoise" not in kwargs):
+        kwargs["denoise"] = False
     kwargs["threaded"] = False
     kwargs["kernel"] = kernel
     if ndim == 1:

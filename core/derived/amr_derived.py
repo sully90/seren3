@@ -328,3 +328,41 @@ def amr_PHrate(context, dset):
         raise Exception("NEGATIVE EMI")
 
     return context.array(emi, "erg cm**-3 s**-1", latex="$\mathcal{H}$")
+
+#################################### RADIAL QUANTITIES #################################
+
+@seren3.derived_quantity(requires=["rho", "pos", "vel"])
+def amr_outflow_rate(context, dset, center=None, **kwargs):
+    from seren3.utils import unit_vec_r, heaviside
+
+    if (center is None):
+        # Locate centre of mass
+        if hasattr(context, "base"):
+            if hasattr(context.base, "region"):
+                center = context.base.region.center
+        else:
+            from seren3.utils import camera_utils
+            center = camera_utils.find_center_of_mass(context)
+
+    unit_l = context.array(context.info["unit_length"])
+    pos = dset["pos"].in_units(unit_l) - center
+    x,y,z = pos.T
+
+    # Cartesian -> spherical polars
+    r = np.sqrt(x**2 + y**2 + z**2)
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
+
+    rho = dset["rho"]
+    vel = dset["vel"]
+    rho_u = (rho * vel.T).T
+
+    mass_flux_scalar = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        mass_flux_scalar[i] = np.dot(rho_u[i], unit_r)\
+                * heaviside(np.dot(rho_u[i], unit_r))
+
+    return SimArray( mass_flux_scalar, rho_u.units )
+

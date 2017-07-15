@@ -80,9 +80,9 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=Fa
             Nion_d = star_Nion_d(subsnap, dset, dt=dt, group=ii+1)
             nPhot += (Nion_d * mass).sum()
 
-            # Compute integrated flux out of the virial sphere
-            flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux_radial" % ii, s=s, in_units=in_units, out_units=in_units, **kwargs)
-            integrated_flux += integrate_surface_flux(flux_map, rvir)
+        # Compute integrated flux out of the virial sphere
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_flux_radial", s=s, in_units=in_units, out_units=in_units, **kwargs)
+        integrated_flux += integrate_surface_flux(flux_map, rvir)
     else:
         # Compute number of ionising photons from stars at time
         # t - rvir/rt_c (assuming halo is a point source)
@@ -139,7 +139,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
             fesc_dict[h.base.ioutput] = fesc_h
             Nphoton_dict[h.base.ioutput] = Nphotons # at t=0, not dt=rvir/c !!!
             age_dict[h.base.ioutput] = h.base.age
-            hid_dict[h.base.ioutput] = int(h["id"])
+            hid_dict[h.base.ioutput] = hid
 
         # Compute fesc for this halo (snapshot)
         _compute(halo, db)
@@ -155,7 +155,8 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
 
         # I1/I2 = numerator/denominator to be integrated
         I1 = np.zeros(len(fesc_dict)); I2 = np.zeros(len(fesc_dict)); age_array = np.zeros(len(age_dict))
-        hid_array = np.zeros(len(fesc_dict))
+        hid_array = np.zeros(len(fesc_dict), dtype=np.int64)
+        iout_arr = np.zeros(len(hid_array))
 
         # Populate the arrays
         for key, i in zip( sorted(fesc_dict.keys(), reverse=True), range(len(fesc_dict)) ):
@@ -163,6 +164,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
             I2[i] = Nphoton_dict[key]
             age_array[i] = age_dict[key]
             hid_array[i] = hid_dict[key]
+            iout_arr[i] = key
 
         # Calculate lookback-time
         lbtime = halo.base.age - age_array
@@ -174,7 +176,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
 
         # fesc at each time step can be computed by taking I1/I2
         if return_data:    
-            return tint_fesc_hist, I1, I2, lbtime, hid_array
+            return tint_fesc_hist, I1, I2, lbtime, hid_array, iout_arr
         return tint_fesc_hist
     else:
         return None

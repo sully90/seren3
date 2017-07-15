@@ -8,8 +8,8 @@ def load_db(path, ioutput):
     import pickle
 
     pickle_path = "%s/pickle/ConsistentTrees/" % path
-    return pickle.load( open("%s/fesc_database_%05i.p" % (pickle_path, ioutput), "rb") )
-    # return pickle.load( open("%s/fesc_database_no_filt_%05i.p" % (pickle_path, ioutput), "rb") )
+    # return pickle.load( open("%s/fesc_database_%05i.p" % (pickle_path, ioutput), "rb") )
+    return pickle.load( open("%s/fesc_database_no_filt_%05i.p" % (pickle_path, ioutput), "rb") )
 
 def load_halo(halo):
     import pickle

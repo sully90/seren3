@@ -1,7 +1,12 @@
 import numpy as np
-import re
+import re, math
 
 heaviside = lambda x: 0.5 if x == 0 else 0 if x < 0 else 1  # step function
+
+
+def truncate(number, digits):
+    stepper = pow(10.0, digits)
+    return math.trunc(stepper * number) / stepper
 
 
 def symlog(arr):
