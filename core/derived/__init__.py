@@ -122,105 +122,52 @@ def outflow_rate(sim):
 
     return SimArray( mass_flux_scalar, units )
 
+def rad_radial(sim, group):
+    import numpy as np
+    from pynbody.array import SimArray
+    from seren3.utils import unit_vec_r, heaviside
+
+    flux = []
+    units = None
+    for i in 'xyz':
+        #print i
+        fi = sim.g["rad_%i_flux_%s" % (group, i)]
+        flux.append(fi)
+        units = fi.units
+    flux = np.array(flux).T
+
+    x,y,z = sim.g["pos"].T
+    r = np.sqrt(x**2 + y**2 + z**2)
+    # theta = sim.g["sg_theta"]
+    # phi = sim.g["sg_az"]
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
+
+    flux_scalar = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        # Compute outward flux (should always be positive)
+        flux_scalar[i] = np.dot(flux[i], unit_r)\
+                * heaviside(np.dot(flux[i], unit_r))
+
+    return SimArray( flux_scalar, units )
+
 @pynbody.derived_array
 def rad_flux_radial(sim):
     return sim["rad_0_flux_radial"] + sim["rad_1_flux_radial"] + sim["rad_2_flux_radial"]
 
 @pynbody.derived_array
 def rad_0_flux_radial(sim):
-    import numpy as np
-    from pynbody.array import SimArray
-    from seren3.utils import unit_vec_r, heaviside
-
-    flux = []
-    units = None
-    for i in 'xyz':
-        #print i
-        fi = sim.g["rad_0_flux_%s" % i]
-        flux.append(fi)
-        units = fi.units
-    flux = np.array(flux).T
-
-    x,y,z = sim.g["pos"].T
-    r = np.sqrt(x**2 + y**2 + z**2)
-    # theta = sim.g["sg_theta"]
-    # phi = sim.g["sg_az"]
-    theta = np.arccos(z / r)
-    phi = np.arctan2(y, x)
-
-    flux_scalar = np.zeros(len(theta))
-    for i in range(len(theta)):
-        th, ph = (theta[i], phi[i])
-        unit_r = unit_vec_r(th, ph)
-        # Compute outward flux (should always be positive)
-        flux_scalar[i] = np.abs(np.dot(flux[i], unit_r)\
-                * heaviside(np.dot(flux[i], unit_r)))
-
-    return SimArray( flux_scalar, units )
+    return rad_radial(sim, 0)
 
 @pynbody.derived_array
 def rad_1_flux_radial(sim):
-    import numpy as np
-    from pynbody.array import SimArray
-    from seren3.utils import unit_vec_r, heaviside
-
-    flux = []
-    units = None
-    for i in 'xyz':
-        #print i
-        fi = sim.g["rad_1_flux_%s" % i]
-        flux.append(fi)
-        units = fi.units
-    flux = np.array(flux).T
-
-    x,y,z = sim.g["pos"].T
-    r = np.sqrt(x**2 + y**2 + z**2)
-    # theta = sim.g["sg_theta"]
-    # phi = sim.g["sg_az"]
-    theta = np.arccos(z / r)
-    phi = np.arctan2(y, x)
-
-    flux_scalar = np.zeros(len(theta))
-    for i in range(len(theta)):
-        th, ph = (theta[i], phi[i])
-        unit_r = unit_vec_r(th, ph)
-        # Compute outward flux (should always be positive)
-        flux_scalar[i] = np.abs(np.dot(flux[i], unit_r)\
-                * heaviside(np.dot(flux[i], unit_r)))
-
-    return SimArray( flux_scalar, units )
+    return rad_radial(sim, 1)
 
 @pynbody.derived_array
 def rad_2_flux_radial(sim):
-    import numpy as np
-    from pynbody.array import SimArray
-    from seren3.utils import unit_vec_r, heaviside
-
-    flux = []
-    units = None
-    for i in 'xyz':
-        #print i
-        fi = sim.g["rad_2_flux_%s" % i]
-        flux.append(fi)
-        units = fi.units
-    flux = np.array(flux).T
-
-    x,y,z = sim.g["pos"].T
-    r = np.sqrt(x**2 + y**2 + z**2)
-    # theta = sim.g["sg_theta"]
-    # phi = sim.g["sg_az"]
-    theta = np.arccos(z / r)
-    phi = np.arctan2(y, x)
-
-    flux_scalar = np.zeros(len(theta))
-    for i in range(len(theta)):
-        th, ph = (theta[i], phi[i])
-        unit_r = unit_vec_r(th, ph)
-        # Compute outward flux (should always be positive)
-        flux_scalar[i] = np.abs(np.dot(flux[i], unit_r)\
-                * heaviside(np.dot(flux[i], unit_r)))
-
-    return SimArray( flux_scalar, units )
+    return rad_radial(sim, 2)
 
 @pynbody.derived_array
 def sg_theta(sim):

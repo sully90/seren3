@@ -11,6 +11,9 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
     from seren3.array import SimArray
     from seren3.core.snapshot import Family
 
+    from pynbody import sph
+    reload(sph)
+
     if not isinstance(family, Family):
         raise Exception("Must supply a Family level snapshot")
 
@@ -32,6 +35,9 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
     if (isinstance(radius, SimArray) is False):
         raise Exception("Radius must be a SimArray")
 
+    radius.convert_units("kpc")
+    # radius = "%f kpc" % (radius)
+
     if in_units is not None:
         s_family[qty].convert_units(in_units)
     out_units = kwargs.pop("out_units", None)
@@ -44,7 +50,7 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
     kwargs["kernel"] = kernel
     if ndim == 1:
         # Scalar
-        im = pynbody.sph.render_spherical_image(s_family, qty=qty, \
+        im = sph.render_spherical_image(s_family, qty=qty, \
                  distance=radius, out_units=out_units, nside=nside, **kwargs)
         return im
     else:
@@ -52,7 +58,7 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
         im = {}
         for i in 'xyz':
             qty_i = "%s_%s" % (qty, i)
-            im[i] = pynbody.sph.render_spherical_image(s_family, qty=qty_i, \
+            im[i] = sph.render_spherical_image(s_family, qty=qty_i, \
                  distance=radius, out_units=out_units, nside=nside, **kwargs)
         if ret_mag:
             return np.sqrt( im['x']**2 + im['y']**2 + im['z']**2 )

@@ -153,7 +153,7 @@ def outflow_fesc(sim, halo):
     ax1.fill_between(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, alpha=0.2)
     ax1.plot(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, linewidth=3., label="Star Formation Rate")
     ax1.plot(mass_flux_time, F_plus, color="darkorange", linewidth=2., linestyle='-.', label="Outflow rate")
-    ax1.plot(mass_flux_time, np.abs(F_minus)/np.abs(F_minus).max(), color="g", linewidth=2., linestyle=':', label="Inflow rate")
+    ax1.plot(mass_flux_time, np.abs(F_minus), color="g", linewidth=2., linestyle=':', label="Inflow rate")
     # ax2.fill_between(rho_sfr_lbtime.in_units("Myr"), rho_sfr, color=sSFR_col, alpha=0.2)
 
     #Dummy
@@ -189,7 +189,7 @@ def outflow_fesc(sim, halo):
     yticks = ax1.get_yticks()
     # ax1.set_ylim(yticks.min(), yticks.max()*10.)
     # ax1.set_ylim(SFR.in_units("Msol yr**-1").min(), SFR.in_units("Msol yr**-1").min() + 5.)
-    max_y = max(SFR.in_units("Msol yr**-1").max(), F_plus.max(), F_minus.max())
+    max_y = max(SFR.in_units("Msol yr**-1").max(), F_plus.max(), np.abs(F_minus).max())
     ax1.set_ylim(SFR.in_units("Msol yr**-1").min(), max_y + 2.)
     # ax1.set_ylim(0.04, max_y + 2.)
 

@@ -14,6 +14,7 @@ def integrate_surface_flux(flux_map, r):
     import healpy as hp
     from scipy.integrate import trapz
     from seren3.array import SimArray
+    from seren3.utils import unit_vec_r, heaviside
 
     if not ((isinstance(flux_map, SimArray) or isinstance(r, SimArray))):
         raise Exception("Must pass SimArrays")
@@ -30,13 +31,16 @@ def integrate_surface_flux(flux_map, r):
 
     for i in range(len(theta)):
         th, ph = (theta[i], phi[i])
-        integrand[i] = r**2 * np.sin(th) * flux_map[i]  # rad_%i_flux_radial function already deals with unit vev and heaviside func.
+        unit_r = unit_vec_r(th, ph)
+        # integrand[i] = r**2 * np.sin(th) * np.dot(flux_map[i], unit_r)\
+        #         * heaviside(np.dot(flux_map[i], unit_r))
+        integrand[i] = r**2 * np.sin(th) * flux_map[i]
 
     integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
     I = trapz(trapz(integrand, phi), theta)
     return SimArray(I, "s**-1")
 
-def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=False, **kwargs):
+def fesc(subsnap, filt=False, do_multigroup=True, ret_flux_map=False, ret_dset=False, half_rvir=False, **kwargs):
     '''
     Computes halo escape fraction of hydrogen ionising photons
     '''
@@ -46,10 +50,15 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=Fa
     from seren3.utils import derived_utils
     from seren3.analysis.render import render_spherical
 
+    reload(render_spherical)
+
     if isinstance(subsnap, Halo):
         subsnap = subsnap.subsnap
 
     rvir = SimArray(subsnap.region.radius, subsnap.info["unit_length"])
+    if (half_rvir):
+        print "Using half virial radius"
+        rvir = SimArray(subsnap.region.radius, subsnap.info["unit_length"]) * 0.5
     rt_c = SimArray(subsnap.info_rt["rt_c_frac"] * subsnap.C.c)
     dt = (rvir / rt_c).in_units("s")
 
@@ -80,8 +89,10 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=Fa
             Nion_d = star_Nion_d(subsnap, dset, dt=dt, group=ii+1)
             nPhot += (Nion_d * mass).sum()
 
-        # Compute integrated flux out of the virial sphere
-        flux_map = render_spherical.render_quantity(subsnap.g, "rad_flux_radial", s=s, in_units=in_units, out_units=in_units, **kwargs)
+            # Compute integrated flux out of the virial sphere
+            # flux_map = render_spherical.render_quantity(subsnap.g, "rad_%i_flux" % ii, s=s, in_units=in_units, out_units=in_units, radius=rvir, **kwargs)
+            # integrated_flux += integrate_surface_flux(flux_map, rvir)
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_flux_radial", s=s, in_units=in_units, out_units=in_units, radius=rvir, **kwargs)
         integrated_flux += integrate_surface_flux(flux_map, rvir)
     else:
         # Compute number of ionising photons from stars at time
@@ -91,7 +102,7 @@ def fesc(subsnap, filt=True, do_multigroup=True, ret_flux_map=False, ret_dset=Fa
         nPhot += (Nion_d * mass).sum()
 
         # Compute integrated flux out of the virial sphere
-        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux_radial", s=s, in_units=in_units, out_units=in_units, **kwargs)
+        flux_map = render_spherical.render_quantity(subsnap.g, "rad_0_flux", s=s, in_units=in_units, out_units=in_units, **kwargs)
         integrated_flux += integrate_surface_flux(flux_map, rvir)
 
     fesc = integrated_flux.in_units("s**-1") / nPhot.in_units("s**-1")
