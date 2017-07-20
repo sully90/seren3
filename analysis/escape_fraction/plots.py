@@ -6,6 +6,11 @@ def load_dbs(halo):
 
     return fesc_res, mass_flux_res
 
+def plot_fesc_tot_outflow(snapshot):
+    '''
+    Integrate the total mass ourflowed and photons escaped for all haloes
+    '''
+
 
 def integrated_nescape_outflow(snapshot, halos):
     '''
@@ -13,6 +18,7 @@ def integrated_nescape_outflow(snapshot, halos):
     '''
     import numpy as np
     from scipy.integrate import trapz
+    from seren3.array import SimArray
     from seren3.scripts.mpi import time_int_fesc_all_halos, history_mass_flux_all_halos
 
     fesc_db = time_int_fesc_all_halos.load(snapshot)
@@ -25,9 +31,16 @@ def integrated_nescape_outflow(snapshot, halos):
         mass_flux_lbtime = mass_flux_res['lbtime'].in_units("Myr")
 
         tint_fesc_hist = fesc_res["tint_fesc_hist"]
+
+        idx = np.where(np.isnan(tint_fesc_hist))
+        if (len(idx[0]) > 1):
+            return None, None
+
         I2 = fesc_res["I2"]
 
         F, F_plus, F_minus = mass_flux_res["F"].transpose()
+        F_plus = SimArray(F_plus, "Msol yr**-1")
+        F_minus = SimArray(F_minus, "Msol yr**-1")
 
         if (len(F_plus) != len(I2)):
             return None, None
@@ -40,11 +53,11 @@ def integrated_nescape_outflow(snapshot, halos):
         # if (hasattr(F_plus, "units") is False):
         #     F_plus = snapshot.array(F_plus, "Msol yr**-1")
 
-        idx = np.where(~np.isnan(tint_fesc_hist))
-        tint_fesc_hist = tint_fesc_hist[idx]; fesc_lbtime = fesc_lbtime[idx]
+        # idx = np.where(~np.isnan(tint_fesc_hist))
+        # tint_fesc_hist = tint_fesc_hist[idx]; fesc_lbtime = fesc_lbtime[idx]
 
-        idx = np.where(~np.isnan(massescape_dt))
-        massescape_dt = massescape_dt[idx]; mass_flux_lbtime = mass_flux_lbtime[idx]
+        # idx = np.where(~np.isnan(massescape_dt))
+        # massescape_dt = massescape_dt[idx]; mass_flux_lbtime = mass_flux_lbtime[idx]
 
         total_outflowed_mass = trapz(massescape_dt, mass_flux_lbtime.in_units("yr"))
 

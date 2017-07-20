@@ -72,6 +72,76 @@ def tmp(h1, h2, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2"
             anno(ax, xy, rvir/2., color="r")
     return s
 
+def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", **kwargs):
+    import matplotlib.pylab as plt
+    from matplotlib.ticker import IndexLocator, FormatStrFormatter
+    from matplotlib.colors import Colormap, LinearSegmentedColormap
+    from matplotlib.patches import Circle
+    import pynbody
+    from pynbody.plot import sph
+
+    def anno(ax, xy, rvir, color="lightsteelblue", facecolor="none", alpha=1):
+            e = Circle(xy=xy, radius=rvir)
+
+            ax.add_artist( e )
+            e.set_clip_box( ax.bbox )
+            e.set_edgecolor( color )
+            e.set_facecolor( facecolor )  # "none" not None
+            e.set_alpha( alpha )
+
+    xy=(0,0)
+    nrows=3
+    fig, axs = plt.subplots(nrows=nrows, ncols=1, figsize=(6,10))
+
+    # fig.subplots_adjust(hspace=0.001)
+    # fig.subplots_adjust(wspace=0.9)
+
+    def _load_s(h):
+        s = h.pynbody_snapshot(filt=False)
+        return s
+
+    if "s" in kwargs:
+        s = kwargs.pop("s")
+    else:
+        s = _load_s(h1)
+        if rotate:
+            # tx = pynbody.analysis.angmom.sideon(s[1].s[pynbody.filt.Sphere(radius='2 kpc')])
+            # tx.apply_to(s[0])
+            pynbody.analysis.angmom.sideon(s.s[pynbody.filt.Sphere(radius='2 kpc')])
+
+    for ax, field in zip(axs.flatten(), ["rho", "mass_flux_radial", "rad_flux_radial"]):
+                
+        s.physical_units()
+        rvir = h1.rvir.in_units(s.g['pos'].units)
+        width = '%1.2f kpc' % (2.1*rvir)
+        s.g['rad_flux_radial'].convert_units("s**-1 m**-2")
+        s.g['rad_0_rho'].convert_units("s**-1 m**-2")
+
+        print "Rvir = %1.2f kpc" % rvir.in_units("kpc")
+
+        if field == "mass_flux_radial":
+            sph.velocity_image(s.g, qty="outflow_rate", units=out_units,\
+                         width=width, av_z=av_z, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{M}_{\mathrm{gas}}}$",\
+                         subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", **kwargs)
+        elif field == "rad_flux_radial":
+            # sph.velocity_image(s.g, qty="rad_flux_radial", units="s**-1 m**-2",\
+            #              width=width, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
+            #              subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1")
+
+            sph.velocity_image(s.g, qty="rad_0_rho", units="s**-1 m**-2",\
+                         width=width, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
+                         subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", vmin=1e8, vmax=1e12)
+
+            # sph.velocity_image(s.g, qty="temp", units="K",\
+            #              width=width, av_z=av_z, cmap="jet", qtytitle=r"T",\
+            #              subplot=ax, quiverkey=False, vector_color="k", vector_resolution=20, key_length="1000 km s**-1")
+        else:
+            sph.velocity_image(s.g, qty=field, width=width, cmap="RdBu_r", qtytitle=r"$\rho$$_{\mathrm{gas}}$",\
+                     vector_resolution=20, vector_color=vc, key_x=0.35, key_y=0.815, key_color='yellow', key_length="250 km s**-1", units="Msol kpc**-2", subplot=ax)
+        anno(ax, xy, rvir)
+        anno(ax, xy, rvir/2., color="r")
+    return s
+
 def obs_errors(quantity, ax=None):
     '''
     @author Keri Dixon

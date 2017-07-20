@@ -331,6 +331,26 @@ def amr_PHrate(context, dset):
 
 #################################### RADIAL QUANTITIES #################################
 
+@seren3.derived_quantity(requires=["pos"])
+def amr_r(context, dset, center=None, **kwargs):
+    if (center is None):
+        # Locate centre of mass
+        if hasattr(context, "base"):
+            if hasattr(context.base, "region"):
+                center = context.base.region.center
+        else:
+            from seren3.utils import camera_utils
+            center = camera_utils.find_center_of_mass(context)
+
+    unit_l = context.array(context.info["unit_length"])
+    pos = dset["pos"].in_units(unit_l) - center
+    x,y,z = pos.T
+
+    # Cartesian -> spherical polars
+    r = np.sqrt(x**2 + y**2 + z**2)
+    return context.array(r, pos.units)
+
+
 @seren3.derived_quantity(requires=["rho", "pos", "vel"])
 def amr_outflow_rate(context, dset, center=None, **kwargs):
     from seren3.utils import unit_vec_r, heaviside
@@ -365,4 +385,90 @@ def amr_outflow_rate(context, dset, center=None, **kwargs):
                 * heaviside(np.dot(rho_u[i], unit_r))
 
     return SimArray( mass_flux_scalar, rho_u.units )
+
+@seren3.derived_quantity(requires=["rho", "pos", "vel"])
+def amr_inflow_rate(context, dset, center=None, **kwargs):
+    from seren3.utils import unit_vec_r, heaviside
+
+    if (center is None):
+        # Locate centre of mass
+        if hasattr(context, "base"):
+            if hasattr(context.base, "region"):
+                center = context.base.region.center
+        else:
+            from seren3.utils import camera_utils
+            center = camera_utils.find_center_of_mass(context)
+
+    unit_l = context.array(context.info["unit_length"])
+    pos = dset["pos"].in_units(unit_l) - center
+    x,y,z = pos.T
+
+    # Cartesian -> spherical polars
+    r = np.sqrt(x**2 + y**2 + z**2)
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
+
+    rho = dset["rho"]
+    vel = dset["vel"]
+    rho_u = (rho * vel.T).T
+
+    mass_flux_scalar = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        mass_flux_scalar[i] = np.dot(rho_u[i], unit_r)\
+                * heaviside(np.dot(-rho_u[i], unit_r))
+
+    return SimArray( mass_flux_scalar, rho_u.units )
+
+# Not a derived field, just a utility function
+def _rad_group_flux_radial(flux_arr, r, theta, phi):
+    '''
+    Computes outward flux of radiation from the context center
+    '''
+    from seren3.utils import unit_vec_r, heaviside
+
+    radial_flux = np.zeros(len(theta))
+    for i in range(len(theta)):
+        th, ph = (theta[i], phi[i])
+        unit_r = unit_vec_r(th, ph)
+        radial_flux[i] = np.dot(flux_arr[i], unit_r)\
+                * heaviside(np.dot(flux_arr[i], unit_r))
+
+    return SimArray( radial_flux, flux_arr.units )
+
+@seren3.derived_quantity(requires=["pos", "Fp1", "Fp2", "Fp3"])
+def amr_rad_flux_radial(context, dset, center=None, **kwargs):
+    '''
+    Computes flux radially outwards from context centre
+    for all photon groups
+    '''
+    if (center is None):
+        # Locate centre of mass
+        if hasattr(context, "base"):
+            if hasattr(context.base, "region"):
+                center = context.base.region.center
+        else:
+            raise Exception("Cannot determind context centre for derived field rad_flux_radial")
+
+    unit_l = context.array(context.info["unit_length"])
+    pos = dset["pos"].in_units(unit_l) - center
+    x,y,z = pos.T
+
+    # Cartesian -> spherical polars
+    r = np.sqrt(x**2 + y**2 + z**2)
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
+
+    radial_flux = context.array(np.zeros(len(dset["Fp1"])), dset["Fp1"].units)
+
+    for iGroup in range(3):
+        flux_arr = dset["Fp%i" % (iGroup + 1)]
+
+        radial_flux += _rad_group_flux_radial(flux_arr, r, theta, phi)
+
+    return radial_flux
+
+
+
 

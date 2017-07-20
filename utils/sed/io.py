@@ -234,7 +234,7 @@ def write_seds(agebins, zbins, Ls, SEDs, seddir=None):
             f._write_check(np.int32(len(Ls) * 8))
 
 
-def plot_sed(agebins, zbins, Ls, SEDs, ax=None, label_ion_freqs=False, show_legend=False, **kwargs):
+def plot_sed(agebins, zbins, Ls, SEDs, ax=None, fs=20, label_ion_freqs=False, show_legend=False, **kwargs):
     import numpy as np
     import matplotlib.pylab as plt
     import matplotlib.cm as cm
@@ -257,6 +257,7 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, label_ion_freqs=False, show_lege
     else:
         ax = plt.gca()
 
+    print kwargs
     for age, c in zip(ages, colors):
         age_idx = (np.abs(age*1e6 - agebins)).argmin()
         print age_idx
@@ -273,10 +274,10 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, label_ion_freqs=False, show_lege
     # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': 12.})
 
     if show_legend:
-        ax.legend(loc='lower right', prop={"size":18})
+        ax.legend(loc='lower right', prop={"size":22})
     ax.set_yscale('log')
-    plt.xlabel(r'$\lambda$ [$\AA$]')
-    plt.ylabel(r'J$_{\lambda}$ [L$_{\odot}$/M$_{\odot}$/$\AA$]')
+    plt.xlabel(r'$\lambda$ [$\AA$]', fontsize=fs)
+    plt.ylabel(r'J$_{\lambda}$ [L$_{\odot}$/M$_{\odot}$/$\AA$]', fontsize=fs)
 
     if label_ion_freqs:
         HI = 912  # A
@@ -294,7 +295,6 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, label_ion_freqs=False, show_lege
         ax.text(HeII, ypos, r'HeII', fontsize=20, ha='center')
 
     ax.set_ylim(1e-15, 1e1)
-    plt.tight_layout()
 
 
 def read_bouwens_2015():

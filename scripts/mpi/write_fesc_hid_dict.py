@@ -80,7 +80,7 @@ def main(path, iout, pickle_path):
                     h_fesc = fesc(h.subsnap, nside=2**3, filt=False, do_multigroup=True, denoise=True)
                     mpi.msg("%1.2e \t %1.2e" % (h["Mvir"], h_fesc))
                     sto.result = {"fesc" : h_fesc, "tot_mass" : tot_mass, \
-                        "Nion_d_now" : Nion_d_all_groups, "star_dict" : dict_stars,\
+                        "Nion_d_now" : Nion_d_all_groups,\
                         "hprops" : h.properties}
 
                 except NoParticlesException as e:

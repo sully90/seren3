@@ -26,12 +26,13 @@ def integrate_surface_flux(flux_map, r):
         th, ph = (theta[i], phi[i])
         integrand[i] = r**2 * np.sin(th) * flux_map[i]  # mass_flux_radial function already deals with unit vev
 
-    integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
-    I = trapz(trapz(integrand, phi), theta)
+    # integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
+    # I = trapz(trapz(integrand, phi), theta)
+    I = trapz(integrand, theta) * 2.*np.pi
     return SimArray(I, "Msol yr**-1")
 
 
-def dm_by_dt(subsnap, filt=True, **kwargs):
+def dm_by_dt(subsnap, filt=False, **kwargs):
     '''
     Compute mass flux at the virial sphere
     '''

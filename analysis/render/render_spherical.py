@@ -31,6 +31,7 @@ def render_quantity(family, qty, in_units=None, s=None, nside=2**5, kernel=pynbo
 
     # Radius from subsnap center to the healpix surface
     radius = kwargs.pop("radius", SimArray(family.base.region.radius, family.info["unit_length"]).in_units("kpc"))
+    # print "radius = ", radius
 
     if (isinstance(radius, SimArray) is False):
         raise Exception("Radius must be a SimArray")
