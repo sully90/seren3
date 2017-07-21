@@ -128,7 +128,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
     import numpy as np
     from seren3.scripts.mpi import write_fesc_hid_dict
 
-    db = write_fesc_hid_dict.load_db(halo.base.path, halo.base.ioutput)
+    db = kwargs.pop("db", write_fesc_hid_dict.load_db(halo.base.path, halo.base.ioutput))
     if (int(halo["id"]) in db.keys()):
         catalogue = halo.base.halos(finder="ctrees")
 
@@ -146,7 +146,7 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
 
             if (fesc_h > 1.):
                 fesc_h = random.uniform(0.9, 1.0)
-            Nphotons = (result["Nion_d_now"] * result["star_dict"]["mass"].in_units("Msol")).sum()
+            Nphotons = (result["Nion_d_now"] * result["star_mass"].in_units("Msol")).sum()
 
             fesc_dict[h.base.ioutput] = fesc_h
             Nphoton_dict[h.base.ioutput] = Nphotons # at t=0, not dt=rvir/c !!!
@@ -157,11 +157,11 @@ def time_integrated_fesc(halo, back_to_aexp, return_data=True, **kwargs):
         _compute(halo, db)
         # Iterate through the most-massive progenitor line
         for prog in catalogue.iterate_progenitors(halo, back_to_aexp=back_to_aexp):
-            db = write_fesc_hid_dict.load_db(prog.base.path, prog.base.ioutput)
+            prog_db = write_fesc_hid_dict.load_db(prog.base.path, prog.base.ioutput)
             # print prog
 
-            if (int(prog["id"]) in db.keys()):
-                _compute(prog, db)
+            if (int(prog["id"]) in prog_db.keys()):
+                _compute(prog, prog_db)
             else:
                 break
 

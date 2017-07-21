@@ -25,6 +25,63 @@ def load_halo(halo):
     else:
         return None
 
+def add_mass_to_dbs(path, iout, pickle_path):
+    import seren3
+    from seren3.utils import derived_utils
+    from seren3.analysis.parallel import mpi
+    from seren3.core.serensource import DerivedDataset
+    import pickle, os
+
+    mpi.msg("Loading snapshot")
+    snap = seren3.load_snapshot(path, iout)
+    snap.set_nproc(1)
+
+    halos = snap.halos(finder="ctrees")
+
+    db = load_db(snap.path, snap.ioutput)
+    hids = np.array( db.keys() )
+
+    star_Nion_d_fn = derived_utils.get_derived_field(snap.s, "Nion_d")
+    nIons = snap.info_rt["nIons"]
+
+    dest = {}
+    for i, sto in mpi.piter(hids, storage=dest, print_stats=True):
+        hid = int(i)
+        h = halos.with_id(hid)
+
+        star_dset = h.s[["age", "metal", "mass"]].flatten()
+        star_mass = star_dset["mass"]
+        star_age = star_dset["age"]
+        star_metal = star_dset["metal"]
+
+        dict_stars = {"age" : star_age, "metal" : star_metal, "mass" : star_mass}
+        dset_stars = DerivedDataset(snap.s, dict_stars)
+
+        Nion_d_all_groups = snap.array(np.zeros(len(dset_stars["age"])), "s**-1 Msol**-1")
+
+        for ii in range(nIons):
+            Nion_d_now = star_Nion_d_fn(snap, dset_stars, group=ii+1, dt=0.)
+            Nion_d_all_groups += Nion_d_now
+
+        sto.idx = hid
+        sto.result = db[hid]
+        sto.result["star_mass"] = star_mass
+        sto.result["Nion_d_now"] = Nion_d_all_groups
+
+    if mpi.host:
+        if pickle_path is None:
+            pickle_path = "%s/pickle/%s/" % (path, halos.finder.lower())
+        # pickle_path = "%s/" % path
+        if os.path.isdir(pickle_path) is False:
+            os.mkdir(pickle_path)
+        unpacked_dest = mpi.unpack(dest)
+        fesc_dict = {}
+        for i in range(len(unpacked_dest)):
+            fesc_dict[int(unpacked_dest[i].idx)] = unpacked_dest[i].result
+        pickle.dump( fesc_dict, open( "%s/fesc_database_no_filt_denoise_%05i.p" % (pickle_path, iout), "wb" ) )
+
+
+
 def main(path, iout, pickle_path):
     import seren3
     from seren3.core.serensource import DerivedDataset
@@ -110,3 +167,5 @@ if __name__ == "__main__":
         pickle_path = sys.argv[3]
 
     main(path, iout, pickle_path)
+    # add_mass_to_dbs(path, iout, pickle_path)
+    

@@ -78,14 +78,14 @@ def integrate_dm_by_dt(I1, I2, lbtime):
     return trapz(I1, lbtime) / trapz(I2, lbtime)
 
 
-def mass_flux_hist(halo, back_to_aexp, return_data=True):
+def mass_flux_hist(halo, back_to_aexp, return_data=True, **kwargs):
     '''
     Compute history of in/outflows
     '''
     import numpy as np
     from seren3.scripts.mpi import write_mass_flux_hid_dict
 
-    db = write_mass_flux_hid_dict.load_db(halo.base.path, halo.base.ioutput)
+    db = kwargs.pop("db", write_mass_flux_hid_dict.load_db(halo.base.path, halo.base.ioutput))
     if (int(halo["id"]) in db.keys()):
         catalogue = halo.base.halos(finder="ctrees")
 
@@ -106,10 +106,10 @@ def mass_flux_hist(halo, back_to_aexp, return_data=True):
         _compute(halo, db)
 
         for prog in catalogue.iterate_progenitors(halo, back_to_aexp=back_to_aexp):
-            db = write_mass_flux_hid_dict.load_db(prog.base.path, prog.base.ioutput)
+            prog_db = write_mass_flux_hid_dict.load_db(prog.base.path, prog.base.ioutput)
 
-            if (int(prog["id"]) in db.keys()):
-                _compute(prog, db)
+            if (int(prog["id"]) in prog_db.keys()):
+                _compute(prog, prog_db)
             else:
                 break
         F = np.array(F)

@@ -9,8 +9,8 @@ def load_db(path, ioutput):
 
     pickle_path = "%s/pickle/ConsistentTrees/" % path
     # return pickle.load( open("%s/mass_flux_database_%05i.p" % (pickle_path, ioutput), "rb") )
-    return pickle.load( open("%s/mass_flux_database_no_filt_half_rvir_%05i.p" % (pickle_path, ioutput), "rb") )
-    # return pickle.load( open("%s/mass_flux_database_no_filt_half_rvir_denoise_%05i.p" % (pickle_path, ioutput), "rb") )
+    # return pickle.load( open("%s/mass_flux_database_no_filt_half_rvir_%05i.p" % (pickle_path, ioutput), "rb") )
+    return pickle.load( open("%s/mass_flux_database_no_filt_half_rvir_denoise_%05i.p" % (pickle_path, ioutput), "rb") )
 
 def load_halo(halo):
     import pickle

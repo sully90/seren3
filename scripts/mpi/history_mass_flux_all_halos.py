@@ -38,9 +38,10 @@ def main(path, pickle_path):
         snap.set_nproc(1)
         halos = snap.halos(finder="ctrees")
 
+        db = write_mass_flux_hid_dict.load_db(path, iout)
+
         halo_ids = None
         if mpi.host:
-            db = write_mass_flux_hid_dict.load_db(path, iout)
             halo_ids = db.keys()
             random.shuffle(halo_ids)
 
@@ -48,7 +49,7 @@ def main(path, pickle_path):
         for i, sto in mpi.piter(halo_ids, storage=dest, print_stats=True):
             h = halos.with_id(i)
             
-            F, age_arr, lbtime, hids, iouts = mass_flux_hist(h, back_to_aexp, return_data=True)
+            F, age_arr, lbtime, hids, iouts = mass_flux_hist(h, back_to_aexp, return_data=True, db=db)
 
             sto.idx = h.hid
             sto.result = {'F' : F, 'age_array' : age_arr, 'lbtime' : lbtime, \

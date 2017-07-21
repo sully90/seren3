@@ -110,16 +110,17 @@ def main(path, pickle_path):
         snap.set_nproc(1)
         halos = snap.halos(finder="ctrees")
 
+        db = write_fesc_hid_dict.load_db(path, iout)
+        
         halo_ids = None
         if mpi.host:
-            db = write_fesc_hid_dict.load_db(path, iout)
             halo_ids = db.keys()
             random.shuffle(halo_ids)
 
         dest = {}
         for i, sto in mpi.piter(halo_ids, storage=dest, print_stats=True):
             h = halos.with_id(i)
-            res = time_integrated_fesc(h, back_to_aexp, return_data=True)
+            res = time_integrated_fesc(h, back_to_aexp, db=db, return_data=True)
             if (res is not None):
                 mpi.msg("%05i \t %i \t %i" % (snap.ioutput, h.hid, i))
                 tint_fesc_hist, I1, I2, lbtime, hids, iouts = res
