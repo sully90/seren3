@@ -27,18 +27,20 @@ def integrate_surface_flux(flux_map, r):
     r = r.in_units("m")  # make sure r is in meters
 
     # Compute the integral
-    integrand = np.zeros(len(theta))
+    # integrand = np.zeros(len(theta))
+    ix = theta.argsort()
+    integrand = r**2 * np.sin(theta[ix]) * flux_map[ix]
 
-    for i in range(len(theta)):
-        th, ph = (theta[i], phi[i])
-        unit_r = unit_vec_r(th, ph)
-        # integrand[i] = r**2 * np.sin(th) * np.dot(flux_map[i], unit_r)\
-        #         * heaviside(np.dot(flux_map[i], unit_r))
-        integrand[i] = r**2 * np.sin(th) * flux_map[i]
+    # for i in range(len(theta)):
+    #     th, ph = (theta[i], phi[i])
+    #     unit_r = unit_vec_r(th, ph)
+    #     # integrand[i] = r**2 * np.sin(th) * np.dot(flux_map[i], unit_r)\
+    #     #         * heaviside(np.dot(flux_map[i], unit_r))
+    #     integrand[i] = r**2 * np.sin(th) * flux_map[i]
 
     # integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
     # I = trapz(trapz(integrand, phi), theta)
-    I = trapz(integrand, theta) * 2.*np.pi
+    I = trapz(integrand, theta[ix]) * 2.*np.pi
     return SimArray(I, "s**-1")
 
 def fesc(subsnap, filt=False, do_multigroup=True, ret_flux_map=False, ret_dset=False, half_rvir=False, **kwargs):

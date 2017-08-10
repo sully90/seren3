@@ -6,87 +6,6 @@ def load_dbs(halo):
 
     return fesc_res, mass_flux_res
 
-def plot_fesc_tot_outflow(snapshot):
-    '''
-    Integrate the total mass ourflowed and photons escaped for all haloes
-    '''
-
-
-def integrated_nescape_outflow(snapshot, halos):
-    '''
-    Integrate the total mass ourflowed and photons escaped for all haloes
-    '''
-    import numpy as np
-    from scipy.integrate import trapz
-    from seren3.array import SimArray
-    from seren3.scripts.mpi import time_int_fesc_all_halos, history_mass_flux_all_halos
-
-    fesc_db = time_int_fesc_all_halos.load(snapshot)
-
-    def _int_I2_weighted(I1, I2, lbtime):
-        return trapz(I1, lbtime) / trapz(I2, lbtime)
-
-    def _integrate_halo(fesc_res, mass_flux_res):
-        fesc_lbtime = fesc_res["lbtime"].in_units("Myr")
-        mass_flux_lbtime = mass_flux_res['lbtime'].in_units("Myr")
-
-        tint_fesc_hist = fesc_res["tint_fesc_hist"]
-
-        idx = np.where(np.isnan(tint_fesc_hist))
-        if (len(idx[0]) > 1):
-            return None, None
-
-        I2 = fesc_res["I2"]
-
-        F, F_plus, F_minus = mass_flux_res["F"].transpose()
-        F_plus = SimArray(F_plus, "Msol yr**-1")
-        F_minus = SimArray(F_minus, "Msol yr**-1")
-
-        if (len(F_plus) != len(I2)):
-            return None, None
-
-        mass_flux_I1 = F_plus * I2
-        massescape_dt = np.zeros(len(mass_flux_lbtime))
-        for i in xrange(len(massescape_dt)):        
-            massescape_dt[i] = _int_I2_weighted(mass_flux_I1[i:], I2[i:], mass_flux_lbtime[i:])
-        massescape_dt = snapshot.array(massescape_dt, "Msol yr**-1")
-        # if (hasattr(F_plus, "units") is False):
-        #     F_plus = snapshot.array(F_plus, "Msol yr**-1")
-
-        # idx = np.where(~np.isnan(tint_fesc_hist))
-        # tint_fesc_hist = tint_fesc_hist[idx]; fesc_lbtime = fesc_lbtime[idx]
-
-        # idx = np.where(~np.isnan(massescape_dt))
-        # massescape_dt = massescape_dt[idx]; mass_flux_lbtime = mass_flux_lbtime[idx]
-
-        total_outflowed_mass = trapz(massescape_dt, mass_flux_lbtime.in_units("yr"))
-
-        if len(tint_fesc_hist) == 0:
-            return None, None
-        return tint_fesc_hist[0], total_outflowed_mass
-
-    tint_fesc_arr = []
-    outflowed_mass_arr = []
-    for i in range(len(fesc_db)):
-        hid = int(fesc_db[i].idx)
-        h = halos.with_id(hid)
-
-        fesc_res = fesc_db[i].result
-        mass_flux_res = history_mass_flux_all_halos.load_halo(h)
-        tint_fesc, total_outflowed_mass = _integrate_halo(fesc_res, mass_flux_res)
-
-        if (tint_fesc is None or total_outflowed_mass is None):
-            continue
-        elif (tint_fesc == 0 or total_outflowed_mass == 0):
-            continue
-        tint_fesc_arr.append(tint_fesc)
-        outflowed_mass_arr.append(total_outflowed_mass)
-
-    tint_fesc_arr = np.array(tint_fesc_arr)
-    outflowed_mass_arr = np.array(outflowed_mass_arr)
-
-    return tint_fesc_arr, outflowed_mass_arr
-
 
 def outflow_fesc(sim, halo):
     '''
@@ -141,6 +60,7 @@ def outflow_fesc(sim, halo):
 
     fesc_res, mass_flux_res = load_dbs(halo)
 
+    tint_fesc = fesc_res['tint_fesc_hist']
     fesc = fesc_res["fesc"]
     fesc_lbtime = fesc_res["lbtime"]
 
@@ -162,6 +82,7 @@ def outflow_fesc(sim, halo):
     sSFR_time = sSFR_lookback_time.in_units("Myr")[::-1]
 
     ax2.plot(fesc_time, fesc, color="r", linewidth=2.)
+    ax2.plot(fesc_time, tint_fesc, color="m", linewidth=2., linestyle="--")
 
     ax1.fill_between(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, alpha=0.2)
     ax1.plot(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, linewidth=3., label="Star Formation Rate")

@@ -106,7 +106,7 @@ def amr_ne(context, dset):
     '''
     Returns number density of electrons in each cell
     '''
-    n_e = dset["nHII"] + dset["nHe"]*(dset["xHeII"]+2.*dset["xHeIII"])
+    n_e = dset["nHII"] + dset["nHe"]*(dset["xHeII"] + 2.*dset["xHeIII"])
     return n_e
 
 @seren3.derived_quantity(requires=["rho"])
@@ -199,6 +199,13 @@ def amr_T(context, dset):
     T = dset["T2"]/dset["mu"]
     T.set_field_latex("$\\mathrm{T}$")
     return context.array(T, "K")
+
+
+@seren3.derived_quantity(requires=["T", "xHI"])
+def amr_T_xHI(context, dset, **kwargs):
+    units = dset["T"].units
+    return context.array(dset["T"] * dset["xHI"], units)
+
 
 @seren3.derived_quantity(requires=["nH"])
 def amr_TJ(context, dset):
@@ -324,10 +331,15 @@ def amr_PHrate(context, dset):
                 #     * (info["group%d" % iGroup]["cse"][iIon].express(C.cm**2) * info["group%d" % iGroup]["egy"][0].express(C.erg) \
                 #     - info["group%d" % iGroup]["csn"][iIon].express(C.cm**2) * (info["photon_properties"]["groupL0"][iIon].express(C.erg)))
 
-    if emi.min() < 0:
-        raise Exception("NEGATIVE EMI")
+    # if emi.min() < 0:
+    #     raise Exception("NEGATIVE EMI")
 
     return context.array(emi, "erg cm**-3 s**-1", latex="$\mathcal{H}$")
+
+@seren3.derived_quantity(requires=["PHrate", "xHI"])
+def amr_PHrate_xHI(context, dset, **kwargs):
+    units = dset["PHrate"].units
+    return context.array(dset["PHrate"] * dset["xHI"], units)
 
 #################################### RADIAL QUANTITIES #################################
 

@@ -155,7 +155,7 @@ def rad_radial(sim, group):
 
 @pynbody.derived_array
 def rad_flux_radial(sim):
-    return sim["rad_0_flux_radial"] + sim["rad_1_flux_radial"] + sim["rad_2_flux_radial"]
+    return (sim["rad_0_flux_radial"] + sim["rad_1_flux_radial"] + sim["rad_2_flux_radial"]).in_units("s**-1 m**-2")
 
 @pynbody.derived_array
 def rad_0_flux_radial(sim):

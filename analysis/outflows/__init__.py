@@ -20,15 +20,17 @@ def integrate_surface_flux(flux_map, r):
     r = r.in_units("kpc")  # make sure r is in meters
 
     # Compute the integral
-    integrand = np.zeros(len(theta))
+    # integrand = np.zeros(len(theta))
+    ix = theta.argsort()
+    integrand = r**2 * np.sin(theta[ix]) * flux_map[ix]
 
-    for i in range(len(theta)):
-        th, ph = (theta[i], phi[i])
-        integrand[i] = r**2 * np.sin(th) * flux_map[i]  # mass_flux_radial function already deals with unit vev
+    # for i in range(len(theta)):
+    #     th, ph = (theta[i], phi[i])
+    #     integrand[i] = r**2 * np.sin(th) * flux_map[i]  # mass_flux_radial function already deals with unit vev
 
     # integrand = integrand[:, None] + np.zeros(len(phi))  # 2D over theta and phi
     # I = trapz(trapz(integrand, phi), theta)
-    I = trapz(integrand, theta) * 2.*np.pi
+    I = trapz(integrand, theta[ix]) * 2.*np.pi
     return SimArray(I, "Msol yr**-1")
 
 
@@ -43,13 +45,15 @@ def dm_by_dt(subsnap, filt=False, **kwargs):
     reload(render_spherical)
 
     rvir = SimArray(subsnap.region.radius, subsnap.info["unit_length"])
-    to_distance = rvir/2.
+    to_distance = rvir/4.
+    # to_distance = rvir
     in_units = "kg s**-1 m**-2"
-    s = subsnap.pynbody_snapshot(filt=filt)
+    s = kwargs.pop("s", subsnap.pynbody_snapshot(filt=filt))
 
     if "nside" not in kwargs:
         kwargs["nside"] = 2**3
     kwargs["radius"] = to_distance
+    kwargs["denoise"] = True
     im = render_spherical.render_quantity(subsnap.g, "mass_flux_radial", s=s, in_units=in_units, out_units=in_units, **kwargs)
     im.convert_units("Msol yr**-1 kpc**-2")
 
@@ -58,10 +62,10 @@ def dm_by_dt(subsnap, filt=False, **kwargs):
         ix = None
         if ("out" == direction):
             ix = np.where(im_tmp < 0)
-            im_tmp[ix] = 1e-12
+            im_tmp[ix] = 0
         elif ("in" == direction):
             ix = np.where(im_tmp > 0)
-            im_tmp[ix] = -1e-12
+            im_tmp[ix] = 0
         else:
             return integrate_surface_flux(im, to_distance)    
 
@@ -124,3 +128,126 @@ def mass_flux_hist(halo, back_to_aexp, return_data=True, **kwargs):
         return F
     else:
         return None
+
+def fesc_tot_outflow(snapshot):
+    '''
+    Integrate the total mass ourflowed and photons escaped for all haloes
+    '''
+    import numpy as np
+    from scipy.integrate import trapz
+    from seren3.array import SimArray
+    from seren3.scripts.mpi import time_int_fesc_all_halos, history_mass_flux_all_halos
+
+    fesc_db = time_int_fesc_all_halos.load(snapshot)
+    mass_flux_db = history_mass_flux_all_halos.load(snapshot)
+    mass_flux_hids = np.array( [int(res.idx) for res in mass_flux_db] )
+
+    def _integrate_halo(fesc_res, mass_flux_res):
+        photons_escaped = SimArray(fesc_res["I1"], "s**-1").in_units("yr**-1")
+        cum_photons_escaped = trapz(photons_escaped, fesc_res["lbtime"].in_units("yr"))
+
+        F, F_plus, F_minus = mass_flux_res["F"].transpose()
+        F_plus = SimArray(F_plus, "Msol yr**-1")
+        F_minus = SimArray(F_minus, "Msol yr**-1")
+
+        if (len(F_plus) != len(photons_escaped)):
+            return np.nan, np.nan
+
+        cum_outflowed_mass = trapz(F_plus, mass_flux_res["lbtime"].in_units("yr"))
+        cum_inflowed_mass = np.abs(trapz(F_minus, mass_flux_res["lbtime"].in_units("yr")))
+
+        return cum_photons_escaped, cum_outflowed_mass - cum_inflowed_mass
+        # return cum_photons_escaped, cum_outflowed_mass
+
+
+    nphotons_escaped = np.zeros(len(fesc_db))
+    tot_mass_outflowed = np.zeros(len(fesc_db))
+    mvir = np.zeros(len(fesc_db))
+
+    for i in range(len(fesc_db)):
+        hid = int(fesc_db[i].idx)
+        fesc_res = fesc_db[i].result
+        mass_flux_res_ix = np.abs(mass_flux_hids - hid).argmin()
+        mass_flux_res = mass_flux_db[mass_flux_res_ix].result
+
+        nphotons_escaped[i], tot_mass_outflowed[i] = _integrate_halo(fesc_res, mass_flux_res)
+        mvir[i] = fesc_res["Mvir"]
+
+    ix = np.where( np.logical_and( ~np.isnan(nphotons_escaped), ~np.isnan(tot_mass_outflowed)) )
+
+    nphotons_escaped = nphotons_escaped[ix]
+    tot_mass_outflowed = tot_mass_outflowed[ix]
+    mvir = mvir[ix]
+
+    return nphotons_escaped, tot_mass_outflowed, mvir
+
+def fesc_mean_time_outflow(snapshot):
+    '''
+    Integrate the total mass ourflowed and photons escaped for all haloes
+    '''
+    import numpy as np
+    from scipy.integrate import trapz
+    from seren3.array import SimArray
+    from seren3.scripts.mpi import time_int_fesc_all_halos, history_mass_flux_all_halos
+
+    fesc_db = time_int_fesc_all_halos.load(snapshot)
+    mass_flux_db = history_mass_flux_all_halos.load(snapshot)
+    mass_flux_hids = np.array( [int(res.idx) for res in mass_flux_db] )
+
+    def _integrate_halo(fesc_res, mass_flux_res):
+        photons_escaped = SimArray(fesc_res["I1"], "s**-1").in_units("yr**-1")
+        # cum_photons_escaped = trapz(photons_escaped, fesc_res["lbtime"].in_units("yr"))
+        cum_photons_escaped = fesc_res["tint_fesc_hist"][0]
+
+        F, F_plus, F_minus = mass_flux_res["F"].transpose()
+        F_plus = SimArray(F_plus, "Msol yr**-1")
+        F_minus = SimArray(F_minus, "Msol yr**-1")
+
+        if (len(F_plus) != len(photons_escaped)):
+            return np.nan, np.nan
+
+        lbtime = mass_flux_res["lbtime"]
+        F_net_outflow = F_plus - np.abs(F_minus)
+
+        if len(np.where(np.isnan(F_net_outflow))[0] > 0):
+            return np.nan, np.nan
+
+        ix = np.where(F_net_outflow < 0.)
+
+        if len(ix[0] == 0):
+            return cum_photons_escaped, lbtime[-1]
+        else:
+            time_outflow = [0]
+            for i in ix[0]:
+                if (i == 0):
+                    continue
+                time_outflow.append(lbtime[i - 1])
+        time_spent = np.zeros(len(time_outflow) - 1)
+        for i in range(len(time_spent)):
+            time_spent[i] = time_outflow[i+1] - time_outflow[i]
+
+        return cum_photons_escaped, time_spent.mean()
+
+
+    nphotons_escaped = np.zeros(len(fesc_db))
+    time_spent_net_outflow = np.zeros(len(fesc_db))
+    mvir = np.zeros(len(fesc_db))
+
+    for i in range(len(fesc_db)):
+        hid = int(fesc_db[i].idx)
+        fesc_res = fesc_db[i].result
+        mass_flux_res_ix = np.abs(mass_flux_hids - hid).argmin()
+        mass_flux_res = mass_flux_db[mass_flux_res_ix].result
+
+        nphotons_escaped[i], time_spent_net_outflow[i] = _integrate_halo(fesc_res, mass_flux_res)
+        mvir[i] = fesc_res["Mvir"]
+
+    ix = np.where( np.logical_and( ~np.isnan(nphotons_escaped),\
+             np.logical_and(~np.isnan(time_spent_net_outflow),\
+             time_spent_net_outflow > 0) ) )
+
+    nphotons_escaped = nphotons_escaped[ix]
+    time_spent_net_outflow = time_spent_net_outflow[ix]
+    mvir = mvir[ix]
+    return nphotons_escaped, SimArray(time_spent_net_outflow, "Gyr"), mvir
+

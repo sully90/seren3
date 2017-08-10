@@ -10,7 +10,8 @@ def load_db(path, ioutput):
     pickle_path = "%s/pickle/ConsistentTrees/" % path
     # return pickle.load( open("%s/mass_flux_database_%05i.p" % (pickle_path, ioutput), "rb") )
     # return pickle.load( open("%s/mass_flux_database_no_filt_half_rvir_%05i.p" % (pickle_path, ioutput), "rb") )
-    return pickle.load( open("%s/mass_flux_database_no_filt_half_rvir_denoise_%05i.p" % (pickle_path, ioutput), "rb") )
+    return pickle.load( open("%s/mass_flux_database_no_filt_quarter_rvir_denoise_%05i.p" % (pickle_path, ioutput), "rb") )
+    # return pickle.load( open("%s/mass_flux_database_no_filt_rvir_denoise_%05i.p" % (pickle_path, ioutput), "rb") )
 
 def load_halo(halo):
     import pickle
@@ -100,7 +101,8 @@ def main(path, iout, pickle_path):
         fesc_dict = {}
         for i in range(len(unpacked_dest)):
             fesc_dict[int(unpacked_dest[i].idx)] = unpacked_dest[i].result
-        pickle.dump( fesc_dict, open( "%s/mass_flux_database_no_filt_half_rvir_denoise_%05i.p" % (pickle_path, iout), "wb" ) )
+        pickle.dump( fesc_dict, open( "%s/mass_flux_database_no_filt_quarter_rvir_denoise_%05i.p" % (pickle_path, iout), "wb" ) )
+        # pickle.dump( fesc_dict, open( "%s/mass_flux_database_no_filt_rvir_denoise_%05i.p" % (pickle_path, iout), "wb" ) )
 
 
 if __name__ == "__main__":
