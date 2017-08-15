@@ -46,8 +46,21 @@ class TophatFilter(FieldFilter):
     def Wk(kR):
         return 3 * (np.sin(kR) - kR * np.cos(kR)) / (kR) ** 3
 
-TF = Enum('k', 'c', 'b', 'phot', 'massless_neutrino', 'massive_neutrino',
-          'tot', 'nonu', 'totde', 'weyl', 'vcdm', 'vbaryon', 'vbc')
+class TF(Enum):
+    K = 0
+    C = 1
+    B = 2
+    PHOT = 3
+    MASSLESS_NEUTRINO = 4
+    MASSIVE_NEUTRINO = 5
+    TOT = 6
+    NONU = 7
+    TOTDE = 8
+    WEYL = 9
+    VCDM = 10
+    VBARYON = 11
+    VBC = 12
+
 
 _camb_dir = "/lustre/scratch/astro/ds381/camb/CAMB/MUSIC/"
 _camb_fbase = "Unigrid_MUSIC"
@@ -113,33 +126,33 @@ class PowerSpectrumCamb(object):
 
     def _load(self, filename):
         self._tfs = np.loadtxt("%s/%s" % (_camb_dir, filename), unpack=True)
-        k = self._tfs[TF.k.index]
+        k = self._tfs[TF.K.value]
         self._orig_k_min = k.min()
         self._orig_k_max = k.max()
 
-        tf = self._tfs[TF.tot.index]
+        tf = self._tfs[TF.TOT.value]
         Pk = self.cosmo['As'] * (k ** self.cosmo['ns']) * (tf ** 2)
 
-        bot_k = 1.e-5
+        # bot_k = 1.e-5
 
-        if k[0] > bot_k:
-            # extrapolate out
-            n = math.log10(Pk[1] / Pk[0]) / math.log10(k[1] / k[0])
+        # if k[0] > bot_k:
+        #     # extrapolate out
+        #     n = np.log10(Pk[1] / Pk[0]) / np.log10(k[1] / k[0])
 
-            Pkinterp = 10 ** (math.log10(Pk[0]) - math.log10(k[0] / bot_k) * n)
-            k = np.hstack((bot_k, k))
-            Pk = np.hstack((Pkinterp, Pk))
+        #     Pkinterp = 10 ** (np.log10(Pk[0]) - np.log10(k[0] / bot_k) * n)
+        #     k = np.hstack((bot_k, k))
+        #     Pk = np.hstack((Pkinterp, Pk))
 
-        top_k = 1.e7
+        # top_k = 1.e7
 
-        if k[-1] < top_k:
-            # extrapolate out
-            n = math.log10(Pk[-1] / Pk[-2]) / math.log10(k[-1] / k[-2])
+        # if k[-1] < top_k:
+        #     # extrapolate out
+        #     n = np.log10(Pk[-1] / Pk[-2]) / np.log10(k[-1] / k[-2])
 
-            Pkinterp = 10 ** (math.log10(Pk[-1]
-                                         ) - math.log10(k[-1] / top_k) * n)
-            k = np.hstack((k, top_k))
-            Pk = np.hstack((Pk, Pkinterp))
+        #     Pkinterp = 10 ** (np.log10(Pk[-1]
+        #                                  ) - np.log10(k[-1] / top_k) * n)
+        #     k = np.hstack((k, top_k))
+        #     Pk = np.hstack((Pk, Pkinterp))
 
         self._Pk = Pk.view(SimArray)
         self._Pk.units = "Mpc^3 h^-3"
@@ -166,22 +179,14 @@ class PowerSpectrumCamb(object):
             return self._norm * np.exp(self._interp(np.log(k)))
         return self._norm * self._interp(np.log(k))
 
-    def TF_Pk(self, TF_i):
+    def TF_Pk(self, TF_val):
         '''
         Compute power spectrum with desired transfer function
         '''
         k = self._tfs[0]
-        TF = self._tfs[TF_i]
+        TF = self._tfs[TF_val.value]
         Pk = self.cosmo['As'] * (k ** self.cosmo['ns']) * (TF ** 2)
         return k, (self._norm * Pk)
-
-    def TF_species(self, species):
-        index = 0
-        for i in TF:
-            if i.key == species:
-                index = i.index
-                break
-        return self.TF_Pk(index)
 
 #######################################################################
 # Variance calculation

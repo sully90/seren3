@@ -2,7 +2,9 @@ import numpy as np
 import seren3
 
 # _FIELD = "nHI"
-_FIELD = "T2_minus_Tpoly"
+# _FIELD = "T2_minus_Tpoly"
+_FIELD = "T_xHI"
+# _FIELD = "PHrate_xHI"
 
 def test2(sim_labels, the_mass_bins=[7., 8., 9., 10.], **kwargs):
     import numpy as np
@@ -448,7 +450,7 @@ def plot(path, iout, pickle_path, field, the_mass_bins=[7., 8., 9., 10.], ax=Non
 
     return binned_cdf
 
-_MEM_OPT=False
+_MEM_OPT=True
 def main(path, iout, pickle_path):
     '''
     Compute nH CDF of all halos and bin by Mvir
@@ -460,7 +462,7 @@ def main(path, iout, pickle_path):
 
     nH_range = None
     # nH_range = np.array([  1.59355764e+00,   7.93249184e+09])
-    nH_range = np.array([  1.0e-01,   1.0e+10])
+    # nH_range = np.array([  1.0e-01,   1.0e+10])
 
     if nH_range is None:
         if mpi.host:
@@ -488,6 +490,7 @@ def main(path, iout, pickle_path):
                 max_nH = dset[_FIELD].max()
 
             nH_range = np.array([min_nH, max_nH])
+            print nH_range
             del dset
 
         nH_range = mpi.comm.bcast(nH_range, root=mpi.HOST_RANK)

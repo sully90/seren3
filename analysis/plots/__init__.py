@@ -69,7 +69,7 @@ def tmp(h1, h2, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2"
                 sph.velocity_image(s_h.g, qty=field, width=width, cmap="RdBu_r", qtytitle=r"$\rho$$_{\mathrm{gas}}$",\
                          vector_resolution=20, vector_color=vc, key_x=0.35, key_y=0.815, key_color='yellow', key_length="250 km s**-1", units="Msol kpc**-2", subplot=ax)
             anno(ax, xy, rvir)
-            anno(ax, xy, rvir/2., color="r")
+            anno(ax, xy, rvir/4., color="r")
     return s
 
 def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", **kwargs):
@@ -79,6 +79,7 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
     from matplotlib.patches import Circle
     import pynbody
     from pynbody.plot import sph
+    from seren3.utils import plot_utils
 
     def anno(ax, xy, rvir, color="lightsteelblue", facecolor="none", alpha=1):
             e = Circle(xy=xy, radius=rvir)
@@ -107,15 +108,17 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
         if rotate:
             # tx = pynbody.analysis.angmom.sideon(s[1].s[pynbody.filt.Sphere(radius='2 kpc')])
             # tx.apply_to(s[0])
-            pynbody.analysis.angmom.sideon(s.s[pynbody.filt.Sphere(radius='2 kpc')])
+            pynbody.analysis.angmom.sideon(s.s[pynbody.filt.Sphere(radius='%f kpc' % (h1.rvir.in_units("kpc")/4.))])
+
+    s.physical_units()
+    rvir = h1.rvir.in_units(s.g['pos'].units)
+    width = '%1.2f kpc' % (2.1*rvir)
+    s.g['rad_flux_radial'].convert_units("s**-1 m**-2")
+    # s.g['rad_0_rho'].convert_units("s**-1 m**-2")
+
+    print s.g['rad_flux_radial'].units
 
     for ax, field in zip(axs.flatten(), ["rho", "mass_flux_radial", "rad_flux_radial"]):
-                
-        s.physical_units()
-        rvir = h1.rvir.in_units(s.g['pos'].units)
-        width = '%1.2f kpc' % (2.1*rvir)
-        s.g['rad_flux_radial'].convert_units("s**-1 m**-2")
-        s.g['rad_0_rho'].convert_units("s**-1 m**-2")
 
         print "Rvir = %1.2f kpc" % rvir.in_units("kpc")
 
@@ -123,14 +126,19 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
             sph.velocity_image(s.g, qty="outflow_rate", units=out_units,\
                          width=width, av_z=av_z, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{M}_{\mathrm{gas}}}$",\
                          subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", **kwargs)
-        elif field == "rad_flux_radial":
-            # sph.velocity_image(s.g, qty="rad_flux_radial", units="s**-1 m**-2",\
-            #              width=width, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
-            #              subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1")
 
-            sph.velocity_image(s.g, qty="rad_0_rho", units="s**-1 m**-2",\
-                         width=width, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
-                         subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", vmin=1e8, vmax=1e12)
+            # sph.velocity_image(s.g, qty="mass_flux_radial", units=out_units,\
+            #              width=width, av_z=av_z, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{M}_{\mathrm{gas}}}$",\
+            #              subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", **kwargs)
+        elif field == "rad_flux_radial":
+            cmap2 = plot_utils.load_custom_cmaps("blues_black_test")
+            sph.velocity_image(s.g, qty="rad_flux_radial", units="s**-1 m**-2",\
+                         width=width, cmap=cmap2, qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
+                         subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", vmin=1e8, vmax=1e14)
+
+            # sph.velocity_image(s.g, qty="rad_0_rho", units="s**-1 m**-2",\
+            #              width=width, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
+            #              subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", vmin=1e8, vmax=1e12)
 
             # sph.velocity_image(s.g, qty="temp", units="K",\
             #              width=width, av_z=av_z, cmap="jet", qtytitle=r"T",\
@@ -139,7 +147,7 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
             sph.velocity_image(s.g, qty=field, width=width, cmap="RdBu_r", qtytitle=r"$\rho$$_{\mathrm{gas}}$",\
                      vector_resolution=20, vector_color=vc, key_x=0.35, key_y=0.815, key_color='yellow', key_length="250 km s**-1", units="Msol kpc**-2", subplot=ax)
         anno(ax, xy, rvir)
-        anno(ax, xy, rvir/2., color="r")
+        anno(ax, xy, rvir/4., color="r")
     return s
 
 def obs_errors(quantity, ax=None):

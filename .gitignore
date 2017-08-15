@@ -6,3 +6,4 @@ analysis/*.c
 cosmology/*.c
 cosmology/*.html
 utils/f90/*.so
+docs/

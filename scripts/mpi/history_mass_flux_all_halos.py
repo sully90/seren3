@@ -1,7 +1,7 @@
 def load(snap):
     import pickle
 
-    data = pickle.load( open("%s/pickle/ConsistentTrees/history_mass_flux_all_halos_half_rvir_%05i.p" % (snap.path, snap.ioutput), "rb") )
+    data = pickle.load( open("%s/pickle/ConsistentTrees/history_mass_flux_all_halos_quarter_rvir_%05i.p" % (snap.path, snap.ioutput), "rb") )
     # data = pickle.load( open("%s/pickle/ConsistentTrees/history_mass_flux_all_halos_no_denoise_%05i.p" % (snap.path, snap.ioutput), "rb") )
     return data
 
@@ -59,7 +59,7 @@ def main(path, pickle_path):
             # pickle_path = "%s/pickle/%s/" % (snap.path, halos.finder)
             if not os.path.isdir(pickle_path):
                 os.mkdir(pickle_path)
-            pickle.dump( mpi.unpack(dest), open("%s/history_mass_flux_all_halos_half_rvir_%05i.p" % (pickle_path, snap.ioutput), "wb") )
+            pickle.dump( mpi.unpack(dest), open("%s/history_mass_flux_all_halos_quarter_rvir_%05i.p" % (pickle_path, snap.ioutput), "wb") )
 
         mpi.msg("Waiting...")
         mpi.comm.Barrier()

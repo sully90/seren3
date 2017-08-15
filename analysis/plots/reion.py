@@ -1,5 +1,31 @@
 import numpy as np
 
+def interp_reion_z(z, arr, zmax=14):
+    '''
+    Return an interpolation function for reionization history as a
+    function of redshift
+    '''
+    from scipy.interpolate import interp1d
+
+    ix = np.where(z <= zmax)
+    return interp1d(z[ix], arr[ix])
+
+
+def dxHII_dz(dz, z, arr, **kwargs):
+    '''
+    Computes gradient of xHII with respect to redshift
+    '''
+    fn = interp_reion_z(z, arr, **kwargs)
+
+    z_start = 6
+    z_end = kwargs.pop("zmax", 14)
+    z_deriv = np.arange(z_start, z_end, dz)[::-1]
+
+    func = fn(z_deriv)
+    d_func = np.gradient(func, dz)
+    return z_deriv, d_func
+
+
 def halo_self_shielding(h, projections=None):
     import numpy as np
     import matplotlib as mpl
@@ -30,7 +56,8 @@ def halo_self_shielding(h, projections=None):
 
             projections.append(proj)
 
-    fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(5,12))
+    # fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(5,12))
+    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12,5))
     cm_rho = "jet_black"
     cm_xHII = "jet_black"
     # cm_xHII = plot_utils.load_custom_cmaps('blues_black_test')
@@ -102,7 +129,7 @@ def load_Gamma_history(simulation, pickle_path=None):
 
     return z_Gamma, Gamma_vw, Gamma_mw
 
-def plot(sims, labels, cols, pickle_paths=None, **kwargs):
+def plot(sims, labels, cols, pickle_paths=None, mode="landscape", **kwargs):
     '''
     Plots neutral fraction, tau and Gamma with observations
     '''
@@ -122,7 +149,13 @@ def plot(sims, labels, cols, pickle_paths=None, **kwargs):
     if (pickle_paths is None):
         pickle_paths = ["%s/pickle/" % sim.path for sim in sims]
 
-    fig, axs = plt.subplots(3, 1, figsize=(6,12))
+    fig, axs = (None, None)
+    if mode == "landscape":
+        fig, axs = plt.subplots(1, 3, figsize=(144,4))
+    elif mode == "portrait":
+        fig, axs = plt.subplots(3, 1, figsize=(6,12))
+    else:
+        raise Exception("Unknown mode: %s. Please use 'landscape' or 'portrait'")
 
     plot_PLANCK=True
     plot_obs=True
@@ -167,5 +200,5 @@ def plot(sims, labels, cols, pickle_paths=None, **kwargs):
 
     fig.tight_layout()
     # plt.show()
-    fig.savefig("./reion_tmp.pdf", format="pdf")
+    fig.savefig("./reion_hist_%s.pdf" % mode, format="pdf")
 

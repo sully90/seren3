@@ -461,6 +461,26 @@ class HaloCatalogue(object):
             self._ctree = T
         return self._ctree
 
+    def match_halo(self, other_halo, tree=None):
+        '''
+        Searches the kdtree and matches to this halo
+        '''
+        other_halo_pos = other_halo.pos
+        other_halo_rvir = other_halo.rvir
+
+        if (tree is None):
+            tree = self.kdtree()
+
+        candidates_ix = tree.query_ball_point(other_halo_pos, other_halo_rvir)
+        candidates = self.from_indicies(candidates_ix)
+
+        other_halo_mvir = other_halo["mvir"]
+        for cand in candidates:
+            if np.isclose(other_halo_mvir, cand["mvir"], atol=other_halo_mvir/10.):
+                return cand
+        raise Exception("Could not find candidate for halo: %s" % other_halo)
+
+
     def search(self, condition):
         '''
         Search halos for matches
