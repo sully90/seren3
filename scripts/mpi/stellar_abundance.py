@@ -57,8 +57,11 @@ def plot(simulations, ioutputs, labels, colours, nbins=10, plot_baryon_fraction=
             del res
 
         # print np_star.min(), np_star.max()
-        idx = np.where(np.logical_and( np_dm >= dm_particle_cutoff, np_star >= star_particle_cutoff ))
+        # idx = np.where(np.logical_and( np_dm >= dm_particle_cutoff, np_star >= star_particle_cutoff ))
+        idx = np.where(np.logical_and(np.log10(mass) >= 7.5, np_star >= star_particle_cutoff))
         mass = mass[idx]; stellar_mass = stellar_mass[idx]
+
+        print np.log10(mass.min()), np.log10(mass.max())
 
         stellar_mass = (stellar_mass / mass) / cosmic_mean
         stellar_mass *= 100  # %

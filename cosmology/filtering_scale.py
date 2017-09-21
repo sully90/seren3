@@ -1,3 +1,9 @@
+'''
+Functions to compute the Jeans and Filtering scales and masses.
+Note: Filtering scale integral is valid during matter domination only
+'''
+
+
 import numpy as np
 
 def cs_rho_mean(fname):
@@ -90,3 +96,59 @@ def filtering_scale(aexp, kJ):
 
     return kF[::-1]
 
+def plot_filtering_mass(sims, labels, cols):
+    from matplotlib import rcParams
+    rcParams['axes.linewidth'] = 1.5
+    rcParams['xtick.labelsize'] = 14
+    rcParams['ytick.labelsize'] = 14
+
+    rcParams['axes.labelsize'] = 18
+    rcParams['xtick.major.pad'] = 10
+    rcParams['ytick.major.pad'] = 10
+    import matplotlib.pylab as plt
+    from seren3.array import SimArray
+
+    fig, ax = plt.subplots(figsize=(8,8))
+    sub_axes = plt.axes([.5, .5, .35, .35]) 
+
+    for sim, label, c in zip(sims, labels, cols):
+        pickle_path = "%s/pickle/" % sim.path
+        fname = "%s/cs_time_averaged_at_rho_mean.p" % pickle_path
+
+        aexp, cs, rho_mean = cs_rho_mean(fname)
+        kJ = jeans_scale(aexp, cs, rho_mean)
+        kF = filtering_scale(aexp, kJ)
+
+        kJ_fn = jeans_scale_interp_fn(aexp, kJ)
+        kJ_interp = SimArray(10**kJ_fn(np.log10(aexp)), "m**-1")
+
+        jeans_mass = (4.*np.pi/3.) * rho_mean * (np.pi * aexp / kJ_interp)**3
+        filtering_mass = (4.*np.pi/3.) * rho_mean * (np.pi * aexp / kF)**3
+        filtering_mass.convert_units("Msol")
+        jeans_mass.convert_units("Msol")
+
+        z = (1./aexp) - 1.
+
+        ax.semilogy(z, filtering_mass, linewidth=2., label=label, color=c)
+        ax.semilogy(z, jeans_mass, linewidth=2., color=c, linestyle="--")
+
+        ix = np.where( np.logical_and(z >= 6, z <= 10) )
+        sub_axes.semilogy(z[ix], filtering_mass[ix], linewidth=2., color=c)
+        sub_axes.semilogy(z[ix], jeans_mass[ix], linewidth=2., color=c, linestyle="--")
+
+    ax.set_xlabel(r"$z$")
+    ax.set_ylabel(r"M$_{F,\mathrm{J}}$ [M$_{\odot}$]")
+
+    sub_axes.set_xlabel(r"$z$")
+    sub_axes.set_ylabel(r"M$_{F,\mathrm{J}}$ [M$_{\odot}$]")
+
+    # Shrink current axis's height by 10% on the bottom
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.1,
+                     box.width, box.height * 0.9])
+
+    # Put a legend below current axis
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.125),
+              frameon=False, ncol=2, prop={"size" : 16})
+
+    plt.show()

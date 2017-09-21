@@ -70,7 +70,7 @@ class GrafICSnapshot(object):
     """
     Class for handing grafIC initial conditions
     """
-    def __init__(self, path, level, set_fft_sample_spacing=True, **kwargs):
+    def __init__(self, path, level, set_fft_sample_spacing=False, **kwargs):
         from pymses.utils import constants as C
 
         self.path = path
@@ -123,6 +123,14 @@ class GrafICSnapshot(object):
             return fn(self)
         else:
             raise Exception("Unable to load field: %s" % field)
+
+    def derive(self, field):
+        '''
+        Force derive a field
+        '''
+        print 'Deriving field %s' % field
+        fn = _derived_field_registry[field]
+        return fn(self)
 
     def lazy_load_periodic(self, field, origin, N):
         '''
@@ -179,12 +187,15 @@ class GrafICSnapshot(object):
         '''
         from seren3 import cosmology
         cosmo = self.header.cosmo
+        cosmo["z"] = int(cosmo["z"])
 
         omega0 = 0.
         if ('b' == species) or ('baryons' == species):
             omega0 = cosmo['omega_b_0']
         elif ('c' == species) or ('cdm' == species):
             omega0 = cosmo['omega_M_0'] - cosmo['omega_b_0']
+        elif ('tot' == species) or ('total' == species):
+            omega0 = cosmo['omega_M_0']
         else:
             raise Exception("Unknown species: %s" % species)
         rho_mean = SimArray(cosmology.rho_mean_z(omega0, **cosmo), "kg m**-3")
@@ -195,10 +206,10 @@ class GrafICSnapshot(object):
         '''
         Compute DM particle mass
         '''
-        rho_mean = self.rho_mean('c')
-        boxsize = self.boxsize.in_units("m")
+        rho_mean = self.rho_mean('tot').in_units("Msol pc**-3")
+        boxsize = self.boxsize.in_units("pc")
 
-        box_mass = rho_mean * boxsize**3  # kg
+        box_mass = rho_mean * boxsize**3  # Msol
         return box_mass / float(self.header.N**3)
 
     def field_exists_on_disk(self, field):
@@ -303,6 +314,67 @@ class GrafICSnapshot(object):
         # km/s
         return SimArray(vx, unit), SimArray(vy, unit), SimArray(vz, unit)
 
+################################## COSMOLOGY #################################################
+
+    @property
+    def units(self):
+        ''' Compute code units '''
+        from seren3 import cosmology
+        cosmo = self.cosmo
+        rhoc = cosmology.rho_crit_now(units='cgs', **cosmo)
+        unit_d = cosmo['omega_M_0'] * rhoc * \
+            (cosmo['h']) ** 2. / cosmo['aexp'] ** 3.  # g/cm^3
+        unit_t = cosmo['aexp'] ** 2. / (cosmo['h'] * 1.e5 / 3.08e24)  # s
+        unit_l = cosmo['aexp'] * self.boxsize * 3.08e24 / cosmo['h']  # cm
+        # unit_v = unit_l/unit_t  # cm/s
+        # unit_m = unit_d * unit_l**3  # g
+        unit_d = SimArray(unit_d, 'g cm^-3')
+        unit_t = SimArray(unit_t, 's')
+        unit_l = SimArray(unit_l, 'cm')
+        return {'unit_d': unit_d,
+                'unit_t': unit_t,
+                'unit_l': unit_l,
+                'unit_v': unit_l / unit_t,
+                'unit_m': unit_d * unit_l ** 3}
+
+    def density_ps(self, delta=None, species='b', dimensionless=True, **kwargs):
+        ''' Compute the density power spectrum '''
+        from seren3.cosmology.power_spectrum import power_spectrum_1d
+
+        if delta is None:
+            delta = self['delta%s' % species]
+
+        boxsize = [float(self.boxsize)] * len(delta.shape)
+        ps, kbins = power_spectrum_1d(delta, boxsize)
+
+        # Dimensionless density power spectrum
+        if dimensionless:
+            ps = ps * (kbins ** 3.) / (2. * np.pi ** 2.)
+
+        return ps, kbins
+
+    def velocity_ps(self, species='b', dimensions_km_s=True):
+        ''' Compute the velocity power spectrum '''
+        from seren3.cosmology.power_spectrum import power_spectrum_1d
+
+        v2 = self['vel%s' % species]
+        boxsize = [float(self.boxsize)] * len(v2.shape)
+
+        ps, kbins = power_spectrum_1d(v2, boxsize)
+
+        if dimensions_km_s:
+            ps = ps * (kbins ** 3.) / (2. * np.pi ** 2.)
+
+        return ps, kbins
+
+    @property
+    def tf(self):
+        from seren3.cosmology import transfer_function
+
+        cosmo = self.cosmo
+        tf = transfer_function.PowerSpectrumCamb(**cosmo)
+        return tf
+
 ################################## WRITING #################################################
 
     def _write_header(self, f):
@@ -398,6 +470,7 @@ def posc(ics):
 @derived_quantity()
 def rhoc(ics):
     from seren3.utils.cython import cic
+    from seren3.utils import deconvolve_cic
 
     pos = ics['posc']
     x = np.ascontiguousarray(pos.T[0])
@@ -415,11 +488,14 @@ def rhoc(ics):
     cic.cic(x, y, z, nPart, L, N, rho)
     rho = rho.reshape(ics.header.nn)  # number per dx**3
 
-    part_mass = ics.particle_mass.in_units("kg")
-    dx = ics.header.dx.in_units("m")
-    rho *= (part_mass / dx**3)  # kg / m^3
+    part_mass = ics.particle_mass.in_units("Msol")
+    dx = ics.header.dx.in_units("pc")
+    rho *= (part_mass / dx**3)  # Msol / pc^3
 
     # return np.ascontiguousarray(np.swapaxes(rho, 0, 2))
+    # Deconvolve CIC kernel function
+    print "Deconvolving CIC kernel"
+    rho = deconvolve_cic(rho, rho.shape[0])
     return rho
 
 @derived_quantity()
@@ -427,17 +503,11 @@ def deltac(ics):
     '''
     DM overdensity
     '''
-    from seren3.utils import deconvolve_cic
-
-    rhoc = ics['rhoc']  # kg/m^3
-    rho_mean = ics.rho_mean('c')  # kg/m^3
+    rhoc = ics['rhoc']  # Msol/pc^3
+    rho_mean = ics.rho_mean('c').in_units("Msol pc**-3")
 
     delta = (rhoc - rho_mean) / rho_mean
-
-    # Deconvolve CIC kernel function
-    delta = deconvolve_cic(delta, delta.shape[0])
     return delta
-
 
 @derived_quantity()
 def rhob(ics):

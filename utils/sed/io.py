@@ -240,12 +240,13 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, fs=20, label_ion_freqs=False, sh
     import matplotlib.cm as cm
     from seren3.utils.plot_utils import ncols
 
-    # ages = np.array([1, 11, 21, 31, 41])
+    # ages = np.array([1, 11, 21, 31, 41, 100])
     # ages=[1., 10., 100., 1000., 10000.]
-    ages = kwargs.pop("ages", [1., 10., 20.])
-    # colors = kwargs.pop("colors", ncols(len(ages), cmap=kwargs.pop("cmap", "rainbow")))
+    ages = kwargs.pop("ages", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, \
+                    50, 100, 502, 1005, 10005])
+    colors = kwargs.pop("colors", ncols(len(ages), cmap=kwargs.pop("cmap", "rainbow")))
     # colors = kwargs.pop("colors", ncols(len(ages), cmap=kwargs.pop("cmap", "Set1")))
-    colors = ["r", "b", "darkorange"]
+    # colors = ["r", "b", "darkorange"]
 
     zbins = np.array(zbins); agebins = np.array(agebins)
 
@@ -254,8 +255,6 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, fs=20, label_ion_freqs=False, sh
 
     if (ax is None):
         fig, ax = plt.subplots(figsize=(8,8))
-    else:
-        ax = plt.gca()
 
     print kwargs
     for age, c in zip(ages, colors):
@@ -264,20 +263,24 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, fs=20, label_ion_freqs=False, sh
         plot_every = 1
         ax.semilogy(Ls[::plot_every], SEDs[:, age_idx, z_idx][::plot_every], label="%i Myr" % (float(agebins[age_idx])/1e6) if show_legend else None, color=c, **kwargs)
 
-    plt.xlim(100, 1000)
-
-    # Shrink current axis by 20%
-    # box = ax.get_position()
-    # ax.set_position([box.x0, box.y0, box.width * 0.95, box.height])
-
-    # Put a legend to the right of the current axis
-    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': 12.})
+    ax.set_xlim(100, 1000)
 
     if show_legend:
-        ax.legend(loc='lower right', prop={"size":22})
+        box = ax.get_position()
+        ax.set_position([box.x0 - box.width * 0.05, box.y0 + box.height * 0.05,
+                         box.width, box.height * 0.9])
+        ax.legend(loc='center left', bbox_to_anchor=(1., 0.5), ncol=1, prop={'size':14})
+
+        # ax.legend(loc='lower right', prop={"size":16})
+        # Shrink current axis by 20%
+        # box = ax.get_position()
+        # ax.set_position([box.x0, box.y0, box.width * 0.95, box.height])
+
+        # # Put a legend to the right of the current axis
+        # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': 16})
     ax.set_yscale('log')
-    plt.xlabel(r'$\lambda$ [$\AA$]', fontsize=fs)
-    plt.ylabel(r'J$_{\lambda}$ [L$_{\odot}$/M$_{\odot}$/$\AA$]', fontsize=fs)
+    ax.set_xlabel(r'$\lambda$ [$\AA$]', fontsize=fs)
+    ax.set_ylabel(r'J$_{\lambda}$ [L$_{\odot}$ M$_{\odot}$$^{-1}$ $\AA^{-1}$]', fontsize=fs)
 
     if label_ion_freqs:
         HI = 912  # A
@@ -289,12 +292,13 @@ def plot_sed(agebins, zbins, Ls, SEDs, ax=None, fs=20, label_ion_freqs=False, sh
         ax.axvline(x=HeII, linestyle=ion_freq_ls, color='k')
 
         ypos = ax.get_ylim()[1]
-        ypos *= 5.
+        ypos *= 1.5
         ax.text(HI, ypos, r'HI', fontsize=20, ha='center')
         ax.text(HeI, ypos, r'HeI', fontsize=20, ha='center')
         ax.text(HeII, ypos, r'HeII', fontsize=20, ha='center')
 
     ax.set_ylim(1e-15, 1e1)
+    ax.set_xlim(100, 1200)
 
 
 def read_bouwens_2015():

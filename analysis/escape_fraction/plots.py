@@ -1,3 +1,5 @@
+import numpy as np
+
 def load_dbs(halo):
     from seren3.scripts.mpi import time_int_fesc_all_halos, history_mass_flux_all_halos
 
@@ -6,8 +8,76 @@ def load_dbs(halo):
 
     return fesc_res, mass_flux_res
 
+def compute_integrated_nion_esc(snapshot):
+    from scipy.integrate import trapz
+    from seren3.array import SimArray
+    from seren3.scripts.mpi import time_int_fesc_all_halos
 
-def outflow_fesc(sim, halo):
+    def _integrate_halo(fesc_res):
+        photons_escaped = SimArray(fesc_res["I1"], "s**-1").in_units("yr**-1")
+        cum_photons_escaped = trapz(photons_escaped, fesc_res["lbtime"].in_units("yr"))
+
+        return cum_photons_escaped
+
+    fesc_db = time_int_fesc_all_halos.load(snapshot)
+    nphotons_escaped = np.zeros(len(fesc_db))
+    mvir = np.zeros(len(fesc_db))
+
+    for i in range(len(fesc_db)):
+        hid = int(fesc_db[i].idx)
+        fesc_res = fesc_db[i].result
+
+        nphotons_escaped[i] = _integrate_halo(fesc_res)
+        mvir[i] = fesc_res["Mvir"]
+
+    ix = np.where( ~np.isnan(nphotons_escaped) )
+
+    nphotons_escaped = nphotons_escaped[ix]
+    mvir = mvir[ix]
+
+    return mvir, nphotons_escaped
+
+def plot_integrated_nion_esc(snapshot, ax=None, **kwargs):
+    '''
+    Plot cumulative photons escaped as a function of halo mass
+    '''
+    import matplotlib.pylab as plt
+    from seren3.analysis import plots
+
+    if (ax is None):
+        ax = plt.gca()
+
+    color = kwargs.pop("color", "k")
+    nbins = kwargs.pop("nbins", 5)
+    label = kwargs.pop("label", None)
+    ls = kwargs.pop("ls", "-")
+    lw = kwargs.pop("lw", 1.)
+
+    mvir, nphotons_escaped = compute_integrated_nion_esc(snapshot)
+
+    print "%e" % nphotons_escaped.sum()
+    log_mvir = np.log10(mvir)
+    log_nphotons_escaped = np.log10(nphotons_escaped)
+
+    ix = np.where( np.logical_and(np.isfinite(log_nphotons_escaped), log_mvir >= 7.5) )
+    log_nphotons_escaped = log_nphotons_escaped[ix]
+    log_mvir = log_mvir[ix]
+
+    bc, mean, std, sterr = plots.fit_scatter(log_mvir, log_nphotons_escaped, nbins=nbins, ret_sterr=True)
+
+    ax.scatter(log_mvir, log_nphotons_escaped, s=10, color=color, alpha=0.1)
+    e = ax.errorbar(bc, mean, yerr=std, color=color, label=label,\
+         fmt="o", markerfacecolor=color, mec='k', capsize=2, capthick=2, elinewidth=2, linestyle=ls, linewidth=lw)
+
+    if (kwargs.pop("legend", False)):
+        ax.legend(loc="lower right", frameon=False, prop={"size":16})
+
+    ax.set_xlabel(r'log$_{10}$ M$_{\mathrm{vir}}$ [M$_{\odot}$/h]', fontsize=20)
+    ax.set_ylabel(r'log$_{10}$ $\int_{0}^{t_{\mathrm{H}}}$ $\dot{\mathrm{N}}_{\mathrm{ion}}(t)$ f$_{\mathrm{esc}}$ ($t$) $dt$ [#]', fontsize=20)
+
+
+
+def outflow_fesc(sim, halo, ax1=None, legend=False):
     '''
     Plot outflow rate (dm/dt) and fesc for this
     halo
@@ -22,7 +92,7 @@ def outflow_fesc(sim, halo):
     rcParams['xtick.labelsize'] = 14
     rcParams['ytick.labelsize'] = 14
 
-    rcParams['axes.labelsize'] = 20
+    rcParams['axes.labelsize'] = 18
     rcParams['xtick.major.pad'] = 10
     rcParams['ytick.major.pad'] = 10
 
@@ -55,7 +125,8 @@ def outflow_fesc(sim, halo):
 
     age_now = halo.base.age
 
-    fig, ax1 = plt.subplots(figsize=(16, 6))
+    if ax1 is None:
+        fig, ax1 = plt.subplots(figsize=(16, 6))
     ax2 = ax1.twinx()
 
     fesc_res, mass_flux_res = load_dbs(halo)
@@ -85,16 +156,18 @@ def outflow_fesc(sim, halo):
     ax2.plot(fesc_time, tint_fesc, color="m", linewidth=2., linestyle="--")
 
     ax1.fill_between(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, alpha=0.2)
-    ax1.plot(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, linewidth=3., label="Star Formation Rate")
-    ax1.plot(mass_flux_time, F_plus, color="darkorange", linewidth=2., linestyle='-.', label="Outflow rate")
-    ax1.plot(mass_flux_time, np.abs(F_minus), color="g", linewidth=2., linestyle=':', label="Inflow rate")
+    ax1.plot(sSFR_time, SFR.in_units("Msol yr**-1"), color=sSFR_col, linewidth=3.5, label="Star Formation Rate")
+    ax1.plot(mass_flux_time, F_plus, color="darkorange", linewidth=3.5, linestyle='-.', label="Outflow rate")
+    ax1.plot(mass_flux_time, np.abs(F_minus), color="g", linewidth=1., linestyle=':', label="Inflow rate")
     # ax2.fill_between(rho_sfr_lbtime.in_units("Myr"), rho_sfr, color=sSFR_col, alpha=0.2)
 
     #Dummy
-    ax1.plot([-100, -90], [-100, -90], color='r', linewidth=2., label=r"f$_{\mathrm{esc}}$")
+    ax1.plot([-100, -90], [-100, -90], color='r', linewidth=2., label=r"f$_{\mathrm{esc}}$($t$)")
+    ax1.plot([-100, -90], [-100, -90], color="m", linewidth=.5, linestyle="--", label=r"$\langle$f$\rangle$$_{\mathrm{esc}}$($\leq t_{\mathrm{H}}$)")
 
-    ax1.set_xlabel(r"t [Myr]")
-    ax1.set_ylabel(r"d$M$/d$t$ [M$_{\odot}$ yr$^{-1}$]")
+    if legend:
+        ax1.set_xlabel(r"$t$ [Myr]")
+    ax1.set_ylabel(r"dM/d$t$ [M$_{\odot}$ yr$^{-1}$]")
     ax2.set_ylabel(r"f$_{\mathrm{esc}}$")
 
     for tl in ax2.get_yticklabels():
@@ -115,7 +188,9 @@ def outflow_fesc(sim, halo):
 
     ax_z_xticks = ["%1.1f" % zi for zi in ax_z_xticks]
     ax_z.set_xticklabels(ax_z_xticks)
-    ax_z.set_xlabel(r"$z$")
+
+    if not legend:
+        ax_z.set_xlabel(r"$z$")
 
     ax1.set_yscale("log")
     ax2.set_yscale("log")
@@ -138,12 +213,14 @@ def outflow_fesc(sim, halo):
 
     # Put a legend below current axis
     ax1.grid(True)
-    ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-              frameon=False, ncol=4, prop={"size" : 16})
+
+    if legend:
+        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2),
+                  frameon=False, ncol=5, prop={"size" : 16})
 
     # ax2.set_ylim(ax2.get_ylim()[0], 1.1)
     # ax2.set_ylim(0.0, 1.)
     ax2.set_ylim(0.01, 1.)
-    plt.show()
+    # plt.show()
     return fesc_res, mass_flux_res, (fesc_time, mass_flux_time)
     # return age_array, z_fn, xticks

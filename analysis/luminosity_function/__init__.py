@@ -11,6 +11,40 @@ from seren3 import config
 _data_dir = config.get("data", "data_dir")
 
 
+def plot_many(sims, iouts, labels, nbins):
+    import matplotlib.pylab as plt
+
+    bouwens_cols = ["k", "darkorange", "m"]
+
+    ax = plt.gca()
+    ax.plot([-99, -99], [-99, -99], color="r", linewidth=2., label=labels[0])
+    # ax.plot([-99, -99], [-99, -99], color="b", linewidth=2., label=labels[1])
+
+    for iout, bc in zip(iouts, bouwens_cols):
+        snap1 = sims[0][iout]
+        snap2 = sims[1][iout]
+
+        lums1 = calc_luminosities_halos(snap1, lambda_A=1600)
+        lums2 = calc_luminosities_halos(snap2, lambda_A=1600)
+
+        luminosity_function(lums1, snap1.z, 4., snap1.cosmo['h'], plot=True, legend=False, lambda_A=1600, nbins=nbins, color='r', label=None, bouwens=False, bcol=bc)
+        luminosity_function(lums2, snap2.z, 4., snap2.cosmo['h'], plot=True, legend=False, lambda_A=1600, nbins=nbins, color='b', label=None, bouwens=True, bcol=bc)
+
+        if (iout == iouts[2]):
+            ax.plot([-99, -99], [-99, -99], color="b", linewidth=2., label=labels[1])
+
+    # Reposition the legend below the plot
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.1,
+                     box.width, box.height * 0.9])
+
+    # Put a legend below current axis
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12),
+              fancybox=False, shadow=False, frameon=False, ncol=2, prop={'size': 14.})
+
+    ax.set_xlim(-25, -8)
+
+
 def bouwens_2015_schecter_fit(z):
     M_star = -20.97
     phi_star = 0.44 * 10 ** (-0.28 * (z - 6.)) * 10 ** -3.  # Mpc-3
@@ -28,9 +62,19 @@ def calc_luminosities_halos(snapshot, fesc=1., lambda_A=1500, pickle_path=None):
     Filter halos if desired
     '''
     import os
+    from seren3.scripts.mpi import time_int_fesc_all_halos
+    from seren3.scripts.mpi import write_fesc_hid_dict
 
     if (pickle_path is None):
         pickle_path = "%s/pickle/ConsistentTrees/" % snapshot.path
+
+    tint_fesc_data = time_int_fesc_all_halos.load(snapshot)
+    tint_fesc_db = {}
+    for i in range(len(tint_fesc_data)):
+        res = tint_fesc_data[i].result
+        tint_fesc_db[int(tint_fesc_data[i].idx)] = res
+
+    # fesc_db = write_fesc_hid_dict.load_db(snapshot.path, snapshot.ioutput)
 
     fname = "%s/luminosity_lambdaA_%s_database_%05i.p" % (pickle_path, int(lambda_A), snapshot.ioutput)
     print fname
@@ -49,24 +93,30 @@ def calc_luminosities_halos(snapshot, fesc=1., lambda_A=1500, pickle_path=None):
             L = res["L"]
             age = res["age"].in_units("Myr")
             idx = np.where(age <= 10.)
-            lums[i] = L[idx].sum()
+
+            # if (np.log10(res["hprops"]["mvir"]) >= 8.):
+            lums[i] = L[idx].sum() * 2. * tint_fesc_db[int(key)]["tint_fesc_hist"][~np.isnan(tint_fesc_db[int(key)]["tint_fesc_hist"])].mean()  # use time averaged fesc
+            # lums[i] = L[idx].sum() * 2. * tint_fesc_db[int(key)]["tint_fesc_hist"][0]  # use time averaged fesc
+            # lums[i] = L[idx].sum() * 2. * fesc_db[int(key)]["fesc"]  # use inst. fesc
 
         # L_sol = snapshot.array(3.828e26, "J s**-1")
 
         # lums /= L_sol        
         return lums[lums > 0].in_units("3.828e26 J s**-1")
+    else:
+        raise IOError("Luminosities file not found")
 
-    from seren3.utils.sed import io
-    halos = snapshot.halos()
-    SED = io.read_seds()
-    kwargs = {"fesc" : fesc, "lambda_A" : lambda_A, "sed" : SED}
-    lums = []
-    for h in halos:
-        if (len(h.s) > 0):
-            dset = h.s["luminosity"].flatten(**kwargs)
-            lums.append(np.sum(dset['luminosity']))
+    # from seren3.utils.sed import io
+    # halos = snapshot.halos()
+    # SED = io.read_seds()
+    # kwargs = {"fesc" : fesc, "lambda_A" : lambda_A, "sed" : SED}
+    # lums = []
+    # for h in halos:
+    #     if (len(h.s) > 0):
+    #         dset = h.s["luminosity"].flatten(**kwargs)
+    #         lums.append(np.sum(dset['luminosity']))
 
-    return np.array(lums)
+    # return np.array(lums)
 
 
 def luminosity_function(lums, z, boxsize, h, nbins=15, **kwargs):
@@ -91,44 +141,97 @@ def luminosity_function(lums, z, boxsize, h, nbins=15, **kwargs):
     mags = np.delete(mags, np.where(mags == np.inf))
     mags = mags[~np.isnan(mags)]
 
-    print mags.min()
+    idx = np.where(mags <= -9)
+    mags = mags[idx]
 
+    print mags.min(), mags.max()
     print len(mags)
 
     mhist, mbin_edges = np.histogram(mags, bins=nbins)
+
     mbinmps = np.zeros(len(mhist))
     mbinsize = np.zeros(len(mhist))
     for i in np.arange(len(mhist)):
         mbinmps[i] = np.mean([mbin_edges[i], mbin_edges[i + 1]])
         mbinsize[i] = mbin_edges[i + 1] - mbin_edges[i]
 
-    y = gnedin_fac * mhist / (((boxsize / h) ** 3) * mbinsize)
+    print mbinsize
 
+    y = gnedin_fac * mhist / (((boxsize / h) ** 3) * mbinsize)
+    std = gnedin_fac * np.sqrt(mhist) / (((boxsize / h) ** 3))
+    # rms = gnedin_fac * np.sqrt(np.square(mags.mean())) / (boxsize / h) ** 3
+    print y
     if kwargs.pop('plot', False):
         import matplotlib.pylab as plt
         color = kwargs.pop('color', 'k')
+        label = kwargs.pop("label", None)
 
         ax = plt.subplot(111)
 
-        ax.plot(mbinmps, y, color='b', label='RT2 z = %f' % z)
-
         if kwargs.pop('bouwens', True):
             # Plot Bouwens 2015 data
-            M_star, phi_star, alpha = bouwens_2015_schecter_fit(z)
+            
             from seren3.utils.sed import io
             data = io.read_bouwens_2015()
             avail_z = np.array(data.keys())
             neareat_z_idx = (np.abs(avail_z - z)).argmin()
             bouwens_z = avail_z[neareat_z_idx]
             data = data[bouwens_z]
+            print bouwens_z
+            M_star, phi_star, alpha = bouwens_2015_schecter_fit(float(bouwens_z))
+
+            bcol = kwargs.pop("bcol", "k")
 
             xdata = np.linspace(min(data['M1600']), max(mbinmps), 100)
 
             # Plot the points and Schecter function in the same units as above
             ax.plot(xdata, gnedin_fac * schecter(xdata, M_star, phi_star, alpha) / h**3.,
-                    label='z = %1.2f Schecter Fit' % bouwens_z, color=color, linestyle='--')
-            ax.errorbar(data['M1600'], gnedin_fac * np.array(data['phi']) / h**3., yerr=gnedin_fac * np.array(
-                data['err']), label='z = %1.2f Bouwens 2015' % bouwens_z, color=color, fmt='o')
+                    label='z = %1.2f Schecter Fit' % bouwens_z, color=bcol, linestyle=':', linewidth=1.)
+            # ax.errorbar(data['M1600'], gnedin_fac * np.array(data['phi']) / h**3., yerr=gnedin_fac * np.array(
+            #     data['err']), label='z = %1.2f Bouwens 2015' % bouwens_z, color=color, fmt='o')
+
+            phi = data["phi"]
+            upper_limits = []
+            points = []
+            err = []
+
+            bouwens_mag_upper_lim = []
+            bouwens_mag = []
+
+            uplims = []
+
+            # for i in range(len(phi)):
+            #     if (isinstance(phi[i], str)) and (phi[i].startswith("<")):
+            #         upper_limits.append(phi[i][1:-1])
+            #         bouwens_mag_upper_lim.append(data["M1600"][i])
+            #     else:
+            #         points.append(phi[i])
+            #         bouwens_mag.append(data["M1600"][i])
+            #         err.append(data["err"][i])
+
+            for i in range(len(phi)):
+                if (isinstance(phi[i], str)) and (phi[i].startswith("<")):
+                    uplims.append(1)
+                    points.append(float(phi[i][1:-1]))
+                    bouwens_mag.append(data["M1600"][i])
+                    err.append(1e-6)
+                else:
+                    uplims.append(0)
+                    points.append(phi[i])
+                    bouwens_mag.append(data["M1600"][i])
+                    err.append(data["err"][i])
+
+            bouwens_y = gnedin_fac * np.array(points) / h**3.
+            err = gnedin_fac * np.array(err) / h**3
+
+            e = ax.errorbar(bouwens_mag, bouwens_y, uplims=np.array(uplims, dtype='bool'), markersize=8,\
+                yerr=err, color=bcol, fmt="o", markerfacecolor=bcol, mec='dimgrey', capsize=2, capthick=2, label='z = %1.2f Bouwens 2015' % bouwens_z)
+
+            # ax.errorbar(bouwens_mag_upper_lim, upper_limits, uplims=True, color=bcol, capsize=2, capthick=2)
+
+                # ax.plot(mbinmps, y, color='r', label='RT2 z = %1.2f' % z, linewidth=2.)
+        e = ax.errorbar(mbinmps, y, yerr=std, color=color, label=label,\
+            fmt="o", markerfacecolor=color, mec='k', capsize=2, capthick=2, elinewidth=2, linestyle="-", linewidth=2.)
 
         ax.set_yscale('log')
 
@@ -142,7 +245,7 @@ def luminosity_function(lums, z, boxsize, h, nbins=15, **kwargs):
 
             # Put a legend below current axis
             ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12),
-                      fancybox=True, shadow=True, ncol=2, prop={'size': 10.})
+                      fancybox=False, shadow=False, frameon=False, ncol=2, prop={'size': 14.})
 
         plt.xlabel(r'M$_{%d}$' % kwargs['lambda_A'])
         plt.ylabel(

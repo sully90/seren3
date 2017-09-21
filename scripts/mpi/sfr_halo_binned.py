@@ -2,7 +2,7 @@ import numpy as np
 import seren3
 
 # the_mass_bins=[7., 8., 9., 10.]
-def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10.], lab='', ax=None, **kwargs):
+def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10,], lab='', ax=None, **kwargs):
     import pickle
     from seren3.analysis.plots import fit_scatter
     from seren3.utils import flatten_nested_array
@@ -32,6 +32,7 @@ def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10.], lab='', ax=No
     binned_sfr = {}
 
     nbins = kwargs.pop("nbins", 100)
+    # nbins = kwargs.pop("nbins", 50)
     for i in range(len(the_mass_bins)+1):
         if (i == len(the_mass_bins)):
             x, y = ( flatten_nested_array(bin_centre_halos), flatten_nested_array(sfr_halos) )
@@ -54,10 +55,12 @@ def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10.], lab='', ax=No
     if "cols" not in kwargs:
         from seren3.utils import plot_utils
         cols = plot_utils.ncols(len(the_mass_bins), cmap=kwargs.pop("cmap", "Set1"))[::-1]
+        # cols = plot_utils.ncols(len(the_mass_bins), cmap=kwargs.pop("cmap", "Set1"))[::-1]
         # cols = ["r", "b", "darkorange", "k"]
     else:
         cols = kwargs.pop("cols")
     ls = kwargs.pop("linestyle", "-")
+    lw = kwargs.get("lw", 2.5)
 
     z_fn = sim.redshift_func(zmax=1000., zmin=0.)
     age_fn = sim.age_func()
@@ -78,6 +81,8 @@ def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10.], lab='', ax=No
 
         # label = "BC03 log(M) = [%s, %s)" % (lower, upper)
         label = "%s log(M) = [%s, %s)" % (lab, lower, upper)
+        if kwargs.get("legend", False) is False:
+            label = None
         # print label, n
 
         # ax.errorbar(x, y, yerr=std, label=label, linewidth=3., \
@@ -87,13 +92,13 @@ def plot(path, iout, pickle_path, the_mass_bins=[7., 8., 9., 10.], lab='', ax=No
         integrated_mstar = integrate.trapz(y, SimArray(x, "Gyr").in_units("yr"))
         print integrated_mstar
         # ax.step(x, y, label=label, linewidth=2.5, color=c, linestyle=ls)
-        ax.step(age_to_z, y, label=label, linewidth=2.5, color=c, linestyle=ls)
+        ax.step(age_to_z, y, label=label, linewidth=lw, color=c, linestyle=ls)
 
     # ax.set_xlabel(r"Lookback-time [Gyr]")
-    ax.set_xlabel("z")
-    # ax.set_ylabel(r"SFR [M$_{\odot}$ yr$^{-1}$]")
+    ax.set_xlabel(r"$z$")
+    ax.set_ylabel(r"SFR [M$_{\odot}$ yr$^{-1}$]")
 
-    if kwargs.pop("legend", True):
+    if kwargs.pop("legend", False):
         # Shrink current axis by 20%
         # box = ax.get_position()
         # ax.set_position([box.x0, box.y0 + box.height * 0.15,

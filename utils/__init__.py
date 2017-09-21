@@ -331,7 +331,7 @@ def vec_mag(vec):
     return np.sqrt(vec[:, 0] * vec[:, 0] + vec[:, 1] * vec[:, 1] + vec[:, 2] * vec[:, 2])
 
 def cic(source, nn, field, gaussian_smooth=False, norm_pos=False, masked=False, mask_val=0.0, deconvolve=False, **kwargs):
-    from cython import particle_utils as pu
+    from seren.utils.cython import particle_utils as pu
     '''
     CIC smooth a discrete or continuous field
 

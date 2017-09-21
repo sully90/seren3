@@ -1,16 +1,21 @@
 # At each output, compute the cumulative sum of photons emitted over all of time,
 # and the total number that have escaped and plot
 # alternative: fit scatter to distributions?
+import numpy as np
+from seren3.analysis import plots
+from seren3.utils import flatten_nested_array
 
 class MassBin(object):
     def __init__(self, idx, mass_bin):
         self.idx = idx
         self.mass_bin = mass_bin
         self.lbtime = []
-        self.z = []
-        self.tint_fesc_mean = []
-        self.Nion_d_sum = []
-        self.rel_contrib = []
+        self.nphot_esc = []
+        self.relative_contribution = []
+
+    def extend(self, lbtime, I1):
+        self.lbtime.extend(lbtime)
+        self.nphot_esc.extend(I1)
 
     def __str__(self):
         return "Mass bin: %s" % self.mass_bin
@@ -18,26 +23,30 @@ class MassBin(object):
     def __repr__(self):
         return self.__str__()
 
-    @property
-    def thalo(self):
-        import numpy as np
-        return np.max(self.lbtime) - np.array(self.lbtime)
+    def sum(self, nbins=10):
+        reload(plots)
 
-def halo_photon_relative_contribution(simulation, ioutputs, the_mass_bins=[8., 9., 10.]):
-    import numpy as np
+        # x = flatten_nested_array(np.array(self.lbtime))
+        # y = flatten_nested_array(np.array(self.nphot_esc))
+        x = np.array(self.lbtime)
+        y = np.array(self.nphot_esc)
+        good = np.where(~np.isnan(y))
+        bc, sy = plots.sum_bins(x[good], y[good], nbins=nbins)
 
-    print "Use plt.bar for relative contribution!!!!!!!!!!!!!!"
+        return bc, sy
+
+def halo_photon_relative_contribution(simulation, ioutputs, the_mass_bins=[8., 8.5,  9., 9.5, 10.]):
+    import random
+    from scipy import interpolate
+    from seren3.scripts.mpi import write_fesc_hid_dict
 
     if not isinstance(the_mass_bins, np.ndarray):
         the_mass_bins = np.array(the_mass_bins)
 
     pickle_dir = "%s/pickle/ConsistentTrees/" % simulation.path
 
-    # Sort output numbers from high to low
-    sorted_ioutputs = sorted(ioutputs, reverse=True)
-
-    # For computing lookback-time from last snapshot
-    age_now = simulation[sorted_ioutputs[0]].age
+    snapshot = simulation[ioutputs[-1]]
+    age_now = snapshot.age
 
     binned_data = [ MassBin(i, the_mass_bins[i]) for i in range(len(the_mass_bins)) ]
     binned_data.append( MassBin(len(the_mass_bins)+1, "All") )  # Bin to contain all halos
@@ -49,43 +58,48 @@ def halo_photon_relative_contribution(simulation, ioutputs, the_mass_bins=[8., 9
         mass_bin.lbtime.append(lbtime)
         mass_bin.z.append(z)
 
-    for i in xrange(len(sorted_ioutputs)):
-        iout = sorted_ioutputs[i]
-        snapshot = simulation[iout]
-        fname = "%s/time_int_fesc_all_halos_%05i.p" % (pickle_dir, snapshot.ioutput)
-        data = snapshot.pickle_load(fname)
+    for ioutput in ioutputs:
+        print ioutput
+        snapshot = simulation[ioutput]
+        data = write_fesc_hid_dict.load_db(simulation.path, ioutput)
 
-        # Load data into numpy arrays
-        tint_fesc = np.zeros(len(data))
-        Nion_d_sum = np.zeros(len(data))
-        Mvir = np.zeros(len(data))
-        for j in range(len(data)):
-            result = data[j].result
-            tint_fesc[j] = result["tint_fesc_hist"][0] * 100.
-            Nion_d_sum[j] = result["I2"].sum()
-            Mvir[j] = result["Mvir"]
-
+        # Compute quantities
         lbtime = age_now - snapshot.age
+        Nion_esc = np.zeros(len(data))
+        Mvir = np.zeros(len(data))
+        for i in range(len(data.keys())):
+            hid = data.keys()[i]
+            res = data[hid]
+            fesc_h = res["fesc"]
+            if (fesc_h > 1.):
+                fesc_h = random.uniform(0.9, 1.0)
 
-        # Remove nans
-        good = np.where( ~np.isnan(tint_fesc) )
-        tint_fesc = tint_fesc[good]
-        Nion_d_sum = Nion_d_sum[good]
-        Mvir = Mvir[good]
+            Nion_esc[i] = fesc_h * (res["Nion_d_now"] * res["star_mass"].in_units("Msol")).sum()            
+            Mvir[i] = res["hprops"]["mvir"]
 
-        # Conpute relative contribution to ionizing photon budget
-        rel_contrib = tint_fesc * Nion_d_sum
-
+        # Bin data
         mass_bins = np.digitize( np.log10(Mvir), the_mass_bins, right=True )
-
-        # Do the binning. 
+        lbtime_arr = np.ones(len(Nion_esc)) * lbtime
+        # Do the binning
         for mbin in binned_data:
             if mbin.mass_bin == "All":
-                _store(mbin, tint_fesc, Nion_d_sum, lbtime, snapshot.z)
+                mbin.extend(lbtime_arr, Nion_esc)
             else:
                 idx = np.where( mass_bins == mbin.idx )
-                _store(mbin, tint_fesc[idx], Nion_d_sum[idx], lbtime, snapshot.z)
-                # Relative contributuon
-                mbin.rel_contrib.append( rel_contrib[idx].sum() / rel_contrib.sum() )
+                mbin.extend(lbtime_arr[idx], Nion_esc[idx])
+
+    # return binned_data
+
+    nbins=10
+    # Compute the relative contributions
+    bc_all, sy_all = binned_data[-1].sum(nbins=nbins)
+    fn_all = interpolate.interp1d(bc_all, np.log10(sy_all), fill_value="extrapolate")
+    for i in range(len(binned_data) - 1):
+        mbin = binned_data[i]
+        bc, sy = mbin.sum(nbins=nbins)        
+        mbin.relative_contribution = sy / 10**fn_all(bc)
+        nbins-=2
+    binned_data[-1].relative_contribution = np.ones(len(sy))
 
     return binned_data
+

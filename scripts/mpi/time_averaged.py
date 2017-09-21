@@ -39,7 +39,7 @@ def main(path, field, pickle_path):
     if mpi.host:
         mpi.msg("Averaging field: %s" % field)
 
-    iout_start = max(simulation.numbered_outputs[0], 40)
+    iout_start = max(simulation.numbered_outputs[0], 1)
     iouts = range(iout_start, max(simulation.numbered_outputs)+1)
 
     mpi.msg("Starting with snapshot %05i" % iout_start)

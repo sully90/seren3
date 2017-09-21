@@ -8,7 +8,7 @@ def interp_reion_z(z, arr, zmax=14):
     from scipy.interpolate import interp1d
 
     ix = np.where(z <= zmax)
-    return interp1d(z[ix], arr[ix])
+    return interp1d(z[ix], arr[ix], fill_value="extrapolate")
 
 
 def dxHII_dz(dz, z, arr, **kwargs):
@@ -18,7 +18,7 @@ def dxHII_dz(dz, z, arr, **kwargs):
     fn = interp_reion_z(z, arr, **kwargs)
 
     z_start = 6
-    z_end = kwargs.pop("zmax", 14)
+    z_end = kwargs.pop("zmax", 16)
     z_deriv = np.arange(z_start, z_end, dz)[::-1]
 
     func = fn(z_deriv)
@@ -151,11 +151,12 @@ def plot(sims, labels, cols, pickle_paths=None, mode="landscape", **kwargs):
 
     fig, axs = (None, None)
     if mode == "landscape":
-        fig, axs = plt.subplots(1, 3, figsize=(144,4))
+        fig, axs = plt.subplots(1, 3, figsize=(14,4))
     elif mode == "portrait":
         fig, axs = plt.subplots(3, 1, figsize=(6,12))
     else:
         raise Exception("Unknown mode: %s. Please use 'landscape' or 'portrait'")
+    twin_ax0 = axs[0].twinx()
 
     plot_PLANCK=True
     plot_obs=True
@@ -172,6 +173,17 @@ def plot(sims, labels, cols, pickle_paths=None, mode="landscape", **kwargs):
         axs[0].plot(z_xHII, 1. - xHII_mw, color=c, linestyle="--", linewidth=2.)
         if (plot_obs): obs_errors("xv", ax=axs[0])
 
+        if kwargs.get("plot_deriv", False):
+            # Plot the derivative with respect to z
+            # def dxHII_dz(dz, z, arr, **kwargs):
+
+            z_deriv, dxv_dz = dxHII_dz(0.5, z_xHII, 1. - xHII_vw)
+            # z_deriv, dxm_dz = dxHII_dz(0.5, z_xHII, 1. - xHII_mw)
+
+            twin_ax0.plot(z_deriv, dxv_dz, color=c, linestyle=":", linewidth=2.)
+            # twin_ax0.plot(z_deriv, dxm_dz, color=c, linestyle=":", linewidth=2.)
+
+
         # Plot Gamma
         axs[1].plot(z_Gamma, np.log10(Gamma_vw), color=c, linestyle="-", linewidth=2., label=label)
         axs[1].plot(z_Gamma, np.log10(Gamma_mw), color=c, linestyle="--", linewidth=2.)
@@ -184,6 +196,7 @@ def plot(sims, labels, cols, pickle_paths=None, mode="landscape", **kwargs):
 
     for ax in axs.flatten():
         ax.set_xlim(5.8, 16)
+    twin_ax0.set_xlim(5.8, 16)
 
     axs[0].legend()
     axs[1].legend(loc="lower left")
@@ -200,5 +213,5 @@ def plot(sims, labels, cols, pickle_paths=None, mode="landscape", **kwargs):
 
     fig.tight_layout()
     # plt.show()
-    fig.savefig("./reion_hist_%s.pdf" % mode, format="pdf")
+    fig.savefig("./bpass_reion_hist_%s.pdf" % mode, format="pdf")
 

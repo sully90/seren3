@@ -156,8 +156,8 @@ def fesc_tot_outflow(snapshot):
         cum_outflowed_mass = trapz(F_plus, mass_flux_res["lbtime"].in_units("yr"))
         cum_inflowed_mass = np.abs(trapz(F_minus, mass_flux_res["lbtime"].in_units("yr")))
 
-        return cum_photons_escaped, cum_outflowed_mass - cum_inflowed_mass
-        # return cum_photons_escaped, cum_outflowed_mass
+        # return cum_photons_escaped, cum_outflowed_mass - cum_inflowed_mass
+        return cum_photons_escaped, cum_outflowed_mass
 
 
     nphotons_escaped = np.zeros(len(fesc_db))
@@ -183,7 +183,7 @@ def fesc_tot_outflow(snapshot):
 
 def fesc_mean_time_outflow(snapshot):
     '''
-    Integrate the total mass ourflowed and photons escaped for all haloes
+    Integrate the total mass outflowed and photons escaped for all haloes
     '''
     import numpy as np
     from scipy.integrate import trapz
@@ -251,3 +251,48 @@ def fesc_mean_time_outflow(snapshot):
     mvir = mvir[ix]
     return nphotons_escaped, SimArray(time_spent_net_outflow, "Gyr"), mvir
 
+def plot(sims, iout, labels, cols, ax=None, **kwargs):
+    import numpy as np
+    import matplotlib.pylab as plt
+    from seren3.analysis import plots
+
+    if (ax is None):
+        ax = plt.gca()
+
+    ls = ["-", "--"]
+    lw = [3., 1.5]
+
+    for sim, label, col, lsi, lwi in zip(sims, labels, cols, ls, lw):
+        snap = sim[iout]
+
+        nphotons_escaped, tot_mass_outflowed, mvir = fesc_tot_outflow(snap)
+        print "%e" % nphotons_escaped.sum()
+
+        log_mvir = np.log10(mvir)
+
+        x = np.log10(tot_mass_outflowed)
+        y = np.log10(nphotons_escaped)
+        ix = np.where(np.logical_and(log_mvir >= 7.5, x>=5.5))
+
+        x = x[ix]
+        y = y[ix]
+
+        ix = np.where(np.logical_and(np.isfinite(x), np.isfinite(y)))
+
+        x = x[ix]
+        y = y[ix]
+
+        bc, mean, std, sterr = plots.fit_scatter(x, y, ret_sterr=True, **kwargs)
+
+        ax.scatter(x, y, alpha=0.10, s=5, color=col)
+        e = ax.errorbar(bc, mean, yerr=std, color=col, label=label,\
+             fmt="o", markerfacecolor=col, mec='k',\
+             capsize=2, capthick=2, elinewidth=2, linewidth=lwi, linestyle=lsi)
+
+        # ax.plot(bc, mean, color=col, label=None, linewidth=3., linestyle="-")
+        # ax.fill_between(bc, mean-std, mean+std, facecolor=col, alpha=0.35, interpolate=True, label=label)
+
+    ax.set_xlabel(r"log$_{10}$ $\int_{0}^{t_{\mathrm{H}}}$ $\vec{F}_{+}(t)$ $dt$ [M$_{\odot}$]", fontsize=20)
+    ax.set_ylabel(r'log$_{10}$ $\int_{0}^{t_{\mathrm{H}}}$ $\dot{\mathrm{N}}_{\mathrm{ion}}(t)$ f$_{\mathrm{esc}}$ ($t$) $dt$ [#]', fontsize=20)
+
+    ax.legend(loc='lower right', frameon=False, prop={"size" : 16})

@@ -526,7 +526,7 @@ class HaloCatalogue(object):
         return SortedHaloCatalogue(self, key.lower())
 
     def plot_mass_function(self, units='Msol h**-1', kern='ST', ax=None,\
-                     plot_Tvir=False, label_z=False, nbins=100, label=None, show=True, **kwargs):
+                     plot_Tvir=False, label_z=False, nbins=100, label=None, show=False, **kwargs):
         '''
         Plot the Halo mass function and (optionally) Tvir on twinx axis
 
@@ -545,12 +545,15 @@ class HaloCatalogue(object):
         if label_z:
             label = "%s z=%1.3f" % (label, self.base.z)
 
-        mbinmps, y, mbinsize = self.mass_function(units=units, nbins=nbins)
-        ax.semilogy(mbinmps, y, 'o', label=label, color='b')
+        c = kwargs.pop("color", "b")
+
+        mbinmps, y, mbinsize = self.mass_function(units=units, nbins=nbins, **kwargs)
+        # ax.semilogy(mbinmps, y, 'o', label=label, color=c)
 
         bin_centers, mean, std = fit_scatter(mbinmps, y)
-        ax.errorbar(bin_centers, mean, yerr=std, color='b')
-
+        # ax.errorbar(bin_centers, mean, yerr=std, color=c)
+        e = ax.errorbar(bin_centers, mean, yerr=std, color=c,\
+            fmt="o", markerfacecolor=c, mec='k', capsize=2, capthick=2, elinewidth=2, linestyle="-", linewidth=2., label=label)
         if plot_Tvir:
             import cosmolopy.perturbation as cp
             cosmo = snapshot.cosmo
@@ -576,7 +579,7 @@ class HaloCatalogue(object):
             N_kern.convert_units(y.units)
 
             # ax.semilogy(np.log10(M_kern*(snapshot.info['H0']/100)), N_kern, label=kern)
-            ax.semilogy(np.log10(M_kern), N_kern, label=kern, color="k")
+            ax.semilogy(np.log10(M_kern), N_kern, label=kern, color="grey", linestyle="--")
 
         ax.set_xlabel(r'log$_{10}$(M [$%s$])' % mbinmps.units.latex())
         ax.set_ylabel('dN / dlog$_{10}$(M [$%s$])' % y.units.latex())
@@ -589,7 +592,7 @@ class HaloCatalogue(object):
             plt.show()
 
 
-    def mass_function(self, units='Msol h**-1', nbins=100):
+    def mass_function(self, units='Msol h**-1', nbins=100, **kwargs):
         '''
         Compute the halo mass function for the given catalogue
         '''
@@ -607,7 +610,8 @@ class HaloCatalogue(object):
             mbinsize[i] = mbin_edges[i + 1] - mbin_edges[i]
 
         # Compute HMF from realization and plot
-        boxsize = self.base.boxsize.in_units("Mpc h**-1 a")
+        # boxsize = self.base.boxsize.in_units("Mpc h**-1 a")
+        boxsize = kwargs.pop("boxsize", self.base.boxsize).in_units("Mpc h**-1 a")
         hmf = self.base.array(mhist/(boxsize**3)/mbinsize, "Mpc**-3 h**3 a**-3")
 
         return SimArray(mbinmps, units), hmf, SimArray(mbinsize, units)

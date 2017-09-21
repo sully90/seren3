@@ -1,6 +1,6 @@
 _LAMBDA_A = 1600.
 
-def main(path, ioutput, pickle_path):
+def main(path, ioutput, pickle_path, sed_type):
     import pickle, os
     import seren3
     from seren3.analysis.parallel import mpi
@@ -19,7 +19,10 @@ def main(path, ioutput, pickle_path):
     nml = snap.nml
     RT_PARAMS_KEY = nml.NML.RT_PARAMS
 
-    SED = io.read_seds()
+    # SED = io.read_seds()
+    SED = io.interp_bpass_to_bc03(sed_type=sed_type)
+    if mpi.host:
+        print SED, sed_type
 
     dest = {}
     kwargs = {"lambda_A" : _LAMBDA_A, "sed" : SED}
@@ -47,9 +50,7 @@ if __name__ == "__main__":
     import sys
     path = sys.argv[1]
     ioutput = int(sys.argv[2])
+    pickle_path = sys.argv[3]
+    sed_type = sys.argv[4]
 
-    pickle_path = None
-    if len(sys.argv) > 3:
-        pickle_path = sys.argv[3]
-
-    main(path, ioutput, pickle_path)
+    main(path, ioutput, pickle_path, sed_type)

@@ -51,7 +51,7 @@ def tmp(h1, h2, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2"
 
             if field == "mass_flux_radial":
                 sph.velocity_image(s_h.g, qty="outflow_rate", units=out_units,\
-                             width=width, av_z=av_z, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{M}_{\mathrm{gas}}}$",\
+                             width=width, av_z=av_z, cmap="RdBu_r", qtytitle=r"$\mathbf{F}_{\mathrm{M}_{\mathrm{gas}}}$",\
                              subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", **kwargs)
             elif field == "rad_flux_radial":
                 # sph.velocity_image(s_h.g, qty="rad_flux_radial", units="s**-1 m**-2",\
@@ -59,7 +59,7 @@ def tmp(h1, h2, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2"
                 #              subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1")
 
                 sph.velocity_image(s_h.g, qty="rad_0_rho", units="s**-1 m**-2",\
-                             width=width, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
+                             width=width, cmap="RdBu_r", qtytitle=r"$\mathbf{F}_{\mathrm{ion}}$",\
                              subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", vmin=1e8, vmax=1e12)
 
                 # sph.velocity_image(s_h.g, qty="temp", units="K",\
@@ -78,6 +78,7 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
     from matplotlib.colors import Colormap, LinearSegmentedColormap
     from matplotlib.patches import Circle
     import pynbody
+    import numpy as np
     from pynbody.plot import sph
     from seren3.utils import plot_utils
 
@@ -92,7 +93,16 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
 
     xy=(0,0)
     nrows=3
-    fig, axs = plt.subplots(nrows=nrows, ncols=1, figsize=(6,10))
+    # fig, axs = plt.subplots(nrows=nrows, ncols=1, figsize=(8,12))
+    # fig, axs = plt.subplots(nrows=1, ncols=nrows, figsize=(10,4))
+
+    import matplotlib.gridspec as gridspec
+    gs = gridspec.GridSpec(2, 6)
+
+    ax1 = plt.subplot(gs[0, 1:3])
+    ax2 = plt.subplot(gs[0,3:5])
+    ax3 = plt.subplot(gs[1,2:4])
+    axs = np.array([ax1, ax2, ax3])
 
     # fig.subplots_adjust(hspace=0.001)
     # fig.subplots_adjust(wspace=0.9)
@@ -125,7 +135,7 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
         if field == "mass_flux_radial":
             sph.velocity_image(s.g, qty="outflow_rate", units=out_units,\
                          width=width, av_z=av_z, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{M}_{\mathrm{gas}}}$",\
-                         subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", **kwargs)
+                         subplot=ax, quiverkey=False, vector_color=vc, edgecolor="k", vector_resolution=20, key_length="250 km s**-1", scale="2500 km s**-1", **kwargs)
 
             # sph.velocity_image(s.g, qty="mass_flux_radial", units=out_units,\
             #              width=width, av_z=av_z, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{M}_{\mathrm{gas}}}$",\
@@ -134,7 +144,7 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
             cmap2 = plot_utils.load_custom_cmaps("blues_black_test")
             sph.velocity_image(s.g, qty="rad_flux_radial", units="s**-1 m**-2",\
                          width=width, cmap=cmap2, qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
-                         subplot=ax, quiverkey=False, vector_color=vc, vector_resolution=20, key_length="1000 km s**-1", vmin=1e8, vmax=1e14)
+                         subplot=ax, quiverkey=False, vector_color=vc, edgecolor="k", vector_resolution=20, key_length="250 km s**-1", scale="2500 km s**-1", vmin=1e9, vmax=1e14, **kwargs)
 
             # sph.velocity_image(s.g, qty="rad_0_rho", units="s**-1 m**-2",\
             #              width=width, cmap="RdBu_r", qtytitle=r"$\vec{F}_{\mathrm{ion}}$",\
@@ -145,7 +155,7 @@ def tmp2(h1, av_z=False, vc='k', rotate=False, out_units="Msol yr**-1 pc**-2", *
             #              subplot=ax, quiverkey=False, vector_color="k", vector_resolution=20, key_length="1000 km s**-1")
         else:
             sph.velocity_image(s.g, qty=field, width=width, cmap="RdBu_r", qtytitle=r"$\rho$$_{\mathrm{gas}}$",\
-                     vector_resolution=20, vector_color=vc, key_x=0.35, key_y=0.815, key_color='yellow', key_length="250 km s**-1", units="Msol kpc**-2", subplot=ax)
+                     vector_resolution=20, vector_color=vc, key_x=0.38, key_y=0.815, key_color='yellow', key_length="250 km s**-1", scale="2500 km s**-1", units="Msol kpc**-2", subplot=ax, **kwargs)
         anno(ax, xy, rvir)
         anno(ax, xy, rvir/4., color="r")
     return s
@@ -270,6 +280,14 @@ def annotate_rvir(ax, rvir, color="lightsteelblue", facecolor="none", alpha=1):
     e.set_edgecolor( color )
     e.set_facecolor( facecolor )  # "none" not None
     e.set_alpha( alpha )
+
+def sum_bins(x, y, nbins=10):
+    import numpy as np
+
+    sy, _ = np.histogram(x, bins=nbins, weights=y)
+    bin_centres = (_[1:] + _[:-1])/2.
+
+    return bin_centres, sy
 
 def fit_scatter(x, y, ret_n=False, ret_sterr=False, nbins=10):
     '''

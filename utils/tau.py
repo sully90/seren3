@@ -205,11 +205,11 @@ def plot(tau, z, ax=None, color='k', label=None, plot_WMAP7=False, plot_PLANCK=F
     tau_planck_2016_down = (0.058-0.012)
 
     if plot_PLANCK:
-        # planck_2015_c = "lightskyblue"
-        # ax.hlines(
-        #     tau_planck_2015, 0., 99., label='Planck 2015 TT+lowP+lensing+BAO', linestyle='--', color=planck_2015_c)
-        # ax.fill_between(
-        #     z, tau_planck_2015_down, tau_planck_2015_up, color=planck_2015_c, alpha=0.25)
+        planck_2015_c = "lightskyblue"
+        ax.hlines(
+            tau_planck_2015, 0., 99., label='Planck 2015 TT+lowP+lensing+BAO', linestyle='--', color=planck_2015_c)
+        ax.fill_between(
+            z, tau_planck_2015_down, tau_planck_2015_up, color=planck_2015_c, alpha=0.25)
 
         planck_2016_c = "k"
         ax.hlines(
