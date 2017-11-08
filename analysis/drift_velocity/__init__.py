@@ -30,7 +30,7 @@ def vbc_ps_fname(rms, z, boxsize):
 
 
 def run_cicsass(boxsize, z, rms_vbc_z1000, out_fname, N=256):
-    import subprocess
+    import subprocess, os
     from seren3.utils import which
 
     exe = which('transfer.x')
@@ -41,8 +41,12 @@ def run_cicsass(boxsize, z, rms_vbc_z1000, out_fname, N=256):
     # Example execution for RMS vbc=30km/s @ z=1000.:
     # ./transfer.x -B0.2 -N128 -V30 -Z100 -D3 -SinitSB_transfer_out
 
+    CICsASS_home = os.getenv("CICSASS_HOME")
+    if CICsASS_home is None:
+        raise Exception("Env var CICSASS_HOME not set")
+
     # Run with N=256
-    CICsASS_home = "/lustre/scratch/astro/ds381/CICsASS/matt/Dropbox/CICASS/vbc_transfer/"
+    # CICsASS_home = "/lustre/scratch/astro/ds381/CICsASS/matt/Dropbox/CICASS/vbc_transfer/"
     cmd = 'cd %s && %s -B%1.2f -N%d -V%f -Z%f -D3 -SinitSB_transfer_out > %s' % (
         CICsASS_home, exe, boxsize, N, rms_vbc_z1000, z, out_fname)
     # print 'Running:\n%s' % cmd

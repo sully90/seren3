@@ -224,6 +224,14 @@ class GrafICSnapshot(object):
     def level_dir(self):
         return "%s/level_%03i/" % (self.path, self.level)
 
+    def output_fname(self, field, out_dir):
+        import os
+        if os.path.isdir("%s/" % (out_dir)) is False:
+            os.mkdir("%s/" % (out_dir))
+        if os.path.isdir("%s/level_%03d/" % (out_dir, self.level)) is False:
+            os.mkdir("%s/level_%03d/" % (out_dir, self.level))
+        return "%s/level_%03d/ic_%s" % (out_dir, self.level, field)
+
     def field_fname(self, field):
         return '%s/ic_%s' % (self.level_dir, field)
 
