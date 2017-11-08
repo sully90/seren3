@@ -14,6 +14,8 @@ from seren3.analysis.parallel import mpi
 from seren3.analysis import drift_velocity
 from seren3.utils import divisors
 
+########################## MPI PARAMS ####################
+
 comm = mpi.comm
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -27,6 +29,8 @@ comm_debug = False
 
 pad = 8  # number of cells to pad each region with
 out_base_dir = "ics_ramses_vbc"  # the output directory for new ICs (level dir is handled below)
+
+######################### BEGIN MAIN ########################
 
 class Patch(object):
 
@@ -137,16 +141,9 @@ def main(path, level, patch_size, species):
         modified_delta = apply_density_bias(ic, species, cube, dx, pad)
         patches.append(Patch(cube, dx, modified_delta).__dict__)
 
-        #patches.append(Patch(cube, dx, modified_delta).__dict__)
-
     ##########################################################################
 
-    #mpi.msg("Done. Waiting...")
     patches = np.array(patches)
-
-    # if comm_debug:
-    #    mpi.msg("%f bytes to send" % patches.nbytes)
-    #patches = comm.gather(patches, root=0)
 
     if host:
         global_patches = []
