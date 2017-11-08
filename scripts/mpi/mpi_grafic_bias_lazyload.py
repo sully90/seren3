@@ -2,6 +2,9 @@
 Script for applying sub-grid vbc dependent bias. Requires that the transfer.x binary (from CICsASS)
 be in your $PATH. The code will fork additional processes to run transfer.x, so use a maximum of half
 the available cores per node when allocation MPI processes.
+
+This code deals with density fields only. For velocity fields, compute the corrections
+via the continuity equation and apply appropriately.
 '''
 
 import sys
