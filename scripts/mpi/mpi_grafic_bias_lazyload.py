@@ -176,12 +176,18 @@ def main(path, level, patch_size, species):
         mpi.msg("Complete")
 
 if __name__ == "__main__":
+    if (len(sys.argv) < 5) and mpi.host:
+        print "Usage: mpirun -np ${NSLOTS} %s </path/to/ics_ramses/> <level> <patch size [Mpc/h/a]> <species (b or c)>" % sys.argv[0]
+        mpi.terminate(1)
+
+    comm.Barrier()
+
     path = sys.argv[1]
     level = int(sys.argv[2])
     patch_size = float(sys.argv[3])
     species = sys.argv[4]
 
-    # try:
-    main(path, level, patch_size, species)
-    # except Exception as e:
-    #    mpi.terminate(500, e)
+    try:
+        main(path, level, patch_size, species)
+    except Exception as e:
+       mpi.terminate(500, e)
