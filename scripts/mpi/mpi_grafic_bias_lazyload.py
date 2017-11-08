@@ -73,6 +73,16 @@ def apply_density_bias(ic, species, cube, dx, pad):
     return modified_delta
 
 
+def get_patch_bounds(patch):
+    x_min, x_max = (
+        int((patch['cube'][0]) - (patch['dx'] / 2.)), int((patch['cube'][0]) + (patch['dx'] / 2.)))
+    y_min, y_max = (
+        int((patch['cube'][1]) - (patch['dx'] / 2.)), int((patch['cube'][1]) + (patch['dx'] / 2.)))
+    z_min, z_max = (
+        int((patch['cube'][2]) - (patch['dx'] / 2.)), int((patch['cube'][2]) + (patch['dx'] / 2.)))
+    return x_min, x_max, y_min, y_max, z_min, z_max
+
+
 def main(path, level, patch_size, species):
     if host:
         mpi.msg("Loading initial conditions for level %d" % level)
@@ -91,6 +101,11 @@ def main(path, level, patch_size, species):
             mpi.msg("Writing vbc field")
             vbc = ic['vbc']
             ic.write_field(vbc, 'vbc', out_dir=ic.level_dir)
+
+        if (species == 'c') and (ic.field_exists_on_disk('deltac') is False):
+            mpi.msg("Writing deltac field")
+            deltac = ic['deltac']
+            ic.write_field(deltac, 'deltac', out_dir=ic.level_dir)
 
         mpi.msg("Using %d cubes per dimension" % ncubes)
         mpi.msg("Grid size is %d^3" % ic.header.N)
@@ -157,14 +172,10 @@ def main(path, level, patch_size, species):
         delta_biased_global = np.zeros(ic.header.nn)
         for i in range(size):
             for patch in global_patches[i]:
-                x_min, x_max = (
-                    int((patch['cube'][0]) - (patch['dx'] / 2.)), int((patch['cube'][0]) + (patch['dx'] / 2.)))
-                y_min, y_max = (
-                    int((patch['cube'][1]) - (patch['dx'] / 2.)), int((patch['cube'][1]) + (patch['dx'] / 2.)))
-                z_min, z_max = (
-                    int((patch['cube'][2]) - (patch['dx'] / 2.)), int((patch['cube'][2]) + (patch['dx'] / 2.)))
-                delta_biased_global[x_min:x_max,
-                                    y_min: y_max, z_min: z_max] = patch['field']
+                x_min, x_max, y_min, y_max, z_min, z_max = get_patch_bounds(patch)
+                delta_biased_global[x_min:x_max,\
+                    y_min: y_max,\
+                    z_min: z_max] = patch['field']
 
         # Write out the new ICs
         out_level_dir = "%s/level_%03i/" % (out_base_dir, level)
@@ -176,18 +187,17 @@ def main(path, level, patch_size, species):
         mpi.msg("Complete")
 
 if __name__ == "__main__":
-    if (len(sys.argv) < 5) and mpi.host:
-        print "Usage: mpirun -np ${NSLOTS} %s </path/to/ics_ramses/> <level> <patch size [Mpc/h/a]> <species (b or c)>" % sys.argv[0]
-        mpi.terminate(1)
+    if (len(sys.argv) < 5):
+        if (mpi.host):
+            print "Usage: mpirun -np ${NSLOTS} %s </path/to/ics_ramses/> <level> <patch size [Mpc/h/a]> <species (b or c)>" % sys.argv[0]
+            mpi.terminate(1)
+    else:
+        path = sys.argv[1]
+        level = int(sys.argv[2])
+        patch_size = float(sys.argv[3])
+        species = sys.argv[4]
 
-    comm.Barrier()
-
-    path = sys.argv[1]
-    level = int(sys.argv[2])
-    patch_size = float(sys.argv[3])
-    species = sys.argv[4]
-
-    try:
-        main(path, level, patch_size, species)
-    except Exception as e:
-       mpi.terminate(500, e)
+        try:
+            main(path, level, patch_size, species)
+        except Exception as e:
+           mpi.terminate(500, e)
