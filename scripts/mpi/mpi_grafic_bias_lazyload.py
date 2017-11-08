@@ -26,6 +26,7 @@ comm_debug = False
 ########################## SCRIPT PARAMS ####################
 
 pad = 8  # number of cells to pad each region with
+out_base_dir = "ics_ramses_vbc"  # the output directory for new ICs (level dir is handled below)
 
 class Patch(object):
 
@@ -166,7 +167,6 @@ def main(path, level, patch_size, species):
                                     y_min: y_max, z_min: z_max] = patch['field']
 
         # Write out the new ICs
-        out_base_dir = "ics_ramses_vbc"
         out_level_dir = "%s/level_%03i/" % (out_base_dir, level)
 
         field_name = 'delta%s' % species
