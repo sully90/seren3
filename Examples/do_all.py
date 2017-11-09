@@ -190,6 +190,72 @@ def compute_fb(context, mass_unit="Msol h**-1"):
 
     return fb, tot_mass
 
+def sample_points_to_cube(context, field, N=128, plot=False):
+    '''
+    Samples the desired SCALAR field to a cube with N^3 cells
+    '''
+    source = context.g[field]  # the SerenSource object
+
+    # First, generate a mesh of points at which to sample the gas.
+
+    # This method generates points spanning the full domain,
+    # but you can write your own for sub-regions
+    print "Generating point mesh..."
+    points = source.generate_uniform_points(N)
+    print "Done"
+
+    # Sample at these locations
+    print "Sampling AMR grid at specified points..."
+    dset = source.sample_points(points)
+    print "Done"
+
+    # The resulting array is flattened, but can be reshaped as follows
+    data = dset[field].reshape((N,N,N))
+
+    if plot:
+        import numpy as np
+        import matplotlib.pylab as plt
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        field_units = dset[field].units
+
+        # plot extent
+        boxsize = context.boxsize
+        latex = boxsize.units.latex()
+
+        extent = [0, boxsize, 0, boxsize]
+
+        # Plot a slice and a projection
+        fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10,10))
+
+        im1 = axs[0].imshow(np.log10(data)[:,:,int(N/2)], extent=extent)  # slice through centre in z plane
+        axs[0].set_title("Slice of field %s" % field, fontsize=16)
+
+        # Fit colorbar to axis
+        divider = make_axes_locatable(axs[0])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar1 = plt.colorbar(im1, cax=cax)
+        cbar1.set_label(r"log$_{10}$(%s [$%s$])" % (field, field_units.latex()))
+
+        im2 = axs[1].imshow(np.log10(data).sum(axis=2), extent=extent)  # projection along z plane
+        axs[1].set_title("Projection of field %s" % field, fontsize=16)
+
+        # Fit colorbar to axis
+        divider = make_axes_locatable(axs[1])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar2 = plt.colorbar(im2, cax=cax)
+        cbar2.set_label(r"$\sum$ log$_{10}$(%s [$%s$])" % (field, field_units.latex()))
+
+        for ax in axs.flatten():
+            ax.set_xlabel(r"x [$%s$]" % latex)
+            ax.set_ylabel(r"y [$%s$]" % latex)
+
+        fig.tight_layout()
+        plt.show()
+
+    print data.shape
+    return dset, data
+
 ########################################## STARS ##########################################
 # from seren3.analysis.stars.__init__.py
 def sfr(context, ret_sSFR=False, nbins=100, **kwargs):
