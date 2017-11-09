@@ -57,6 +57,73 @@ def run_cicsass(boxsize, z, rms_vbc_z1000, out_fname, N=256):
     return code
 
 
+def compute_velocity_bias(ics, vbc):
+    import os, time
+    from seren3.array import SimArray
+    # print 'AVERAGE INSTEAD OF RMS'
+    # Init fields
+    if vbc is None:
+        vbc = ics['vbc']
+
+    # Compute size of grid and boxsize
+    N = vbc.shape[0]
+    boxsize = float(ics.boxsize) * \
+        (float(N) / float(ics.header.N))
+
+    # Compute vbc @ z=1000
+    # vbc_norm = ics.vbc_rms_norm(vbc=vbc)
+    # vbc_rms = vbc_norm * (1001.)  # vbc_rms prop (1 + z)
+    # Compute vbc @ z=1000
+    z = ics.z
+    rms = vbc_rms(vbc)
+    rms_recom = rms * (1001./z)
+
+    # Check for PS and run CICsASS if necessary
+    fname_vbc0 = vbc_ps_fname(0., z, boxsize)
+    if os.path.isfile(fname_vbc0) is False:
+        exit_code = run_cicsass(boxsize, z, 0., fname_vbc0)
+
+    fname_vbcrecom = vbc_ps_fname(rms_recom, z, boxsize)
+    if os.path.isfile(fname_vbcrecom) is False:
+        exit_code = run_cicsass(boxsize, z, rms_recom, fname_vbcrecom)
+
+    # Load the power spectra and compute the bias
+    ps_vbc0 = np.loadtxt(fname_vbc0, unpack=True)
+    ps_vbcrecom = np.loadtxt(fname_vbcrecom, unpack=True)
+
+    # Should have same lenghts if finished writing
+    count = 0
+    while len(ps_vbcrecom[1]) != len(ps_vbc0[1]):
+        count += 1
+        if count > 10:
+            raise Exception("Reached sleep limit. Filesizes still differ")
+        time.sleep(5)
+        ps_vbc0 = np.loadtxt(fname_vbc0, unpack=True)
+        ps_vbcrecom = np.loadtxt(fname_vbcrecom, unpack=True)
+
+    cosmo = ics.cosmo
+
+    from seren3 import cosmology
+    vdeltab0 = cosmology.linear_velocity_ps(
+        ps_vbc0[0], np.sqrt(ps_vbc0[2]), **cosmo)
+    vdeltab = cosmology.linear_velocity_ps(
+        ps_vbcrecom[0], np.sqrt(ps_vbcrecom[2]), **cosmo)
+
+    vdeltac0 = cosmology.linear_velocity_ps(
+        ps_vbc0[0], np.sqrt(ps_vbc0[1]), **cosmo)
+    vdeltac = cosmology.linear_velocity_ps(
+        ps_vbcrecom[0], np.sqrt(ps_vbcrecom[1]), **cosmo)
+
+    #CDM bias
+    b_cdm = vdeltac / vdeltac0
+    # Baryon bias
+    b_b = vdeltab / vdeltab0
+    # Wavenumber
+    k_bias = SimArray(ps_vbcrecom[0] / ics.cosmo["h"], "h Mpc**-1")
+
+    return k_bias, b_cdm, b_b
+
+
 def compute_bias(ics, vbc):
     """ Calculate the bias to the density power spectrum assuming
     COHERENT vbc at z=1000. """

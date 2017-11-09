@@ -39,14 +39,24 @@ class Patch(object):
         self.dx = dx
         self.field = field
 
-def apply_density_bias(ic, species, cube, dx, pad):
+def apply_bias(ic, species, cube, dx, pad, field, ax=None):
     origin = np.array(cube - float(dx) / 2. - pad).astype(np.int32)
     dx_eps = float(dx) + float(2 * pad)
 
     if debug:
         mpi.msg("Loading fields")
-    delta_cube = ic.lazy_load_periodic(
-        'delta%s' % species, origin, int(dx_eps))
+
+    delta_cube = None
+    if (field == 'vel'):
+        # Velocity field
+        delta_cube = ic.lazy_load_periodic(
+            'vel%s%s' % (species, ax), origin, int(dx_eps))
+    elif (field == 'rho'):
+        delta_cube = ic.lazy_load_periodic(
+            'delta%s' % species, origin, int(dx_eps))
+    else:
+        mpi.msg("Unknown species %s" % species)
+        mpi.terminate(500)
     vbc_cube = ic.lazy_load_periodic('vbc', origin, int(dx_eps))
 
     if debug:
@@ -55,7 +65,12 @@ def apply_density_bias(ic, species, cube, dx, pad):
     # Compute the PS bias
     if debug:
         mpi.msg("Computing bias")
-    k, bc, bb = drift_velocity.compute_bias(ic, vbc_cube)
+    k = bc = bb = None
+
+    if (field == 'vel'):
+        k, bc, bb = drift_velocity.compute_velocity_bias(ic, vbc_cube)
+    else:
+        k, bc, bb = drift_velocity.compute_bias(ic, vbc_cube)
     # Apply bias to this patch
     if debug:
         mpi.msg("Applying bias")
@@ -87,7 +102,7 @@ def get_patch_bounds(patch):
     return x_min, x_max, y_min, y_max, z_min, z_max
 
 
-def main(path, level, patch_size, species):
+def main(path, level, patch_size, species, field, ax=None):
     if host:
         mpi.msg("Loading initial conditions for level %d" % level)
 
@@ -106,7 +121,7 @@ def main(path, level, patch_size, species):
             vbc = ic['vbc']
             ic.write_field(vbc, 'vbc', out_dir=ic.level_dir)
 
-        if (species == 'c') and (ic.field_exists_on_disk('deltac') is False):
+        if (field == 'rho') and (species == 'c') and (ic.field_exists_on_disk('deltac') is False):
             mpi.msg("Writing deltac field")
             deltac = ic['deltac']
             ic.write_field(deltac, 'deltac', out_dir=ic.level_dir)
@@ -138,7 +153,7 @@ def main(path, level, patch_size, species):
         if np.round((i / num_local_cubes) * 100.) % 10. == 0.:
             mpi.msg("%1.1f %%" % ((i / num_local_cubes) * 100.))
 
-        modified_delta = apply_density_bias(ic, species, cube, dx, pad)
+        modified_delta = apply_bias(ic, species, cube, dx, pad, field, ax=ax)
         patches.append(Patch(cube, dx, modified_delta).__dict__)
 
     ##########################################################################
@@ -177,24 +192,37 @@ def main(path, level, patch_size, species):
         # Write out the new ICs
         out_level_dir = "%s/level_%03i/" % (out_base_dir, level)
 
-        field_name = 'delta%s' % species
+        field_name = None
+        if (field == 'vel'):
+            field_name = 'vel%s%s' % (species, ax)
+        else:
+            field_name = 'delta%s' % (species)
         fname = ic.output_fname(field_name, out_base_dir)
         mpi.msg("Writing new ICs to file: %s" % fname)
         ic.write_field(delta_biased_global, field_name, out_dir=out_level_dir)
         mpi.msg("Complete")
 
 if __name__ == "__main__":
-    if (len(sys.argv) < 5):
+    if (len(sys.argv) < 6):
         if (mpi.host):
-            print "Usage: mpirun -np ${NSLOTS} %s </path/to/ics_ramses/> <level> <patch size [Mpc/h/a]> <species (b or c)>" % sys.argv[0]
+            print "Usage: mpirun -np ${NSLOTS} %s </path/to/ics_ramses/> <level> <patch size [Mpc/h/a]> <species (b or c)> <field (rho or vel)>" % sys.argv[0]
             mpi.terminate(1)
     else:
         path = sys.argv[1]
         level = int(sys.argv[2])
         patch_size = float(sys.argv[3])
         species = sys.argv[4]
+        field = sys.argv[5]
+        ax = None
+        if (field == 'vel'):
+            if (len(sys.argv) == 7):
+                ax = sys.argv[6]
+            else:
+                if (mpi.host):
+                    print "Velocity Usage: mpirun -np ${NSLOTS} %s </path/to/ics_ramses/> <level> <patch size [Mpc/h/a]> <species (b or c)> <field (rho or vel)> <velocity axis (x,y,z)>" % sys.argv[0]
+                    mpi.terminate(1)
 
         try:
-            main(path, level, patch_size, species)
+            main(path, level, patch_size, species, field, ax=ax)
         except Exception as e:
            mpi.terminate(500, e)
