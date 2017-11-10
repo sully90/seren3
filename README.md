@@ -7,3 +7,7 @@ halo catalogues, data access/filtering, derived fields, visualization (3D projec
 First, clone and install the modified PyMSES repository here: https://bitbucket.org/david_sullivan_/pymses-rt_4.1.3
 Then, clone the seren3 directory, and type 'make'. This should compile all the c/f90 sources to their correct directories and run the inplace setup.py.
 Finally, symlink seren3 to your $PYTHON_PATH.
+
+## License ##
+
+This package is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. Users are free to modify and redistriubute the code as required.
